@@ -131,7 +131,7 @@ private fun Main(vm: MainViewModel) {
     val track by vm.currentTrack.collectAsState()
     val hints = remember { HintState() }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
-    BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.searchOpen || vm.stack.size > 1) { vm.back() }
+    BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.stack.size > 1) { vm.back() }
     val onPlayer = vm.route == Route.Player
     val bottom = 58.dp + if (track != null && !onPlayer) 70.dp else 0.dp
 
@@ -156,6 +156,7 @@ private fun Main(vm: MainViewModel) {
                         Route.Equalizer -> EqualizerScreen(vm, bottom)
                         Route.Stats -> StatsScreen(vm, bottom)
                         Route.Queue -> QueuePage(vm, bottom)
+                        Route.Search -> SearchPage(vm, bottom)
                     }
                 }
             }
@@ -186,13 +187,13 @@ private fun BottomBar(vm: MainViewModel) {
         val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats || r == Route.Queue
         RoundButton(Icons.Rounded.GridView, tr("Biblioteka"), {
             if (r == Route.Library) vm.nowPlayingOpen = true else vm.goTab(Route.Library)
-        }, active = inLibrary && !vm.searchOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        }, active = inLibrary, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
         RoundButton(Icons.Rounded.Equalizer, tr("Korektor"), {
             if (r == Route.Equalizer) vm.nowPlayingOpen = true else vm.goTab(Route.Equalizer)
         }, active = r == Route.Equalizer, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
         RoundButton(Icons.Rounded.Search, tr("Szukaj"), {
-            vm.goTab(Route.Library); vm.searchOpen = true
-        }, active = vm.searchOpen && r == Route.Library, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+            if (r != Route.Search) vm.goTab(Route.Search)
+        }, active = r == Route.Search, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
         RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
     }
 }

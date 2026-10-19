@@ -1,5 +1,11 @@
 # Historia zmian
 
+## 1.3.1
+
+- Płynne przełączanie utworów przesunięciem okładki – bez przeskoków i migania okładek.
+- Przycisk „Biblioteka” przeniesiony z paska nad listą do prawego górnego rogu nagłówka listy (także na bieżącej liście odtwarzania).
+- Usunięty niedziałający przycisk lupki z list utworów; wyszukiwanie ma osobny widok pod lupką na dolnym pasku (pole od razu aktywne, wyniki na bieżąco).
+
 ## 1.3.0
 
 - Inteligentny gest okładki: okładka podąża za palcem, obok wysuwa się okładka następnego lub poprzedniego utworu (zgodnie z losowaniem), decyzja wg odległości lub szybkości rzutu, opór na końcu kolejki, wibracja przy progu.

@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
@@ -159,47 +161,61 @@ fun LibraryScreen(vm: MainViewModel, bottomPadding: Dp) {
     val scanning by vm.scanning.collectAsState()
     val tab = s.tab
     val pad = PaddingValues(bottom = bottomPadding + 12.dp)
-    val tracks = remember(all, vm.query) { LibraryOps.search(all, vm.query) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        if (vm.libraryRoot && !vm.searchOpen) {
+        if (vm.libraryRoot) {
             CategoryList(vm, all, data, pad)
             return@Column
         }
-        // Pasek: powrót do kategorii albo wyszukiwanie
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (vm.searchOpen) {
-                SearchField(vm, Modifier.weight(1f))
-            } else {
-                PillButton(tr("Biblioteka"), { vm.libraryRoot = true }, icon = Icons.Rounded.NorthEast, background = Color.Transparent)
-                Spacer(Modifier.weight(1f))
-            }
-        }
         AnimatedVisibility(scanning) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp)) }
+        val toRoot: @Composable () -> Unit = { LibraryButton { vm.libraryRoot = true } }
 
-        if (tab.isTrackList || vm.searchOpen) {
-            val list = remember(tracks, tab, s.trackSort, s.trackSortDesc, data, vm.searchOpen) {
-                val base = when {
-                    vm.searchOpen -> tracks
-                    tab == LibraryTab.RECENT_ADDED -> LibraryOps.smart(tracks, SmartList.RECENTLY_ADDED, data)
-                    tab == LibraryTab.MOST_PLAYED -> LibraryOps.smart(tracks, SmartList.MOST_PLAYED, data)
-                    tab == LibraryTab.RECENT_PLAYED -> LibraryOps.smart(tracks, SmartList.RECENTLY_PLAYED, data)
-                    tab == LibraryTab.FAVORITES -> LibraryOps.smart(tracks, SmartList.FAVORITES, data)
-                    else -> tracks
+        if (tab.isTrackList) {
+            val list = remember(all, tab, s.trackSort, s.trackSortDesc, data) {
+                val base = when (tab) {
+                    LibraryTab.RECENT_ADDED -> LibraryOps.smart(all, SmartList.RECENTLY_ADDED, data)
+                    LibraryTab.MOST_PLAYED -> LibraryOps.smart(all, SmartList.MOST_PLAYED, data)
+                    LibraryTab.RECENT_PLAYED -> LibraryOps.smart(all, SmartList.RECENTLY_PLAYED, data)
+                    LibraryTab.FAVORITES -> LibraryOps.smart(all, SmartList.FAVORITES, data)
+                    else -> all
                 }
                 // Listy „inteligentne” mają swoją kolejność; własne sortowanie – w pozostałych.
-                if (tab == LibraryTab.TRACKS || tab == LibraryTab.FAVORITES || vm.searchOpen) LibraryOps.sortTracks(base, s.trackSort, s.trackSortDesc, data.stats) else base
+                if (tab == LibraryTab.TRACKS || tab == LibraryTab.FAVORITES) LibraryOps.sortTracks(base, s.trackSort, s.trackSortDesc, data.stats) else base
             }
-            TrackListPage(vm, if (vm.searchOpen) tr("Szukaj") else tab.label(), if (vm.searchOpen) Icons.Rounded.Search else tab.icon(), list, s.trackDensity, pad)
+            TrackListPage(vm, tab.label(), tab.icon(), list, s.trackDensity, pad, headerTrailing = toRoot)
         } else {
-            CategoryHeader(tab.label(), tab.icon(), null) { SortMenu(vm) }
-            GroupTab(vm, tab, tracks, pad)
+            CategoryHeader(tab.label(), tab.icon(), null) { SortMenu(vm); Spacer(Modifier.width(6.dp)); toRoot() }
+            GroupTab(vm, tab, all, pad)
         }
+    }
+}
+
+/** Przycisk powrotu do kategorii biblioteki – w prawym górnym rogu listy. */
+@Composable
+private fun LibraryButton(onClick: () -> Unit) {
+    PillButton(tr("Biblioteka"), onClick, icon = Icons.Rounded.NorthEast)
+}
+
+/** Osobny widok wyszukiwania (lupka na dolnym pasku): pole na górze, wyniki pod nim. */
+@Composable
+fun SearchPage(vm: MainViewModel, bottomPadding: Dp) {
+    val s by vm.settings.collectAsState()
+    val all by vm.tracks.collectAsState()
+    val data by vm.userData.collectAsState()
+    val results = remember(all, vm.query, s.trackSort, s.trackSortDesc, data.stats) {
+        if (vm.query.isBlank()) emptyList() else LibraryOps.sortTracks(LibraryOps.search(all, vm.query), s.trackSort, s.trackSortDesc, data.stats)
+    }
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        SearchField(vm, Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp))
+        if (vm.query.isBlank()) { Empty(tr("Wpisz tytuł, wykonawcę lub album")); return@Column }
+        TrackListPage(vm, tr("Szukaj"), Icons.Rounded.Search, results, s.trackDensity, PaddingValues(bottom = bottomPadding + 12.dp))
     }
 }
 
 @Composable
 private fun SearchField(vm: MainViewModel, modifier: Modifier) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
     Row(
         modifier.clip(RoundedCornerShape(50)).background(Flat.Block).padding(start = 14.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -211,10 +227,10 @@ private fun SearchField(vm: MainViewModel, modifier: Modifier) {
             BasicTextField(
                 vm.query, { vm.query = it }, singleLine = true,
                 textStyle = TextStyle(color = Color.White, fontSize = 15.sp), cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
-        RoundButton(Icons.Rounded.Close, tr("Zamknij"), { vm.searchOpen = false; vm.query = "" }, background = Color.Transparent, size = 40.dp)
+        if (vm.query.isNotEmpty()) RoundButton(Icons.Rounded.Close, tr("Wyczyść"), { vm.query = "" }, background = Color.Transparent, size = 40.dp)
     }
 }
 
@@ -287,7 +303,7 @@ private fun CategoryList(vm: MainViewModel, all: List<Track>, data: com.blacksin
 }
 
 /**
- * Strona listy utworów: nagłówek kategorii, rząd akcji (mieszaj, odtwórz, szukaj, wybierz, więcej),
+ * Strona listy utworów: nagłówek kategorii, rząd akcji (mieszaj, odtwórz, wybierz, sortowanie),
  * lista o zmiennej gęstości (szczypanie) i tryb zaznaczania wielu utworów.
  */
 @Composable
@@ -300,6 +316,7 @@ private fun TrackListPage(
     pad: PaddingValues,
     onPlay: ((Int) -> Unit)? = null,
     currentIndex: Int? = null,
+    headerTrailing: @Composable () -> Unit = {},
 ) {
     val ps by vm.player.state.collectAsState()
     var selecting by remember { mutableStateOf(false) }
@@ -311,13 +328,12 @@ private fun TrackListPage(
     val chosen = { list.filter { it.id in selected } }
 
     Column(Modifier.fillMaxSize()) {
-        CategoryHeader(title, icon, tracksSummary(list))
+        CategoryHeader(title, icon, tracksSummary(list), headerTrailing)
         // Akcje
         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!selecting) {
                 item { PillButton(null, { vm.player.play(list, shuffle = true) }, icon = Icons.Rounded.Shuffle, label = tr("Wymieszaj")) }
                 item { PillButton(null, { vm.player.play(list) }, icon = Icons.Rounded.PlayArrow, label = tr("Odtwórz")) }
-                item { PillButton(null, { vm.searchOpen = true }, icon = Icons.Rounded.Search, label = tr("Szukaj"), active = vm.searchOpen) }
                 item { PillButton(tr("Wybierz"), { selecting = true }) }
                 item { SortMenu(vm) }
             } else {
@@ -493,16 +509,15 @@ fun QueuePage(vm: MainViewModel, bottomPadding: Dp) {
     val list = pairs.map { it.second }
     val current = pairs.indexOfFirst { it.first == ps.index }.takeIf { it >= 0 }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            PillButton(tr("Biblioteka"), { vm.goTab(Route.Library); vm.libraryRoot = true }, icon = Icons.Rounded.NorthEast, background = Color.Transparent)
-            Spacer(Modifier.weight(1f))
-            if (ps.shuffle) PillButton(tr("Losowo"), { vm.player.toggleShuffle() }, icon = Icons.Rounded.Shuffle, active = true)
-        }
         TrackListPage(
             vm, tr("Bieżąca lista odtwarzania"), Icons.AutoMirrored.Rounded.QueueMusic, list, s.trackDensity,
             PaddingValues(bottom = bottomPadding + 12.dp),
             onPlay = { i -> pairs.getOrNull(i)?.let { vm.player.skipTo(it.first) } },
             currentIndex = current,
+            headerTrailing = {
+                if (ps.shuffle) { PillButton(null, { vm.player.toggleShuffle() }, icon = Icons.Rounded.Shuffle, label = tr("Losowo"), active = true); Spacer(Modifier.width(6.dp)) }
+                LibraryButton { vm.goTab(Route.Library); vm.libraryRoot = true }
+            },
         )
     }
 }

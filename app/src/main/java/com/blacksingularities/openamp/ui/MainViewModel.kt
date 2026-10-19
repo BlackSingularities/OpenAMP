@@ -53,6 +53,7 @@ sealed interface Route {
     data object Equalizer : Route
     data object Stats : Route
     data object Queue : Route
+    data object Search : Route
 }
 
 sealed interface LyricsUi {
@@ -93,13 +94,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Dolny pasek: przejście do sekcji bez rozbudowy stosu. */
     fun goTab(r: Route) {
+        if (route == Route.Search && r != Route.Search) query = ""
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
         if (r != Route.Player) stack.add(r)
     }
     var queueOpen by mutableStateOf(false)
     var showLyrics by mutableStateOf(Graph.settings.value.lyricsByDefault)
     var query by mutableStateOf("")
-    var searchOpen by mutableStateOf(false)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
@@ -227,9 +228,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         when {
             queueOpen -> queueOpen = false
             menuOpen -> menuOpen = false
-            searchOpen -> { searchOpen = false; query = "" }
             route == Route.Library && !libraryRoot -> libraryRoot = true
-            stack.size > 1 -> stack.removeAt(stack.lastIndex)
+            stack.size > 1 -> { if (route == Route.Search) query = ""; stack.removeAt(stack.lastIndex) }
             else -> return false
         }
         return true

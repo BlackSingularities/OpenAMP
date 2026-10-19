@@ -50,6 +50,8 @@ private val En: Map<String, String> = mapOf(
     "Kolejka" to "Queue",
     "Szukaj" to "Search",
     "Szukaj w bibliotece" to "Search library",
+    "Wpisz tytuł, wykonawcę lub album" to "Type a title, artist or album",
+    "Wyczyść" to "Clear",
     "Anuluj" to "Cancel",
     "Zapisz" to "Save",
     "Usuń" to "Delete",
