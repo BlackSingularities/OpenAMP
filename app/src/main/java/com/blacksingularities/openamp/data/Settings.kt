@@ -24,6 +24,7 @@ data class AppSettings(
     val blurBackground: Boolean = true,
     val smartEq: Boolean = false,
     val ambient: Boolean = true,
+    val showLikes: Boolean = true,
     val smartShuffle: Boolean = true,
     val npBackground: NpBackground = NpBackground.BLUR,
     val coverShape: CoverShape = CoverShape.ROUNDED,
@@ -91,6 +92,7 @@ class SettingsStore(context: Context) {
                 blurBackground = getBoolean("blurBackground", d.blurBackground),
                 smartEq = getBoolean("smartEq", d.smartEq),
                 ambient = getBoolean("ambient", d.ambient),
+                showLikes = getBoolean("showLikes", d.showLikes),
                 smartShuffle = getBoolean("smartShuffle", d.smartShuffle),
                 npBackground = enum("npBackground", d.npBackground),
                 coverShape = enum("coverShape", d.coverShape),
@@ -139,6 +141,7 @@ class SettingsStore(context: Context) {
             .putBoolean("blurBackground", s.blurBackground)
             .putBoolean("smartEq", s.smartEq)
             .putBoolean("ambient", s.ambient)
+            .putBoolean("showLikes", s.showLikes)
             .putBoolean("smartShuffle", s.smartShuffle)
             .putString("npBackground", s.npBackground.name)
             .putString("coverShape", s.coverShape.name)

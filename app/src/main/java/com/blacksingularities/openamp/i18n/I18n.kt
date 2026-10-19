@@ -423,4 +423,6 @@ private val En: Map<String, String> = mapOf(
     "Zaznacz wszystko" to "Select all",
     "{0} pasm" to "{0} bands",
     "{0} zaznaczone" to "{0} selected",
+    "Przyciski „lubię / nie lubię”" to "Like / dislike buttons",
+    "Na okładce w ekranie odtwarzania" to "On the artwork in the player",
 )

@@ -161,6 +161,7 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                     ChoiceRow(tr("Kształt okładki"), shapeLabel(s.coverShape)) {
                         choice = { ChoiceDialog(tr("Kształt okładki"), CoverShape.entries, s.coverShape, ::shapeLabel, { choice = null }) { v -> vm.updateSettings { it.copy(coverShape = v) } } }
                     }
+                    SwitchRow(tr("Przyciski „lubię / nie lubię”"), tr("Na okładce w ekranie odtwarzania"), s.showLikes) { v -> vm.updateSettings { it.copy(showLikes = v) } }
                     SwitchRow(tr("Informacje techniczne pliku"), tr("Format, częstotliwość, bitrate pod tytułem"), s.showTechInfo) { v -> vm.updateSettings { it.copy(showTechInfo = v) } }
                     SwitchRow(tr("Gest przesunięcia okładki"), tr("Przesuń okładkę w bok, aby zmienić utwór"), s.coverGestures) { v -> vm.updateSettings { it.copy(coverGestures = v) } }
                     SwitchRow(tr("Nie wygaszaj ekranu"), tr("Podczas wyświetlania ekranu odtwarzania"), s.keepScreenOn) { v -> vm.updateSettings { it.copy(keepScreenOn = v) } }

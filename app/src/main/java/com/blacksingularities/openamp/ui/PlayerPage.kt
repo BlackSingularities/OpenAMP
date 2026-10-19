@@ -36,6 +36,8 @@ import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -111,7 +113,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         NowPlayingBackground(track, s.npBackground, accent, live)
         val wide = maxWidth > maxHeight
-        val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, data.favorites, data.disliked, m) }
+        val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, s.showLikes, data.favorites, data.disliked, m) }
         val controls: @Composable () -> Unit = {
             Column {
                 TitlePills(vm, track) { menu = true }
@@ -119,10 +121,11 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                 ActionRow(vm, ps, s.visualizer, { speedDialog = true })
                 Gap(6.dp)
                 SeekArea(vm, ps, pos, wave, live, s.seekStyle, accent)
-                TechLine(track, info, s.showTechInfo) { details = true }
             }
         }
-        Box(Modifier.statusBarsPadding().padding(bottom = bottomPadding).fillMaxSize()) {
+        val techH = if (s.showTechInfo && track != null) 26.dp else 0.dp
+        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp)) { TechLine(track, info, s.showTechInfo) { details = true } }
+        Box(Modifier.statusBarsPadding().padding(bottom = bottomPadding + techH).fillMaxSize()) {
             if (wide) {
                 Row(Modifier.fillMaxSize().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     cover(Modifier.fillMaxHeight().aspectRatio(1f))
@@ -130,7 +133,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                     Box(Modifier.weight(1f)) { controls() }
                 }
             } else {
-                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp)) {
                     cover(Modifier.fillMaxWidth().weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).align(Alignment.CenterHorizontally))
                     Gap(14.dp)
                     controls()
@@ -156,6 +159,7 @@ private fun CoverBlock(
     vis: VisualizerStyle,
     shapeMode: CoverShape,
     gestures: Boolean,
+    showLikes: Boolean,
     favorites: Set<Long>,
     disliked: Set<Long>,
     modifier: Modifier,
@@ -174,9 +178,7 @@ private fun CoverBlock(
             if (lyrics) {
                 Box(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color.Black.copy(alpha = 0.55f))) {
                     LyricsPanel(vm, Modifier.fillMaxSize())
-                    Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                        RoundButton(Icons.Rounded.GraphicEq, tr("Okładka"), { vm.showLyrics = false }, background = Glassy, size = 40.dp)
-                    }
+                    RoundButton(Icons.Rounded.Image, tr("Okładka"), { vm.showLyrics = false }, Modifier.align(Alignment.BottomEnd).padding(8.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
                 }
             } else {
                 Box(
@@ -190,7 +192,7 @@ private fun CoverBlock(
                         }
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onTap = { vm.showLyrics = true },
+                                onTap = { vm.goTab(Route.Library) },
                                 onDoubleTap = { o -> if (o.x < size.width / 2) vm.player.seekTo((vm.player.position.value - 10_000).coerceAtLeast(0)) else vm.player.seekTo(vm.player.position.value + 10_000) },
                             )
                         },
@@ -210,17 +212,17 @@ private fun CoverBlock(
         if (!vm.showLyrics) {
             val fav = track != null && track.id in favorites
             val dis = track != null && track.id in disliked
-            Row(Modifier.align(Alignment.BottomStart).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoundButton(if (fav) Icons.Rounded.ThumbUp else Icons.Rounded.ThumbUpOffAlt, tr("Lubię"), { track?.let { Graph.userData.toggleFavorite(it.id) } }, background = Glassy, active = fav)
+            if (showLikes) Row(Modifier.align(Alignment.BottomStart).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                RoundButton(if (fav) Icons.Rounded.ThumbUp else Icons.Rounded.ThumbUpOffAlt, tr("Lubię"), { track?.let { Graph.userData.toggleFavorite(it.id) } }, background = Glassy, active = fav, size = 36.dp, iconSize = 18.dp)
                 RoundButton(if (dis) Icons.Rounded.ThumbDown else Icons.Rounded.ThumbDownOffAlt, tr("Nie lubię – pomiń i nie proponuj"), {
                     track?.let {
                         val wasDisliked = it.id in disliked
                         Graph.userData.toggleDislike(it.id)
                         if (!wasDisliked) { vm.player.next(); vm.message(tr("Ten utwór nie trafi do miksów ani sprytnego mieszania")) }
                     }
-                }, background = Glassy, active = dis)
+                }, background = Glassy, active = dis, size = 36.dp, iconSize = 18.dp)
             }
-            RoundButton(Icons.AutoMirrored.Rounded.QueueMusic, tr("Kolejka"), { vm.queueOpen = true }, Modifier.align(Alignment.BottomEnd).padding(10.dp), background = Glassy)
+            RoundButton(Icons.Rounded.Lyrics, tr("Tekst utworu"), { vm.showLyrics = true }, Modifier.align(Alignment.BottomEnd).padding(8.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
         }
     }
 }
@@ -247,8 +249,8 @@ private fun TitlePills(vm: MainViewModel, track: Track?, onMenu: () -> Unit) {
 private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.playback.PlayerUiState, vis: VisualizerStyle, onSpeed: () -> Unit) {
     val sleepAt by Graph.sleepAt.collectAsState()
     val sleepEnd by Graph.sleepEndOfTrack.collectAsState()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        val pill = Modifier.weight(1f)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        val pill = Modifier
         WidePill(Icons.Rounded.GraphicEq, tr("Wizualizacja") + ": " + visLabel(vis), vis != VisualizerStyle.NONE, pill) {
             val next = VisualizerStyle.entries[(vis.ordinal + 1) % VisualizerStyle.entries.size]
             vm.updateSettings { it.copy(visualizer = next) }
@@ -274,7 +276,7 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
 private fun WidePill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean, modifier: Modifier, onLong: (() -> Unit)? = null, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Box(
-        modifier.height(46.dp).reactive(label, onLongPress = onLong, onClick = onClick).clip(RoundedCornerShape(50)).background(if (active) accent else Glassy),
+        modifier.size(48.dp).reactive(label, onLongPress = onLong, onClick = onClick).clip(CircleShape).background(if (active) accent else Glassy),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(24.dp)) }
 }
@@ -366,7 +368,7 @@ private fun TechLine(track: Track?, info: FileInfo?, show: Boolean, onClick: () 
     }
     Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
         Text(
-            parts.joinToString("  ").uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+            parts.joinToString("  •  "), color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp, fontWeight = FontWeight.Bold,
             letterSpacing = 0.6.sp,
             modifier = Modifier.reactive(tr("Informacje o pliku"), onClick = onClick).clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 12.dp, vertical = 4.dp).widthIn(max = 320.dp),
         )
