@@ -1,0 +1,4 @@
+-keepattributes *Annotation*, Signature, InnerClasses
+-keep class com.blacksingularities.openamp.playback.PlaybackService { *; }
+-dontwarn org.checkerframework.**
+-dontwarn com.google.errorprone.**
