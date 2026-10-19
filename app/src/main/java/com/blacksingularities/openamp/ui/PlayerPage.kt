@@ -7,9 +7,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -63,6 +62,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -179,8 +179,17 @@ private fun CoverBlock(
     var width by remember { mutableFloatStateOf(1f) }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
-    val nextTrack = ps.nextId?.let { Graph.library.get(it) }
-    val prevTrack = ps.prevId?.let { Graph.library.get(it) }
+    val liveNext = ps.nextId?.let { Graph.library.get(it) }
+    val livePrev = ps.prevId?.let { Graph.library.get(it) }
+    // Sąsiedzi „zamrożeni” na czas gestu, a po zwolnieniu – utwór docelowy pokazywany od razu
+    // (zanim odtwarzacz zgłosi zmianę), żeby okładki nie przeskakiwały.
+    var frozenNext by remember { mutableStateOf<Track?>(null) }
+    var frozenPrev by remember { mutableStateOf<Track?>(null) }
+    var pending by remember { mutableStateOf<Track?>(null) }
+    LaunchedEffect(track?.id) { if (pending != null && track?.id == pending?.id) pending = null }
+    val shown = pending ?: track
+    val nextTrack = frozenNext ?: liveNext
+    val prevTrack = frozenPrev ?: livePrev
     val hasNext by rememberUpdatedState(ps.nextId != null)
     val hasPrev by rememberUpdatedState(ps.prevId != null)
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
@@ -209,7 +218,7 @@ private fun CoverBlock(
                             val tracker = VelocityTracker()
                             var crossed = false
                             detectHorizontalDragGestures(
-                                onDragStart = { tracker.resetTracking(); crossed = false },
+                                onDragStart = { tracker.resetTracking(); crossed = false; frozenNext = liveNext; frozenPrev = livePrev },
                                 onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.7f)) } },
                                 onDragEnd = {
                                     val v = tracker.calculateVelocity().x
@@ -218,14 +227,20 @@ private fun CoverBlock(
                                     val goPrev = hasPrev && (o > width * 0.3f || (v > 1100f && o > width * 0.04f))
                                     scope.launch {
                                         if (goNext || goPrev) {
-                                            val old = vm.currentTrack.value?.id
+                                            val target = if (goNext) nextTrack else prevTrack
                                             val speed = kotlin.math.abs(v).coerceIn(1200f, 6000f)
                                             val left = (width - kotlin.math.abs(o)) / speed * 1000f
                                             offset.animateTo(if (goNext) -width else width, tween(left.toInt().coerceIn(90, 260)))
-                                            if (goNext) vm.player.next() else vm.player.previousTrack()
-                                            withTimeoutOrNull(600) { vm.currentTrack.first { it?.id != old } }
+                                            // Ta sama klatka: okładka docelowa staje na środku, dopiero potem zmiana utworu.
+                                            pending = target
                                             offset.snapTo(0f)
-                                        } else offset.animateTo(0f, spring(dampingRatio = 0.62f, stiffness = 420f))
+                                            frozenNext = null; frozenPrev = null
+                                            if (goNext) vm.player.next() else vm.player.previousTrack()
+                                            launch { delay(1500); pending = null }
+                                        } else {
+                                            offset.animateTo(0f, spring(dampingRatio = 0.62f, stiffness = 420f))
+                                            frozenNext = null; frozenPrev = null
+                                        }
                                     }
                                 },
                             ) { c, dx ->
@@ -273,7 +288,7 @@ private fun CoverBlock(
                             val sc = scale * (1f - 0.08f * frac()); scaleX = sc; scaleY = sc
                         }
                         .shadow(24.dp, shape)
-                    if (shapeMode == CoverShape.VINYL) Vinyl(track, playing, accent, m) else Artwork(track, m, size = 1000, shape = shape, crossfade = !gestures)
+                    if (shapeMode == CoverShape.VINYL) Vinyl(shown, playing, accent, m) else Artwork(shown, m, size = 1000, shape = shape, crossfade = !gestures)
                     if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(70.dp).padding(bottom = 58.dp), mirror = false)
                     if (vis == VisualizerStyle.WAVE) WaveScope(live, Color.White, Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp))
                 }
