@@ -1,5 +1,14 @@
 # Historia zmian
 
+## 1.3.0
+
+- Inteligentny gest okładki: okładka podąża za palcem, obok wysuwa się okładka następnego lub poprzedniego utworu (zgodnie z losowaniem), decyzja wg odległości lub szybkości rzutu, opór na końcu kolejki, wibracja przy progu.
+- Dotknięcie okładki otwiera bieżącą listę odtwarzania w faktycznej kolejności grania (także losowej), przewiniętą do grającego utworu.
+- Płynne, animowane skalowanie listy szczypaniem.
+- Filtr biblioteki: wybór folderów i formatów plików, minimalna długość utworu, ukrywanie utworów „nie lubię”.
+- Dolny pasek na całą szerokość, przy samej krawędzi ekranu.
+- Przyciski „lubię / nie lubię” opcjonalne i mniejsze, przycisk tekstu w rogu okładki, okrągłe przyciski akcji, parametry pliku na dole ekranu.
+
 ## 1.2.0
 
 - Nowy układ w stylu OpenPDF: płaski czarno-biały interfejs, przyciski-koła i pigułki, sprężysta reakcja na dotyk z haptyką, dymki z nazwą po przytrzymaniu.
