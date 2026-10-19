@@ -35,6 +35,11 @@ data class PlayerUiState(
     val repeat: RepeatMode = RepeatMode.OFF,
     val speed: Float = 1f,
     val pitch: Float = 1f,
+    /** Sąsiedzi w kolejności odtwarzania (z uwzględnieniem losowania i powtarzania). */
+    val nextId: Long? = null,
+    /** Indeksy kolejki w faktycznej kolejności grania (przy losowaniu – wylosowanej). */
+    val order: List<Int> = emptyList(),
+    val prevId: Long? = null,
 )
 
 /** Kontroler sesji po stronie interfejsu; stan odtwarzacza jako StateFlow. */
@@ -87,8 +92,24 @@ class PlayerConnection(private val context: Context) {
             },
             speed = c.playbackParameters.speed,
             pitch = c.playbackParameters.pitch,
+            order = playOrder(c),
+            nextId = c.nextMediaItemIndex.takeIf { it >= 0 }?.let { c.getMediaItemAt(it).mediaId.toLongOrNull() },
+            prevId = c.previousMediaItemIndex.takeIf { it >= 0 }?.let { c.getMediaItemAt(it).mediaId.toLongOrNull() },
         )
         _position.value = c.currentPosition
+    }
+
+    private fun playOrder(c: MediaController): List<Int> {
+        val tl = c.currentTimeline
+        if (tl.isEmpty) return emptyList()
+        val sh = c.shuffleModeEnabled
+        val out = ArrayList<Int>(tl.windowCount)
+        var i = tl.getFirstWindowIndex(sh)
+        while (i != androidx.media3.common.C.INDEX_UNSET && out.size < tl.windowCount) {
+            out += i
+            i = tl.getNextWindowIndex(i, Player.REPEAT_MODE_OFF, sh)
+        }
+        return out
     }
 
     private fun items(tracks: List<Track>): List<MediaItem> = tracks.map { it.toRequestItem() }
@@ -159,6 +180,12 @@ class PlayerConnection(private val context: Context) {
     }
 
     fun next() = controller?.seekToNext() ?: Unit
+    /** Poprzedni utwór zawsze (bez „od początku bieżącego”) – dla gestu przesunięcia. */
+    fun previousTrack() {
+        val c = controller ?: return
+        if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0)
+    }
+
     fun previous() {
         val c = controller ?: return
         // Na początku utworu – poprzedni; dalej – od początku bieżącego.

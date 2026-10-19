@@ -133,7 +133,7 @@ private fun Main(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.searchOpen || vm.stack.size > 1) { vm.back() }
     val onPlayer = vm.route == Route.Player
-    val bottom = 72.dp + if (track != null && !onPlayer) 70.dp else 0.dp
+    val bottom = 58.dp + if (track != null && !onPlayer) 70.dp else 0.dp
 
     CompositionLocalProvider(LocalHints provides hints) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -155,10 +155,11 @@ private fun Main(vm: MainViewModel) {
                         Route.Settings -> SettingsScreen(vm, bottom)
                         Route.Equalizer -> EqualizerScreen(vm, bottom)
                         Route.Stats -> StatsScreen(vm, bottom)
+                        Route.Queue -> QueuePage(vm, bottom)
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
+            Column(Modifier.align(Alignment.BottomCenter)) {
                 AnimatedVisibility(track != null && !onPlayer, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
                     MiniPlayer(vm)
                 }
@@ -176,13 +177,13 @@ private fun Main(vm: MainViewModel) {
 @Composable
 private fun BottomBar(vm: MainViewModel) {
     val r = vm.route
+    // Pasek na całą szerokość, wtopiony w dolną krawędź (tło sięga pod systemowy pasek nawigacji).
     Row(
-        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp).fillMaxWidth().height(60.dp)
-            .clip(RoundedCornerShape(30.dp)).background(Flat.Block.copy(alpha = 0.92f)),
+        Modifier.fillMaxWidth().background(Color.Black).navigationBarsPadding().height(58.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats
+        val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats || r == Route.Queue
         RoundButton(Icons.Rounded.GridView, tr("Biblioteka"), {
             if (r == Route.Library) vm.nowPlayingOpen = true else vm.goTab(Route.Library)
         }, active = inLibrary && !vm.searchOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)

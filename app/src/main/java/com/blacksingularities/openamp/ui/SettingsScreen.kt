@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
@@ -80,6 +81,8 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
     var choice by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
     var clearConfirm by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf(false) }
+    var filterOpen by remember { mutableStateOf(false) }
+    if (filterOpen) LibraryFilterSheet(vm) { filterOpen = false }
     if (picker) ColorPickerDialog(s.accent, { picker = false }) { c -> vm.updateSettings { it.copy(accent = c) } }
     choice?.invoke()
 
@@ -193,16 +196,8 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                     SliderRow(tr("Minimalna długość utworu"), tr("{0} s", s.minDurationSec), s.minDurationSec.toFloat(), 0f..120f, 11, tr("Krótsze pliki (dzwonki, nagrania) są pomijane")) { v ->
                         vm.updateSettings { it.copy(minDurationSec = (v / 10).roundToInt() * 10) }
                     }
-                    var excluded by remember(s.excludedFolders) { mutableStateOf(s.excludedFolders) }
-                    Text(tr("Pomijane foldery"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
-                    Text(tr("Ścieżki zawierające ten tekst nie trafią do biblioteki, oddzielone przecinkami"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedTextField(
-                        excluded, { excluded = it }, singleLine = true, placeholder = { Text("WhatsApp, Recordings") },
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                        trailingIcon = {
-                            if (excluded != s.excludedFolders) IconButton(onClick = { vm.updateSettings { it.copy(excludedFolders = excluded) } }) { Icon(Icons.Rounded.Check, tr("Zapisz")) }
-                        },
-                    )
+                    SwitchRow(tr("Ukryj utwory „nie lubię”"), null, s.hideDisliked) { v -> vm.updateSettings { it.copy(hideDisliked = v) } }
+                    PillButton(tr("Co pokazywać w bibliotece"), { filterOpen = true }, Modifier.padding(top = 8.dp), icon = Icons.Rounded.FilterList, active = true)
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { vm.rescan() }) { Text(tr("Odśwież bibliotekę")) }
                         OutlinedButton(onClick = { clearConfirm = true }) { Text(tr("Wyczyść statystyki odtworzeń")) }

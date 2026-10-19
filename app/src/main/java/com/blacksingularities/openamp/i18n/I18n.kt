@@ -425,4 +425,12 @@ private val En: Map<String, String> = mapOf(
     "{0} zaznaczone" to "{0} selected",
     "Przyciski „lubię / nie lubię”" to "Like / dislike buttons",
     "Na okładce w ekranie odtwarzania" to "On the artwork in the player",
+    "Bieżąca lista odtwarzania" to "Current play queue",
+    "Co pokazywać w bibliotece" to "What to show in the library",
+    "Formaty plików" to "File formats",
+    "Ukryj utwory „nie lubię”" to "Hide disliked tracks",
+    "Widocznych utworów: {0}" to "Visible tracks: {0}",
+    "Wszystkie" to "All",
+    "Zastosuj" to "Apply",
+    "Żadne" to "None",
 )

@@ -52,7 +52,7 @@ object Graph {
 
     suspend fun rescan() = scanLock.withLock {
         val s = settings.value
-        library.scan(s.minDurationSec, s.excludedFolders)
+        library.scan(s.minDurationSec, s.excludedFolders, s.hiddenFormats)
         scannedOnce = true
     }
 

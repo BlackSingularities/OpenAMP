@@ -52,6 +52,7 @@ sealed interface Route {
     data object Settings : Route
     data object Equalizer : Route
     data object Stats : Route
+    data object Queue : Route
 }
 
 sealed interface LyricsUi {
@@ -71,7 +72,9 @@ data class FileInfo(
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     val player = PlayerConnection(app).also { it.connect() }
     val settings: StateFlow<AppSettings> = Graph.settings.state
-    val tracks: StateFlow<List<Track>> = Graph.library.tracks
+    val tracks: StateFlow<List<Track>> = combine(Graph.library.tracks, Graph.settings.state.map { it.hideDisliked }.distinctUntilChanged(), Graph.userData.state.map { it.disliked }.distinctUntilChanged()) { list, hide, dis ->
+        if (hide && dis.isNotEmpty()) list.filter { it.id !in dis } else list
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, Graph.library.tracks.value)
     val scanning: StateFlow<Boolean> = Graph.library.scanning
     val userData: StateFlow<UserData> = Graph.userData.state
 
@@ -244,7 +247,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (before.autoUpdate != after.autoUpdate) {
             if (after.autoUpdate) UpdateWorker.schedule(getApplication()) else UpdateWorker.cancel(getApplication())
         }
-        if (before.minDurationSec != after.minDurationSec || before.excludedFolders != after.excludedFolders) rescan()
+        if (before.minDurationSec != after.minDurationSec || before.excludedFolders != after.excludedFolders || before.hiddenFormats != after.hiddenFormats) rescan()
     }
 
     fun rescan() {

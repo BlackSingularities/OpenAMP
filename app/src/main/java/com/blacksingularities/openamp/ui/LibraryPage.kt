@@ -1,6 +1,14 @@
 package com.blacksingularities.openamp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -112,23 +120,35 @@ const val DENSITY_MAX = 5
  * Szczypanie dwoma palcami zmienia skalę (gęstość) listy krok po kroku. Gest jednym palcem
  * zostaje dla przewijania – przechwytujemy tylko ruchy dwóch palców.
  */
-fun Modifier.pinchSteps(onStep: (Int) -> Unit): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
-        var start = 0f
-        do {
-            val event = awaitPointerEvent(PointerEventPass.Initial)
-            val pressed = event.changes.filter { it.pressed }
-            if (pressed.size >= 2) {
-                val d = hypot(pressed[0].position.x - pressed[1].position.x, pressed[0].position.y - pressed[1].position.y)
-                if (start == 0f) start = d
-                val ratio = d / start
-                if (ratio > 1.3f) { onStep(+1); start = d }
-                if (ratio < 0.77f) { onStep(-1); start = d }
-                event.changes.forEach { it.consume() }
+fun Modifier.pinchSteps(onStep: (Int) -> Unit): Modifier = composed {
+    val live = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    val step by rememberUpdatedState(onStep)
+    this
+        .graphicsLayer { scaleX = live.value; scaleY = live.value }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                var start = 0f
+                var pinching = false
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val pressed = event.changes.filter { it.pressed }
+                    if (pressed.size >= 2) {
+                        pinching = true
+                        val d = hypot(pressed[0].position.x - pressed[1].position.x, pressed[0].position.y - pressed[1].position.y)
+                        if (start == 0f) start = d
+                        val ratio = d / start
+                        // Podgląd na żywo: lista „rośnie/maleje” pod palcami, próg zmienia gęstość.
+                        scope.launch { live.snapTo(ratio.coerceIn(0.85f, 1.15f)) }
+                        if (ratio > 1.22f) { step(+1); start = d; scope.launch { live.snapTo(0.9f); live.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 300f)) } }
+                        if (ratio < 0.82f) { step(-1); start = d; scope.launch { live.snapTo(1.1f); live.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 300f)) } }
+                        event.changes.forEach { it.consume() }
+                    }
+                } while (event.changes.any { it.pressed })
+                if (pinching) scope.launch { live.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 300f)) }
             }
-        } while (event.changes.any { it.pressed })
-    }
+        }
 }
 
 @Composable
@@ -234,6 +254,19 @@ private fun CategoryList(vm: MainViewModel, all: List<Track>, data: com.blacksin
         item {
             Text(tr("Biblioteka"), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
         }
+        item {
+            Row(
+                Modifier.fillMaxWidth().reactive(null) { vm.goTab(Route.Queue) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.width(14.dp))
+                Text(tr("Bieżąca lista odtwarzania"), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(vm.player.state.value.queue.size.toString(), color = Flat.Dim, fontSize = 13.sp)
+            }
+        }
         items(LibraryTab.entries) { t ->
             Row(
                 Modifier.fillMaxWidth().reactive(null) {
@@ -258,7 +291,16 @@ private fun CategoryList(vm: MainViewModel, all: List<Track>, data: com.blacksin
  * lista o zmiennej gęstości (szczypanie) i tryb zaznaczania wielu utworów.
  */
 @Composable
-private fun TrackListPage(vm: MainViewModel, title: String, icon: ImageVector, list: List<Track>, density: Int, pad: PaddingValues) {
+private fun TrackListPage(
+    vm: MainViewModel,
+    title: String,
+    icon: ImageVector,
+    list: List<Track>,
+    density: Int,
+    pad: PaddingValues,
+    onPlay: ((Int) -> Unit)? = null,
+    currentIndex: Int? = null,
+) {
     val ps by vm.player.state.collectAsState()
     var selecting by remember { mutableStateOf(false) }
     val selected = remember { mutableStateListOf<Long>() }
@@ -296,7 +338,7 @@ private fun TrackListPage(vm: MainViewModel, title: String, icon: ImageVector, l
             if (n != curDensity) vm.updateSettings { it.copy(trackDensity = n) }
         }
         val onTap: (Int, Track) -> Unit = { i, t ->
-            if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else vm.player.play(list, i)
+            if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else if (onPlay != null) onPlay(i) else vm.player.play(list, i)
         }
         val onLong: (Int, Track) -> Unit = { i, t ->
             if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else menuFor = i to t
@@ -324,10 +366,15 @@ private fun TrackListPage(vm: MainViewModel, title: String, icon: ImageVector, l
                 item(span = { GridItemSpan(maxLineSpan) }) { Gap(8.dp) }
             }
         } else {
-            LazyColumn(Modifier.fillMaxSize().pinchSteps(step), contentPadding = pad) {
+            val listState = rememberLazyListState()
+            LaunchedEffect(currentIndex != null) {
+                if (currentIndex != null && currentIndex > 2) listState.scrollToItem(currentIndex - 2)
+            }
+            LazyColumn(Modifier.fillMaxSize().pinchSteps(step), state = listState, contentPadding = pad) {
                 listItemsIndexed(list, key = { i, t -> "${t.id}_$i" }) { i, t ->
-                    Box {
-                        DenseRow(t, density, ps.trackId == t.id, ps.isPlaying, selecting, t.id in selected, { onTap(i, t) }, { onLong(i, t) })
+                    Box(Modifier.animateItem()) {
+                        val isCurrent = if (currentIndex != null) i == currentIndex else ps.trackId == t.id
+                        DenseRow(t, density, isCurrent, ps.isPlaying, selecting, t.id in selected, { onTap(i, t) }, { onLong(i, t) })
                         if (menuFor?.first == i) TrackMenu(vm, t, { menuFor = null })
                     }
                 }
@@ -428,5 +475,34 @@ private fun GroupTab(vm: MainViewModel, tab: LibraryTab, tracks: List<Track>, pa
                 )
             }
         }
+    }
+}
+
+/**
+ * Bieżąca lista odtwarzania w faktycznej kolejności grania (przy losowaniu – wylosowanej),
+ * przewinięta do grającego utworu. Dotknięcie przeskakuje do utworu bez zmiany kolejki.
+ */
+@Composable
+fun QueuePage(vm: MainViewModel, bottomPadding: Dp) {
+    val ps by vm.player.state.collectAsState()
+    val all by vm.tracks.collectAsState()
+    val s by vm.settings.collectAsState()
+    val byId = remember(all) { all.associateBy { it.id } }
+    val order = ps.order.ifEmpty { ps.queue.indices.toList() }
+    val pairs = remember(order, ps.queue, byId) { order.mapNotNull { qi -> ps.queue.getOrNull(qi)?.let { byId[it] }?.let { qi to it } } }
+    val list = pairs.map { it.second }
+    val current = pairs.indexOfFirst { it.first == ps.index }.takeIf { it >= 0 }
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            PillButton(tr("Biblioteka"), { vm.goTab(Route.Library); vm.libraryRoot = true }, icon = Icons.Rounded.NorthEast, background = Color.Transparent)
+            Spacer(Modifier.weight(1f))
+            if (ps.shuffle) PillButton(tr("Losowo"), { vm.player.toggleShuffle() }, icon = Icons.Rounded.Shuffle, active = true)
+        }
+        TrackListPage(
+            vm, tr("Bieżąca lista odtwarzania"), Icons.AutoMirrored.Rounded.QueueMusic, list, s.trackDensity,
+            PaddingValues(bottom = bottomPadding + 12.dp),
+            onPlay = { i -> pairs.getOrNull(i)?.let { vm.player.skipTo(it.first) } },
+            currentIndex = current,
+        )
     }
 }

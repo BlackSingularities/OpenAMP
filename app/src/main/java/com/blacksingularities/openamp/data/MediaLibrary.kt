@@ -17,15 +17,26 @@ class MediaLibrary(private val context: Context) {
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
+    /** Wszystkie foldery i formaty na urządzeniu (przed filtrem) – do ustawień filtra. */
+    private val _allFolders = MutableStateFlow<List<Pair<String, Int>>>(emptyList())
+    val allFolders: StateFlow<List<Pair<String, Int>>> = _allFolders.asStateFlow()
+    private val _allFormats = MutableStateFlow<List<Pair<String, Int>>>(emptyList())
+    val allFormats: StateFlow<List<Pair<String, Int>>> = _allFormats.asStateFlow()
+
     @Volatile
     private var byId: Map<Long, Track> = emptyMap()
 
     fun get(id: Long): Track? = byId[id]
 
-    suspend fun scan(minDurationSec: Int, excluded: String) = withContext(Dispatchers.IO) {
+    suspend fun scan(minDurationSec: Int, excluded: String, hiddenFormats: String = "") = withContext(Dispatchers.IO) {
         _scanning.value = true
         try {
-            val list = query(minDurationSec, excluded.split(',').map { it.trim() }.filter { it.isNotEmpty() })
+            val everything = query(minDurationSec, emptyList())
+            _allFolders.value = everything.groupingBy { it.folder }.eachCount().toList().sortedBy { it.first.lowercase() }
+            _allFormats.value = everything.groupingBy { it.format.lowercase() }.eachCount().toList().sortedByDescending { it.second }
+            val ex = excluded.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            val fm = hiddenFormats.split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            val list = everything.filter { t -> ex.none { t.path.contains(it, ignoreCase = true) } && t.format.lowercase() !in fm }
             byId = list.associateBy { it.id }
             _tracks.value = list
         } catch (_: SecurityException) {

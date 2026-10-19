@@ -44,6 +44,8 @@ data class AppSettings(
     val countPlayPercent: Int = 50,
     val minDurationSec: Int = 30,
     val excludedFolders: String = "",
+    val hiddenFormats: String = "",
+    val hideDisliked: Boolean = false,
     val autoUpdate: Boolean = true,
     val lastUpdateCheck: Long = 0L,
     // Biblioteka
@@ -112,6 +114,8 @@ class SettingsStore(context: Context) {
                 countPlayPercent = getInt("countPlayPercent", d.countPlayPercent),
                 minDurationSec = getInt("minDurationSec", d.minDurationSec),
                 excludedFolders = getString("excludedFolders", d.excludedFolders) ?: "",
+                hiddenFormats = getString("hiddenFormats", d.hiddenFormats) ?: "",
+                hideDisliked = getBoolean("hideDisliked", d.hideDisliked),
                 autoUpdate = getBoolean("autoUpdate", d.autoUpdate),
                 lastUpdateCheck = getLong("lastUpdateCheck", d.lastUpdateCheck),
                 tab = enum("tab", d.tab),
@@ -161,6 +165,8 @@ class SettingsStore(context: Context) {
             .putInt("countPlayPercent", s.countPlayPercent)
             .putInt("minDurationSec", s.minDurationSec)
             .putString("excludedFolders", s.excludedFolders)
+            .putString("hiddenFormats", s.hiddenFormats)
+            .putBoolean("hideDisliked", s.hideDisliked)
             .putBoolean("autoUpdate", s.autoUpdate)
             .putLong("lastUpdateCheck", s.lastUpdateCheck)
             .putString("tab", s.tab.name)

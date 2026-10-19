@@ -204,7 +204,7 @@ fun MiniPlayer(vm: MainViewModel, modifier: Modifier = Modifier) {
     var swipe by remember { mutableStateOf(0f) }
     Surface(
         modifier = modifier
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
             .fillMaxWidth()
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(onDragEnd = {

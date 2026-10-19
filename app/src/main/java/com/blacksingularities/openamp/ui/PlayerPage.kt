@@ -1,6 +1,15 @@
 package com.blacksingularities.openamp.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -165,7 +174,15 @@ private fun CoverBlock(
     modifier: Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    var swipe by remember { mutableFloatStateOf(0f) }
+    val ps by vm.player.state.collectAsState()
+    val offset = remember { Animatable(0f) }
+    var width by remember { mutableFloatStateOf(1f) }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val nextTrack = ps.nextId?.let { Graph.library.get(it) }
+    val prevTrack = ps.prevId?.let { Graph.library.get(it) }
+    val hasNext by rememberUpdatedState(ps.nextId != null)
+    val hasPrev by rememberUpdatedState(ps.prevId != null)
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
     val round = vis == VisualizerStyle.CIRCLE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
     val shape = when {
@@ -178,32 +195,85 @@ private fun CoverBlock(
             if (lyrics) {
                 Box(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color.Black.copy(alpha = 0.55f))) {
                     LyricsPanel(vm, Modifier.fillMaxSize())
-                    RoundButton(Icons.Rounded.Image, tr("Okładka"), { vm.showLyrics = false }, Modifier.align(Alignment.BottomEnd).padding(8.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
+                    RoundButton(Icons.Rounded.Image, tr("Okładka"), { vm.showLyrics = false }, Modifier.align(Alignment.BottomEnd).padding(18.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
                 }
             } else {
                 Box(
                     Modifier.fillMaxSize()
+                        .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
                         .pointerInput(gestures) {
                             if (!gestures) return@pointerInput
-                            detectHorizontalDragGestures(onDragEnd = {
-                                if (swipe < -120) vm.player.next() else if (swipe > 120) vm.player.previous()
-                                swipe = 0f
-                            }) { c, dx -> c.consume(); swipe += dx }
+                            // Gest jak w karuzeli: okładka idzie za palcem, obok wysuwa się sąsiednia.
+                            // Decyzja: przesunięcie > 30% szerokości albo szybki rzut (> 1100 px/s).
+                            // Na końcu kolejki – opór „gumki”, przy przekroczeniu progu – haptyka.
+                            val tracker = VelocityTracker()
+                            var crossed = false
+                            detectHorizontalDragGestures(
+                                onDragStart = { tracker.resetTracking(); crossed = false },
+                                onDragCancel = { scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.7f)) } },
+                                onDragEnd = {
+                                    val v = tracker.calculateVelocity().x
+                                    val o = offset.value
+                                    val goNext = hasNext && (o < -width * 0.3f || (v < -1100f && o < -width * 0.04f))
+                                    val goPrev = hasPrev && (o > width * 0.3f || (v > 1100f && o > width * 0.04f))
+                                    scope.launch {
+                                        if (goNext || goPrev) {
+                                            val old = vm.currentTrack.value?.id
+                                            val speed = kotlin.math.abs(v).coerceIn(1200f, 6000f)
+                                            val left = (width - kotlin.math.abs(o)) / speed * 1000f
+                                            offset.animateTo(if (goNext) -width else width, tween(left.toInt().coerceIn(90, 260)))
+                                            if (goNext) vm.player.next() else vm.player.previousTrack()
+                                            withTimeoutOrNull(600) { vm.currentTrack.first { it?.id != old } }
+                                            offset.snapTo(0f)
+                                        } else offset.animateTo(0f, spring(dampingRatio = 0.62f, stiffness = 420f))
+                                    }
+                                },
+                            ) { c, dx ->
+                                c.consume()
+                                tracker.addPosition(c.uptimeMillis, c.position)
+                                val raw = offset.value + dx
+                                val blocked = (raw < 0 && !hasNext) || (raw > 0 && !hasPrev)
+                                val target = if (blocked) offset.value + dx * 0.25f else raw
+                                scope.launch { offset.snapTo(target) }
+                                val over = !blocked && kotlin.math.abs(target) > width * 0.3f
+                                if (over != crossed) { crossed = over; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                            }
                         }
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onTap = { vm.goTab(Route.Library) },
+                                onTap = { vm.goTab(Route.Queue) },
                                 onDoubleTap = { o -> if (o.x < size.width / 2) vm.player.seekTo((vm.player.position.value - 10_000).coerceAtLeast(0)) else vm.player.seekTo(vm.player.position.value + 10_000) },
                             )
                         },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (vis == VisualizerStyle.CIRCLE) CircleSpectrum(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
+                    val frac = { (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) }
+                    val fill = if (vis == VisualizerStyle.CIRCLE) 0.76f else 1f
+                    // Okładki sąsiadów (podgląd podczas przesuwania)
+                    if (offset.value < 0f && nextTrack != null) Artwork(
+                        nextTrack,
+                        Modifier.fillMaxSize(fill).graphicsLayer {
+                            translationX = offset.value + width + 24.dp.toPx(); val sc = 0.9f + 0.1f * frac(); scaleX = sc; scaleY = sc; alpha = 0.4f + 0.6f * frac()
+                        },
+                        size = 1000, shape = shape,
+                    )
+                    if (offset.value > 0f && prevTrack != null) Artwork(
+                        prevTrack,
+                        Modifier.fillMaxSize(fill).graphicsLayer {
+                            translationX = offset.value - width - 24.dp.toPx(); val sc = 0.9f + 0.1f * frac(); scaleX = sc; scaleY = sc; alpha = 0.4f + 0.6f * frac()
+                        },
+                        size = 1000, shape = shape,
+                    )
                     val m = Modifier
-                        .fillMaxSize(if (vis == VisualizerStyle.CIRCLE) 0.76f else 1f)
-                        .graphicsLayer { translationX = swipe * 0.4f; rotationZ = swipe / 70f; scaleX = scale; scaleY = scale }
+                        .fillMaxSize(fill)
+                        .graphicsLayer {
+                            translationX = offset.value
+                            rotationZ = offset.value / width * 4f
+                            val sc = scale * (1f - 0.08f * frac()); scaleX = sc; scaleY = sc
+                        }
                         .shadow(24.dp, shape)
-                    if (shapeMode == CoverShape.VINYL) Vinyl(track, playing, accent, m) else Artwork(track, m, size = 1000, shape = shape, crossfade = true)
+                    if (shapeMode == CoverShape.VINYL) Vinyl(track, playing, accent, m) else Artwork(track, m, size = 1000, shape = shape, crossfade = !gestures)
                     if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(70.dp).padding(bottom = 58.dp), mirror = false)
                     if (vis == VisualizerStyle.WAVE) WaveScope(live, Color.White, Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp))
                 }
@@ -212,7 +282,7 @@ private fun CoverBlock(
         if (!vm.showLyrics) {
             val fav = track != null && track.id in favorites
             val dis = track != null && track.id in disliked
-            if (showLikes) Row(Modifier.align(Alignment.BottomStart).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (showLikes) Row(Modifier.align(Alignment.BottomStart).padding(18.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 RoundButton(if (fav) Icons.Rounded.ThumbUp else Icons.Rounded.ThumbUpOffAlt, tr("Lubię"), { track?.let { Graph.userData.toggleFavorite(it.id) } }, background = Glassy, active = fav, size = 36.dp, iconSize = 18.dp)
                 RoundButton(if (dis) Icons.Rounded.ThumbDown else Icons.Rounded.ThumbDownOffAlt, tr("Nie lubię – pomiń i nie proponuj"), {
                     track?.let {
@@ -222,7 +292,7 @@ private fun CoverBlock(
                     }
                 }, background = Glassy, active = dis, size = 36.dp, iconSize = 18.dp)
             }
-            RoundButton(Icons.Rounded.Lyrics, tr("Tekst utworu"), { vm.showLyrics = true }, Modifier.align(Alignment.BottomEnd).padding(8.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
+            RoundButton(Icons.Rounded.Lyrics, tr("Tekst utworu"), { vm.showLyrics = true }, Modifier.align(Alignment.BottomEnd).padding(18.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
         }
     }
 }
