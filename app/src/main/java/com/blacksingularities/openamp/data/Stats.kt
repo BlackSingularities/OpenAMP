@@ -118,7 +118,7 @@ class UserDataStore(context: Context) {
         o.optJSONArray("disliked")?.let { a -> for (i in 0 until a.length()) dis += a.getLong(i) }
         val daily = HashMap<Long, Long>()
         o.optJSONObject("daily")?.let { dd -> for (k in dd.keys()) daily[k.toLong()] = dd.getLong(k) }
-        UserData(stats, fav, lists, daily).copy(disliked = dis)
+        UserData(stats = stats, favorites = fav, disliked = dis, playlists = lists, daily = daily)
     }.getOrDefault(UserData())
 
     private fun save(d: UserData) {

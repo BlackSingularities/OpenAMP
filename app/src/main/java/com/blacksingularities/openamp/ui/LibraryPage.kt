@@ -161,9 +161,9 @@ fun LibraryScreen(vm: MainViewModel, bottomPadding: Dp) {
             val list = remember(tracks, tab, s.trackSort, s.trackSortDesc, data, vm.searchOpen) {
                 val base = when {
                     vm.searchOpen -> tracks
-                    tab == LibraryTab.RECENT_ADDED -> LibraryOps.smart(tracks, SmartList.RECENT_ADDED, data)
+                    tab == LibraryTab.RECENT_ADDED -> LibraryOps.smart(tracks, SmartList.RECENTLY_ADDED, data)
                     tab == LibraryTab.MOST_PLAYED -> LibraryOps.smart(tracks, SmartList.MOST_PLAYED, data)
-                    tab == LibraryTab.RECENT_PLAYED -> LibraryOps.smart(tracks, SmartList.RECENT_PLAYED, data)
+                    tab == LibraryTab.RECENT_PLAYED -> LibraryOps.smart(tracks, SmartList.RECENTLY_PLAYED, data)
                     tab == LibraryTab.FAVORITES -> LibraryOps.smart(tracks, SmartList.FAVORITES, data)
                     else -> tracks
                 }
@@ -221,7 +221,7 @@ private fun CategoryList(vm: MainViewModel, all: List<Track>, data: com.blacksin
             LibraryTab.TRACKS to all.size,
             LibraryTab.RECENT_ADDED to minOf(100, all.size),
             LibraryTab.MOST_PLAYED to LibraryOps.smart(all, SmartList.MOST_PLAYED, data).size,
-            LibraryTab.RECENT_PLAYED to LibraryOps.smart(all, SmartList.RECENT_PLAYED, data).size,
+            LibraryTab.RECENT_PLAYED to LibraryOps.smart(all, SmartList.RECENTLY_PLAYED, data).size,
             LibraryTab.FAVORITES to all.count { it.id in data.favorites },
             LibraryTab.ALBUMS to all.map { it.albumId }.distinct().size,
             LibraryTab.ARTISTS to all.map { it.artist.lowercase() }.distinct().size,
