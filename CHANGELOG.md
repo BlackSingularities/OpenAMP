@@ -1,5 +1,13 @@
 # Historia zmian
 
+## 1.4.0
+
+- Widżety na pulpicie – cztery rodzaje: **Okładka** (2×2, okładka na całą powierzchnię), **Pasek** (4×1), **Odtwarzacz** (4×2 i większy: postęp, czasy, losowanie, powtarzanie, serduszko, pozycja w kolejce) i **Skróty** (do sześciu: graj/pauza, losuj wszystko, Mix dnia, ulubione, nowe, najczęstsze, odkrywaj, perełki, niegrane, wyłącznik czasowy, szukaj, korektor – z opcjonalnym paskiem bieżącego utworu).
+- Każdy widżet ma własne ustawienia z podglądem na żywo: tło (rozmyta okładka, kolor okładki, ciemne, czarne, jasne, przezroczyste, dowolny kolor), krycie, zaokrąglenie rogów, kolor akcentu (z okładki, z aplikacji, neutralny, dowolny), kształt okładki, styl paska postępu (linia, gruby, segmenty), widoczne elementy, rozmiar tekstu i działanie dotknięcia okładki.
+- Układ widżetów dopasowuje się do rozmiaru (okładka rośnie razem z widżetem, zbędne elementy chowają się na małych rozmiarach); pasek postępu odświeża się co 2 s tylko przy włączonym ekranie.
+- Widżety działają także bez uruchomionej aplikacji: pokazują ostatni utwór z zapamiętanej kolejki, a ▶ wznawia odtwarzanie (albo losuje całą bibliotekę).
+- Nowa sekcja „Widżety na pulpicie” w ustawieniach: lista widżetów z edycją i dodawanie nowych prosto na pulpit.
+
 ## 1.3.1
 
 - Płynne przełączanie utworów przesunięciem okładki – bez przeskoków i migania okładek.

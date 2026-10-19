@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">OpenAMP</string>
+    <string name="widget_cover_name">OpenAMP · Artwork</string>
+    <string name="widget_cover_desc">Full-bleed artwork with title and playback buttons</string>
+    <string name="widget_bar_name">OpenAMP · Bar</string>
+    <string name="widget_bar_desc">Compact bar: artwork, title, like and controls</string>
+    <string name="widget_player_name">OpenAMP · Player</string>
+    <string name="widget_player_desc">Full player: progress, times, shuffle, repeat and like</string>
+    <string name="widget_shortcuts_name">OpenAMP · Shortcuts</string>
+    <string name="widget_shortcuts_desc">Mixes, shuffle all, favourites, sleep timer and more</string>
 </resources>

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -72,6 +73,7 @@ import com.blacksingularities.openamp.data.VisualizerStyle
 import com.blacksingularities.openamp.i18n.AppLanguage
 import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.ui.theme.AccentChoices
+import com.blacksingularities.openamp.widget.WidgetConfigActivity
 import com.blacksingularities.openamp.update.UpdateState
 import kotlin.math.roundToInt
 
@@ -202,6 +204,20 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                         OutlinedButton(onClick = { vm.rescan() }) { Text(tr("Odśwież bibliotekę")) }
                         OutlinedButton(onClick = { clearConfirm = true }) { Text(tr("Wyczyść statystyki odtworzeń")) }
                     }
+                }
+            }
+
+            item {
+                val context = LocalContext.current
+                Section(tr("Widżety na pulpicie")) {
+                    Text(
+                        tr("Okładka, pasek, pełny odtwarzacz i skróty do miksów – każdy widżet z własnym tłem, kolorami, elementami i działaniem dotknięcia."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    PillButton(
+                        tr("Widżety"), { context.startActivity(Intent(context, WidgetConfigActivity::class.java)) },
+                        Modifier.padding(top = 10.dp), icon = Icons.Rounded.Widgets, active = true,
+                    )
                 }
             }
 

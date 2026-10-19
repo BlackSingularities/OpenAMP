@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widżet „Odtwarzacz” (4×2 i większy): pełne sterowanie, postęp, czasy, losowanie i powtarzanie. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/w_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_preview_bg"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/w_cover"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_marginEnd="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_w_note" />
+
+            <LinearLayout
+                android:id="@+id/w_info"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/w_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/app_name"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/w_artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/w_album"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/w_meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/w_like"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top"
+                android:padding="8dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_w_heart_outline" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_progress_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/w_progress"
+                android:layout_width="match_parent"
+                android:layout_height="12dp"
+                android:scaleType="fitXY"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/w_times"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/w_time_pos"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="monospace"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/w_time_dur"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/w_controls"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/w_shuffle"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:padding="9dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_w_shuffle" />
+
+            <ImageView
+                android:id="@+id/w_prev"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:padding="8dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_w_prev" />
+
+            <FrameLayout
+                android:layout_width="52dp"
+                android:layout_height="52dp">
+
+                <ImageView
+                    android:id="@+id/w_play_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/widget_circle"
+                    android:importantForAccessibility="no" />
+
+                <ImageView
+                    android:id="@+id/w_play"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="13dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_w_play" />
+            </FrameLayout>
+
+            <ImageView
+                android:id="@+id/w_next"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:padding="8dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_w_next" />
+
+            <ImageView
+                android:id="@+id/w_repeat"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:padding="9dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_w_repeat" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

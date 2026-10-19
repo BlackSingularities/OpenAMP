@@ -11,6 +11,7 @@ Odtwarzacz muzyki na Androida (10+) o otwartym kodzie źródłowym. Kotlin, Jetp
 - **Teksty** – LRC ze stemplami czasu (podświetlanie, przewijanie, przeskok do linii, przesunięcie czasu) albo zwykły tekst przewijany razem z utworem. Źródła: tagi ID3 (USLT/SYLT), komentarze Vorbis we FLAC, M4A, plik `.lrc` obok utworu, plik wskazany ręcznie, [LRCLIB](https://lrclib.net).
 - **Dźwięk** – korektor graficzny z edytowalną krzywą i presetami, wzmocnienie basów, przestrzenność, wzmocnienie głośności, szybkość i wysokość, pomijanie ciszy, płynne przejścia głośności.
 - **Wygoda** – kolejka z edycją, wyłącznik czasowy, statystyki odtworzeń, ulubione, playlisty, pamięć kolejki, powiadomienie i ekran blokady (MediaSession), wznawianie po podłączeniu słuchawek.
+- **Widżety na pulpicie** – cztery rodzaje (Okładka 2×2, Pasek 4×1, Odtwarzacz 4×2+, Skróty), każdy z własną konfiguracją i podglądem na żywo: tło (rozmyta okładka, kolor okładki, ciemne, czarne, jasne, przezroczyste, własny kolor), krycie, zaokrąglenie rogów, kolor akcentu, kształt okładki, pasek postępu w trzech stylach, czasy, losowanie i powtarzanie, serduszko, pozycja w kolejce, rozmiar tekstu, działanie dotknięcia; skróty do miksów, losowania, ulubionych, wyłącznika czasowego, wyszukiwania i korektora. Układ dopasowuje się do rozmiaru widżetu.
 - **Język** – polski i angielski (przełącznik w ustawieniach).
 - **Aktualizacje** – aplikacja sama sprawdza GitHub Releases, powiadamia o nowej wersji, pobiera i instaluje APK.
 
