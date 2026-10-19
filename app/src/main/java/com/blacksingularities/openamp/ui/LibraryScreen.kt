@@ -83,6 +83,7 @@ import com.blacksingularities.openamp.i18n.plural
 import com.blacksingularities.openamp.i18n.tr
 
 fun LibraryTab.label() = when (this) {
+    LibraryTab.HOME -> tr("Start")
     LibraryTab.TRACKS -> tr("Utwory")
     LibraryTab.ALBUMS -> tr("Albumy")
     LibraryTab.ARTISTS -> tr("Wykonawcy")
@@ -231,6 +232,7 @@ fun LibraryScreen(vm: MainViewModel, bottomPadding: androidx.compose.ui.unit.Dp)
                 )
             }
             LibraryTab.PLAYLISTS -> PlaylistsTab(vm, tracks, pad)
+            LibraryTab.HOME -> HomeScreen(vm, pad)
         }
     }
 }
@@ -239,7 +241,7 @@ fun LibraryScreen(vm: MainViewModel, bottomPadding: androidx.compose.ui.unit.Dp)
 private fun SortMenu(vm: MainViewModel) {
     val s by vm.settings.collectAsState()
     var open by remember { mutableStateOf(false) }
-    val tracksTab = s.tab == LibraryTab.TRACKS
+    val tracksTab = s.tab == LibraryTab.TRACKS || s.tab == LibraryTab.HOME
     Box {
         IconButton(onClick = { open = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, tr("Sortuj")) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

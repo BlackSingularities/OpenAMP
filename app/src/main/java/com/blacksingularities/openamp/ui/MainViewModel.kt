@@ -43,13 +43,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class DetailKind { ALBUM, ARTIST, GENRE, FOLDER, PLAYLIST, SMART }
+enum class DetailKind { ALBUM, ARTIST, GENRE, FOLDER, PLAYLIST, SMART, MIX }
 
 sealed interface Route {
     data object Library : Route
     data class Detail(val kind: DetailKind, val key: String) : Route
     data object Settings : Route
     data object Equalizer : Route
+    data object Stats : Route
 }
 
 sealed interface LyricsUi {

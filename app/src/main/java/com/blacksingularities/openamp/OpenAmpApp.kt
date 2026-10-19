@@ -6,6 +6,7 @@ import com.blacksingularities.openamp.data.SettingsStore
 import com.blacksingularities.openamp.data.UserDataStore
 import com.blacksingularities.openamp.i18n.I18n
 import com.blacksingularities.openamp.playback.AudioFx
+import com.blacksingularities.openamp.playback.Dsp
 import com.blacksingularities.openamp.update.UpdateWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +70,7 @@ class OpenAmpApp : Application() {
         Graph.library = MediaLibrary(this)
         I18n.apply(Graph.settings.value.language)
         AudioFx.init(this)
+        Dsp.init(this)
         if (Graph.settings.value.autoUpdate) UpdateWorker.schedule(this) else UpdateWorker.cancel(this)
         Graph.scope.launch { Graph.ensureScanned() }
     }

@@ -89,6 +89,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.blacksingularities.openamp.Graph
+import com.blacksingularities.openamp.data.CoverShape
 import com.blacksingularities.openamp.data.RepeatMode
 import com.blacksingularities.openamp.data.SeekStyle
 import com.blacksingularities.openamp.data.Track
@@ -117,6 +118,11 @@ fun NowPlayingScreen(vm: MainViewModel) {
     var sleepDialog by remember { mutableStateOf(false) }
     var speedDialog by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(s.keepScreenOn) {
+        view.keepScreenOn = s.keepScreenOn
+        onDispose { view.keepScreenOn = false }
+    }
 
     BoxWithConstraints(
         Modifier
@@ -141,21 +147,7 @@ fun NowPlayingScreen(vm: MainViewModel) {
             },
     ) {
         val wide = maxWidth > maxHeight
-        // Tło: rozmyta okładka + gradient w kolorze akcentu.
-        if (s.blurBackground) {
-            Artwork(
-                track,
-                Modifier.fillMaxSize().scale(1.3f).then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(60.dp) else Modifier).graphicsLayer { alpha = 0.55f },
-                size = 300, shape = RoundedCornerShape(0.dp), crossfade = true,
-            )
-        }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.25f), Color.Black.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.85f)),
-                ),
-            ),
-        )
+        NowPlayingBackground(track, s.npBackground, accent, live)
 
         if (track == null) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -181,7 +173,7 @@ fun NowPlayingScreen(vm: MainViewModel) {
             if (wide) {
                 Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CoverOrLyrics(vm, track, ps.isPlaying, live, s.visualizer, accent)
+                        CoverOrLyrics(vm, track, ps.isPlaying, live, s.visualizer, accent, s.coverShape, s.coverGestures)
                     }
                     Spacer(Modifier.width(24.dp))
                     Column(Modifier.weight(1f)) {
@@ -190,7 +182,7 @@ fun NowPlayingScreen(vm: MainViewModel) {
                 }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
-                    CoverOrLyrics(vm, track, ps.isPlaying, live, s.visualizer, accent)
+                    CoverOrLyrics(vm, track, ps.isPlaying, live, s.visualizer, accent, s.coverShape, s.coverGestures)
                 }
                 PlayerControls(vm, track, ps, pos, wave, info, live, s.seekStyle, s.visualizer, accent, data.favorites, { sleepDialog = true }, { speedDialog = true }, { details = true })
             }
@@ -211,6 +203,8 @@ private fun CoverOrLyrics(
     live: LiveSpectrum,
     style: VisualizerStyle,
     accent: Color,
+    shapeMode: CoverShape,
+    gestures: Boolean,
 ) {
     AnimatedContent(vm.showLyrics, transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) }, label = "lyr") { lyrics ->
         if (lyrics) {
@@ -223,7 +217,8 @@ private fun CoverOrLyrics(
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .pointerInput(Unit) {
+                        .pointerInput(gestures) {
+                            if (!gestures) return@pointerInput
                             detectHorizontalDragGestures(
                                 onDragEnd = {
                                     if (swipe < -120) vm.player.next() else if (swipe > 120) vm.player.previous()
@@ -234,20 +229,22 @@ private fun CoverOrLyrics(
                         .clickable { vm.showLyrics = true },
                     contentAlignment = Alignment.Center,
                 ) {
+                    val round = style == VisualizerStyle.CIRCLE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
                     if (style == VisualizerStyle.CIRCLE) CircleSpectrum(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
                     val coverFrac = if (style == VisualizerStyle.CIRCLE) 0.74f else 0.94f
-                    Artwork(
-                        track,
-                        Modifier
-                            .fillMaxWidth(coverFrac)
-                            .aspectRatio(1f)
-                            .graphicsLayer { translationX = swipe * 0.4f; rotationZ = swipe / 60f }
-                            .scale(scale)
-                            .shadow(28.dp, if (style == VisualizerStyle.CIRCLE) CircleShape else RoundedCornerShape(28.dp), spotColor = accent),
-                        size = 1000,
-                        shape = if (style == VisualizerStyle.CIRCLE) CircleShape else RoundedCornerShape(28.dp),
-                        crossfade = true,
-                    )
+                    val shape = when {
+                        round -> CircleShape
+                        shapeMode == CoverShape.SQUARE -> RoundedCornerShape(6.dp)
+                        else -> RoundedCornerShape(28.dp)
+                    }
+                    val mod = Modifier
+                        .fillMaxWidth(coverFrac)
+                        .aspectRatio(1f)
+                        .graphicsLayer { translationX = swipe * 0.4f; rotationZ = swipe / 60f }
+                        .scale(if (shapeMode == CoverShape.VINYL) 1f else scale)
+                        .shadow(28.dp, shape, spotColor = accent)
+                    if (shapeMode == CoverShape.VINYL) Vinyl(track, playing, accent, mod)
+                    else Artwork(track, mod, size = 1000, shape = shape, crossfade = true)
                 }
             }
         }
@@ -299,7 +296,7 @@ private fun PlayerControls(
             }
         }
         // Metadane techniczne
-        if (track != null) {
+        if (track != null && Graph.settings.value.showTechInfo) {
             val parts = buildList {
                 add(info?.format ?: track.format)
                 info?.sampleRate?.takeIf { it > 0 }?.let { add(String.format(Locale.ROOT, "%.1f kHz", it / 1000f).replace(".0 ", " ")) }

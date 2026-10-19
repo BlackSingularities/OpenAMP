@@ -47,9 +47,34 @@ fun vibrantColor(bmp: Bitmap): Int? {
 private fun scheme(accent: Color, mode: ThemeMode, systemDark: Boolean): ColorScheme {
     val dark = when (mode) { ThemeMode.SYSTEM -> systemDark; ThemeMode.LIGHT -> false; else -> true }
     val black = mode == ThemeMode.BLACK
-    return if (dark) {
-        val bg = if (black) Color.Black else Color(0xFF0E0C13)
-        val surface = if (black) Color(0xFF050505) else Color(0xFF15121C)
+    return if (dark && black) {
+        // Prawdziwy AMOLED: wszystkie powierzchnie czysto czarne, strukturę dają obwódki i akcent.
+        darkColorScheme(
+            primary = accent,
+            onPrimary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
+            primaryContainer = accent.copy(alpha = 0.22f).compositeOver(Color.Black),
+            onPrimaryContainer = Color.White,
+            secondary = accent,
+            secondaryContainer = accent.copy(alpha = 0.16f).compositeOver(Color.Black),
+            onSecondaryContainer = Color.White,
+            tertiary = accent,
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceVariant = Color(0xFF0E0E10),
+            surfaceContainerLowest = Color.Black,
+            surfaceContainerLow = Color.Black,
+            surfaceContainer = Color.Black,
+            surfaceContainerHigh = Color(0xFF0B0B0D),
+            surfaceContainerHighest = Color(0xFF121214),
+            onBackground = Color.White,
+            onSurface = Color.White,
+            onSurfaceVariant = Color(0xFFA9A6B0),
+            outline = accent.copy(alpha = 0.45f).compositeOver(Color.Black),
+            outlineVariant = Color(0xFF26242B),
+        )
+    } else if (dark) {
+        val bg = Color(0xFF0E0C13)
+        val surface = Color(0xFF15121C)
         darkColorScheme(
             primary = accent,
             onPrimary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
@@ -65,7 +90,7 @@ private fun scheme(accent: Color, mode: ThemeMode, systemDark: Boolean): ColorSc
             surfaceContainer = accent.copy(alpha = 0.05f).compositeOver(Color(0xFF1A1721)),
             surfaceContainerHigh = accent.copy(alpha = 0.07f).compositeOver(Color(0xFF221E2A)),
             surfaceContainerHighest = accent.copy(alpha = 0.09f).compositeOver(Color(0xFF2A2633)),
-            surfaceContainerLow = if (black) Color(0xFF0A0A0A) else Color(0xFF17141D),
+            surfaceContainerLow = Color(0xFF17141D),
             onBackground = Color(0xFFF1EEF6),
             onSurface = Color(0xFFF1EEF6),
             onSurfaceVariant = Color(0xFFB9B3C4),

@@ -11,15 +11,26 @@ enum class ThemeMode { SYSTEM, DARK, LIGHT, BLACK }
 enum class VisualizerStyle { BARS, WAVE, CIRCLE, NONE }
 enum class SeekStyle { WAVEFORM, SPECTROGRAM, SIMPLE }
 enum class RepeatMode { OFF, ALL, ONE }
+enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
+enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
 
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
-    val theme: ThemeMode = ThemeMode.DARK,
+    val theme: ThemeMode = ThemeMode.BLACK,
     val artworkColors: Boolean = true,
     val accent: Int = 0xFFB45CFF.toInt(),
     val visualizer: VisualizerStyle = VisualizerStyle.BARS,
     val seekStyle: SeekStyle = SeekStyle.WAVEFORM,
     val blurBackground: Boolean = true,
+    val smartEq: Boolean = false,
+    val smartShuffle: Boolean = true,
+    val npBackground: NpBackground = NpBackground.BLUR,
+    val coverShape: CoverShape = CoverShape.ROUNDED,
+    val showTechInfo: Boolean = true,
+    val keepScreenOn: Boolean = false,
+    val lyricsCenter: Boolean = false,
+    val coverGestures: Boolean = true,
+    val accentFromArtStrength: Boolean = true,
     val lyricsSize: Int = 22,
     val lyricsOnline: Boolean = true,
     val lyricsByDefault: Boolean = false,
@@ -34,7 +45,7 @@ data class AppSettings(
     val autoUpdate: Boolean = true,
     val lastUpdateCheck: Long = 0L,
     // Biblioteka
-    val tab: LibraryTab = LibraryTab.TRACKS,
+    val tab: LibraryTab = LibraryTab.HOME,
     val trackSort: TrackSort = TrackSort.TITLE,
     val trackSortDesc: Boolean = false,
     val groupSort: GroupSort = GroupSort.NAME,
@@ -76,6 +87,15 @@ class SettingsStore(context: Context) {
                 visualizer = enum("visualizer", d.visualizer),
                 seekStyle = enum("seekStyle", d.seekStyle),
                 blurBackground = getBoolean("blurBackground", d.blurBackground),
+                smartEq = getBoolean("smartEq", d.smartEq),
+                smartShuffle = getBoolean("smartShuffle", d.smartShuffle),
+                npBackground = enum("npBackground", d.npBackground),
+                coverShape = enum("coverShape", d.coverShape),
+                showTechInfo = getBoolean("showTechInfo", d.showTechInfo),
+                keepScreenOn = getBoolean("keepScreenOn", d.keepScreenOn),
+                lyricsCenter = getBoolean("lyricsCenter", d.lyricsCenter),
+                coverGestures = getBoolean("coverGestures", d.coverGestures),
+                accentFromArtStrength = getBoolean("accentFromArtStrength", d.accentFromArtStrength),
                 lyricsSize = getInt("lyricsSize", d.lyricsSize),
                 lyricsOnline = getBoolean("lyricsOnline", d.lyricsOnline),
                 lyricsByDefault = getBoolean("lyricsByDefault", d.lyricsByDefault),
@@ -113,6 +133,15 @@ class SettingsStore(context: Context) {
             .putString("visualizer", s.visualizer.name)
             .putString("seekStyle", s.seekStyle.name)
             .putBoolean("blurBackground", s.blurBackground)
+            .putBoolean("smartEq", s.smartEq)
+            .putBoolean("smartShuffle", s.smartShuffle)
+            .putString("npBackground", s.npBackground.name)
+            .putString("coverShape", s.coverShape.name)
+            .putBoolean("showTechInfo", s.showTechInfo)
+            .putBoolean("keepScreenOn", s.keepScreenOn)
+            .putBoolean("lyricsCenter", s.lyricsCenter)
+            .putBoolean("coverGestures", s.coverGestures)
+            .putBoolean("accentFromArtStrength", s.accentFromArtStrength)
             .putInt("lyricsSize", s.lyricsSize)
             .putBoolean("lyricsOnline", s.lyricsOnline)
             .putBoolean("lyricsByDefault", s.lyricsByDefault)

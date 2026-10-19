@@ -77,6 +77,10 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
                 val byId = all.associateBy { it.id }
                 Triple(p?.name ?: "", tr("Playlisty"), p?.trackIds?.mapNotNull { byId[it] } ?: emptyList())
             }
+            DetailKind.MIX -> {
+                val m = com.blacksingularities.openamp.data.Smart.mixes(all, data).firstOrNull { it.id == route.key }
+                Triple(m?.let { tr(it.title) } ?: "", m?.let { tr(it.subtitle) } ?: "", m?.tracks ?: emptyList())
+            }
             DetailKind.SMART -> {
                 val k = SmartList.valueOf(route.key)
                 Triple(k.label(), tr("Inteligentne playlisty"), LibraryOps.smart(all, k, data))

@@ -26,6 +26,7 @@ import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.MainActivity
 import com.blacksingularities.openamp.R
 import com.blacksingularities.openamp.data.RepeatMode
+import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -47,6 +48,8 @@ class PlaybackService : MediaSessionService() {
 
     // Liczenie odtworzeń: czas faktycznie słuchany w bieżącym utworze.
     private var listenedMs = 0L
+    private var pendingListen = 0L
+    private var pendingId: Long? = null
     private var counted = false
     private var lastTick = 0L
 
@@ -58,7 +61,7 @@ class PlaybackService : MediaSessionService() {
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
                 DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(arrayOf(spectrum))
+                    .setAudioProcessors(arrayOf(DspProcessor(), spectrum))
                     .build()
         }
         val s = Graph.settings.value
@@ -97,6 +100,7 @@ class PlaybackService : MediaSessionService() {
                 .apply { setSmallIcon(R.drawable.ic_notification) },
         )
 
+        scope.launch { Dsp.state.collect { AudioFx.refresh() } }
         observeSettings()
         tickLoop()
         registerHeadset()
@@ -124,8 +128,16 @@ class PlaybackService : MediaSessionService() {
 
     private val listener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            flushListen()
+            pendingId = mediaItem?.mediaId?.toLongOrNull()
             listenedMs = 0
             counted = false
+            // Inteligentny korektor: preset dobrany do gatunku utworu.
+            if (Graph.settings.value.smartEq) {
+                val genre = mediaItem?.mediaId?.toLongOrNull()?.let { Graph.library.get(it)?.genre }
+                    ?: mediaItem?.mediaMetadata?.genre?.toString()
+                Smart.presetForGenre(genre ?: "")?.let { Dsp.applyPreset(it) }
+            }
             if (Graph.sleepEndOfTrack.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                 Graph.clearSleep()
                 player.pause()
@@ -134,7 +146,7 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (!isPlaying) saveQueue()
+            if (!isPlaying) { saveQueue(); flushListen() }
             lastTick = System.currentTimeMillis()
         }
 
@@ -177,7 +189,11 @@ class PlaybackService : MediaSessionService() {
                 delay(1000)
                 val now = System.currentTimeMillis()
                 if (player.isPlaying) {
-                    listenedMs += (now - lastTick).coerceIn(0, 2000)
+                    val dt = (now - lastTick).coerceIn(0, 2000)
+                    listenedMs += dt
+                    pendingListen += dt
+                    if (pendingId == null) pendingId = player.currentMediaItem?.mediaId?.toLongOrNull()
+                    if (pendingListen > 60_000) flushListen()
                     val dur = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
                     val need = minOf(dur * Graph.settings.value.countPlayPercent / 100, 4 * 60_000L)
                     if (!counted && listenedMs >= need) {
@@ -194,6 +210,12 @@ class PlaybackService : MediaSessionService() {
                 }
             }
         }
+    }
+
+    private fun flushListen() {
+        val id = pendingId
+        if (id != null && pendingListen > 0) Graph.userData.recordListen(id, pendingListen)
+        pendingListen = 0
     }
 
     private fun fadeOutAndPause() {
@@ -259,6 +281,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         saveQueue()
+        flushListen()
         headsetCallback?.let { audioManager.unregisterAudioDeviceCallback(it) }
         scope.cancel()
         AudioFx.release()

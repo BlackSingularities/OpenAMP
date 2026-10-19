@@ -94,8 +94,8 @@ fun LyricsPanel(vm: MainViewModel, modifier: Modifier = Modifier) {
             is LyricsUi.Loaded -> {
                 val l = st.lyrics
                 Column(Modifier.fillMaxSize()) {
-                    if (l.synced) SyncedLyrics(l, pos + offset, ps.durationMs, s.lyricsSize, Modifier.weight(1f)) { vm.player.seekTo((it - offset).coerceAtLeast(0)) }
-                    else PlainLyrics(l, pos, ps.durationMs, s.lyricsSize, Modifier.weight(1f))
+                    if (l.synced) SyncedLyrics(l, pos + offset, ps.durationMs, s.lyricsSize, s.lyricsCenter, Modifier.weight(1f)) { vm.player.seekTo((it - offset).coerceAtLeast(0)) }
+                    else PlainLyrics(l, pos, ps.durationMs, s.lyricsSize, s.lyricsCenter, Modifier.weight(1f))
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             (if (l.synced) tr("Tekst zsynchronizowany") else tr("Tekst statyczny")) + " • " + tr("Źródło: {0}", l.source.label()),
@@ -118,7 +118,7 @@ fun LyricsPanel(vm: MainViewModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SyncedLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, modifier: Modifier, onSeek: (Long) -> Unit) {
+private fun SyncedLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, center: Boolean, modifier: Modifier, onSeek: (Long) -> Unit) {
     val current = l.indexAt(pos)
     val list = rememberLazyListState()
     LaunchedEffect(current) {
@@ -156,6 +156,8 @@ private fun SyncedLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, modifi
                     fontSize = size.sp,
                     lineHeight = (size * 1.3f).sp,
                     fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold,
+                    textAlign = if (center) TextAlign.Center else TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (active && next > line.timeMs) {
                     val p = ((pos - line.timeMs).toFloat() / (next - line.timeMs)).coerceIn(0f, 1f)
@@ -170,7 +172,7 @@ private fun SyncedLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, modifi
 
 /** Tekst bez znaczników czasu przewija się proporcjonalnie do postępu utworu (można też przewijać ręcznie). */
 @Composable
-private fun PlainLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, modifier: Modifier) {
+private fun PlainLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, center: Boolean, modifier: Modifier) {
     val scroll = rememberScrollState()
     val frac = if (duration > 0) (pos.toFloat() / duration) else 0f
     LaunchedEffect((frac * 200).toInt()) {
@@ -187,7 +189,7 @@ private fun PlainLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, modifie
         fontSize = (size - 2).sp,
         lineHeight = (size * 1.45f).sp,
         fontWeight = FontWeight.SemiBold,
-        textAlign = TextAlign.Start,
+        textAlign = if (center) TextAlign.Center else TextAlign.Start,
         modifier = modifier.fillMaxWidth().fadingEdges().verticalScroll(scroll).padding(horizontal = 24.dp, vertical = 120.dp),
     )
 }

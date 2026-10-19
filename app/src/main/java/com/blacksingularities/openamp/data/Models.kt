@@ -50,7 +50,7 @@ data class TrackGroup(
     val cover: Track? get() = tracks.firstOrNull()
 }
 
-enum class LibraryTab { TRACKS, ALBUMS, ARTISTS, GENRES, FOLDERS, PLAYLISTS }
+enum class LibraryTab { HOME, TRACKS, ALBUMS, ARTISTS, GENRES, FOLDERS, PLAYLISTS }
 
 enum class TrackSort {
     TITLE, ARTIST, ALBUM, YEAR, DURATION, DATE_ADDED, PLAY_COUNT, LAST_PLAYED, SIZE, RANDOM

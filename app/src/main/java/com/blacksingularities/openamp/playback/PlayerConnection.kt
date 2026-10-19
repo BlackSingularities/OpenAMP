@@ -9,6 +9,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.RepeatMode
+import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,6 +96,13 @@ class PlayerConnection(private val context: Context) {
     fun play(tracks: List<Track>, start: Int = 0, shuffle: Boolean? = null) {
         val c = controller ?: return
         if (tracks.isEmpty()) return
+        // Sprytne mieszanie: kolejność układa OpenAMP (bez powtórek wykonawcy, rzadziej grane wcześniej).
+        if (shuffle == true && Graph.settings.value.smartShuffle) {
+            c.shuffleModeEnabled = false
+            c.setMediaItems(items(Smart.shuffle(tracks, Graph.userData.value)), 0, 0)
+            c.prepare(); c.volume = 1f; c.play()
+            return
+        }
         if (shuffle != null) c.shuffleModeEnabled = shuffle
         val startIndex = if (shuffle == true) tracks.indices.random() else start.coerceIn(0, tracks.size - 1)
         c.setMediaItems(items(tracks), startIndex, 0)

@@ -1,240 +1,369 @@
 package com.blacksingularities.openamp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.rounded.VolumeDown
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.playback.AudioFx
-import com.blacksingularities.openamp.playback.EqState
+import com.blacksingularities.openamp.playback.Dsp
+import com.blacksingularities.openamp.playback.DspState
+import com.blacksingularities.openamp.playback.EqBand
 import java.util.Locale
+import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
-private fun freqLabel(hz: Int) = if (hz >= 1000) String.format(Locale.ROOT, if (hz % 1000 == 0) "%.0fk" else "%.1fk", hz / 1000f) else "$hz"
+private const val F_MIN = 20f
+private const val F_MAX = 20000f
+private const val DB_RANGE = 15f
+private const val CURVE_N = 256
+
+private fun xOf(f: Float, w: Float) = (ln(f / F_MIN) / ln(F_MAX / F_MIN)) * w
+private fun fOf(x: Float, w: Float) = F_MIN * (F_MAX / F_MIN).pow((x / w).coerceIn(0f, 1f))
+
+fun freqLabel(hz: Float): String = if (hz >= 1000) {
+    val k = hz / 1000f
+    if (k >= 10 || k == k.roundToInt().toFloat()) "${k.roundToInt()}k" else String.format(Locale.ROOT, "%.1fk", k)
+} else "${hz.roundToInt()}"
+
+private fun db(v: Float) = String.format(Locale.ROOT, "%+.1f", v)
 
 @Composable
 fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
-    val eq by AudioFx.state.collectAsState()
+    val s by Dsp.state.collectAsState()
+    val fx by AudioFx.state.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val ps by vm.player.state.collectAsState()
+    var selected by remember { mutableIntStateOf(-1) }
     var saving by remember { mutableStateOf(false) }
-    if (saving) NameDialog(tr("Zapisz preset"), tr("Nazwa presetu"), "", { saving = false }) { AudioFx.saveUserPreset(it); saving = false }
+    var menu by remember { mutableStateOf(false) }
+    val live = rememberLiveSpectrum(ps.isPlaying)
+    if (saving) NameDialog(tr("Zapisz preset"), tr("Nazwa presetu"), "", { saving = false }) { Dsp.savePreset(it); saving = false }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz")) }
-            Text(tr("Korektor"), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-            IconButton(onClick = { AudioFx.reset() }) { Icon(Icons.Rounded.RestartAlt, tr("Resetuj")) }
-            IconButton(onClick = { saving = true }, enabled = eq.available) { Icon(Icons.Rounded.Save, tr("Zapisz preset")) }
-            Switch(eq.enabled, { AudioFx.setEnabled(it) }, modifier = Modifier.padding(end = 12.dp))
-        }
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding + 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            if (!eq.available) {
-                item {
-                    Text(
-                        tr("Ten telefon nie udostępnia korektora systemowego.") + "\n" + tr("Efekty działają po rozpoczęciu odtwarzania."),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Column(Modifier.weight(1f)) {
+                Text(tr("Korektor"), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    if (s.enabled) tr(s.preset) + (if (settings.smartEq) "  •  " + tr("Inteligentny") else "") else tr("Wyłączone"),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, tr("Więcej")) }
+                DropdownMenu(menu, { menu = false }) {
+                    MenuItem(tr("Zapisz preset"), Icons.Rounded.Save) { menu = false; saving = true }
+                    MenuItem(tr("Automatyczny przedwzmacniacz"), Icons.Rounded.VolumeDown) { menu = false; Dsp.autoPreamp() }
+                    MenuItem(tr("Resetuj"), Icons.Rounded.RestartAlt) { menu = false; selected = -1; Dsp.reset() }
                 }
             }
+            PowerButton(s.enabled, { Dsp.update { it.copy(enabled = !it.enabled) } })
+        }
+
+        LazyColumn(
+            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = bottomPadding + 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // Wykres charakterystyki na tle widma na żywo
             item {
-                EqCard {
-                    Text(tr("Preset"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AudioFx.builtInNames.forEach { n ->
-                            FilterChip(selected = eq.preset == n, onClick = { AudioFx.applyPreset(n) }, label = { Text(tr(n)) }, enabled = eq.available)
-                        }
-                        if (eq.preset == "Własny") FilterChip(selected = true, onClick = {}, label = { Text(tr("Własny")) })
-                    }
-                    if (eq.userPresets.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
-                        Text(tr("Twoje presety"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            eq.userPresets.forEach { p ->
-                                FilterChip(
-                                    selected = eq.preset == p.name,
-                                    onClick = { AudioFx.applyPreset(p.name) },
-                                    label = { Text(p.name) },
-                                    trailingIcon = {
-                                        Icon(Icons.Rounded.Close, tr("Usuń"), Modifier.pointerInput(p.name) { detectTapGestures { AudioFx.deleteUserPreset(p.name) } })
-                                    },
+                Panel(padding = 10.dp) {
+                    ResponseGraph(s, live, selected, { selected = it }, Modifier.fillMaxWidth().height(250.dp))
+                    if (selected in s.bands.indices) BandEditor(s.bands[selected], selected) { selected = -1 }
+                }
+            }
+            // Fadery
+            item {
+                Panel(padding = 12.dp) {
+                    Overline(tr("Pasma"), trailing = {
+                        Text(tr("Przedwzmacniacz") + " " + db(s.preamp) + " dB", style = MaterialTheme.typography.labelMedium, fontFamily = MonoNumbers, color = MaterialTheme.colorScheme.primary)
+                    })
+                    Row(Modifier.fillMaxWidth()) {
+                        s.bands.forEachIndexed { i, b ->
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    db(b.gain).removeSuffix(".0"), fontFamily = MonoNumbers, style = MaterialTheme.typography.labelSmall,
+                                    color = if (i == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                Fader(
+                                    b.gain, -Dsp.MAX_GAIN..Dsp.MAX_GAIN, { Dsp.setBand(i, b.copy(gain = (it * 2).roundToInt() / 2f)) },
+                                    Modifier.fillMaxWidth().height(200.dp), selected = i == selected, enabled = s.enabled,
+                                    onSelect = { selected = i },
+                                )
+                                Text(freqLabel(b.freq), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
                         }
                     }
                 }
             }
+            // Presety
             item {
-                EqCard {
-                    Text(tr("Korektor graficzny"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(6.dp))
-                    EqCurve(eq, Modifier.fillMaxWidth().height(260.dp))
+                Panel(padding = 12.dp) {
+                    Overline(tr("Presety"))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(Dsp.builtIn) { (name, gains) ->
+                            PresetCard(tr(name), gains, s.preset == name) { selected = -1; Dsp.applyPreset(name) }
+                        }
+                    }
+                    if (s.userPresets.isNotEmpty()) {
+                        VSpace(12.dp)
+                        Text(tr("Twoje presety"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        VSpace(6.dp)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(s.userPresets) { p ->
+                                Box {
+                                    PresetCard(p.name, p.bands.map { it.gain }, s.preset == p.name) { selected = -1; Dsp.applyPreset(p.name) }
+                                    Icon(
+                                        Icons.Rounded.Close, tr("Usuń"),
+                                        Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(RoundedCornerShape(50)).clickable { Dsp.deletePreset(p.name) },
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    VSpace(12.dp)
+                    PillToggle(tr("Inteligentny korektor: preset według gatunku utworu"), settings.smartEq, { vm.updateSettings { it.copy(smartEq = !it.smartEq) } })
                 }
             }
+            // Barwa i przestrzeń
             item {
-                EqCard {
-                    EffectSlider(tr("Wzmocnienie basów"), eq.bass, 1000, eq.bassSupported && eq.available) { AudioFx.setBass(it) }
-                    EffectSlider(tr("Przestrzenność"), eq.virtualizer, 1000, eq.virtualizerSupported && eq.available) { AudioFx.setVirtualizer(it) }
-                    EffectSlider(tr("Głośność (wzmocnienie)"), eq.loudness, 1500, eq.available, unit = "dB", scale = 100f) { AudioFx.setLoudness(it) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EqCard(content: @Composable () -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(16.dp)) { content() }
-    }
-}
-
-@Composable
-private fun EffectSlider(label: String, value: Int, max: Int, enabled: Boolean, unit: String = "%", scale: Float = max / 100f, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(
-            if (unit == "%") "${(value / scale).roundToInt()}%" else String.format(Locale.ROOT, "+%.1f dB", value / scale),
-            style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-        )
-    }
-    Slider(value.toFloat(), { onChange(it.roundToInt()) }, valueRange = 0f..max.toFloat(), enabled = enabled)
-}
-
-/**
- * Korektor jako krzywa: każde pasmo to uchwyt, który przeciąga się w pionie; między uchwytami
- * gładka krzywa z wypełnieniem.
- */
-@Composable
-private fun EqCurve(eq: EqState, modifier: Modifier) {
-    val accent = MaterialTheme.colorScheme.primary
-    val grid = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    val text = MaterialTheme.colorScheme.onSurfaceVariant
-    val current by rememberUpdatedState(eq)
-    var active by remember { mutableStateOf(-1) }
-    val n = eq.levels.size
-    if (n == 0) { Text("—"); return }
-    Column(modifier) {
-        Row(Modifier.fillMaxWidth()) {
-            eq.levels.forEachIndexed { i, l ->
-                Text(
-                    String.format(Locale.ROOT, "%+.1f", l / 100f),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (i == active) accent else text,
-                    modifier = Modifier.weight(1f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            }
-        }
-        Canvas(
-            Modifier.weight(1f).fillMaxWidth().pointerInput(n) {
-                fun bandAt(x: Float) = ((x / size.width) * n).toInt().coerceIn(0, n - 1)
-                fun levelAt(y: Float): Int {
-                    val s = current
-                    val pad = 14.dp.toPx()
-                    val f = 1f - ((y - pad) / (size.height - 2 * pad)).coerceIn(0f, 1f)
-                    return ((s.minLevel + f * (s.maxLevel - s.minLevel)) / 50f).roundToInt() * 50
-                }
-                detectDragGestures(
-                    onDragStart = { o -> active = bandAt(o.x); AudioFx.setBand(active, levelAt(o.y)) },
-                    onDragEnd = { active = -1 },
-                    onDragCancel = { active = -1 },
-                ) { change, _ ->
-                    change.consume()
-                    if (active >= 0) AudioFx.setBand(active, levelAt(change.position.y))
-                }
-            },
-        ) {
-            val pad = 14.dp.toPx()
-            val h = size.height - 2 * pad
-            val colW = size.width / n
-            fun y(level: Int) = pad + h * (1f - (level - eq.minLevel).toFloat() / (eq.maxLevel - eq.minLevel))
-            // Siatka
-            for (db in listOf(eq.maxLevel, eq.maxLevel / 2, 0, eq.minLevel / 2, eq.minLevel)) {
-                drawLine(grid, Offset(0f, y(db)), Offset(size.width, y(db)), strokeWidth = if (db == 0) 2f else 1f)
-            }
-            val pts = eq.levels.mapIndexed { i, l -> Offset(colW * (i + 0.5f), y(l)) }
-            for (p in pts) drawLine(grid, Offset(p.x, pad), Offset(p.x, size.height - pad), strokeWidth = 1f)
-            // Gładka krzywa (Catmull-Rom → Bézier)
-            val path = Path().apply {
-                moveTo(0f, pts.first().y)
-                lineTo(pts.first().x, pts.first().y)
-                for (i in 0 until pts.size - 1) {
-                    val p0 = pts.getOrElse(i - 1) { pts[i] }
-                    val p1 = pts[i]
-                    val p2 = pts[i + 1]
-                    val p3 = pts.getOrElse(i + 2) { p2 }
-                    cubicTo(
-                        p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
-                        p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
-                        p2.x, p2.y,
+                Panel(padding = 14.dp) {
+                    Overline(tr("Barwa i przestrzeń"))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Knob(tr("Przedwzmacniacz"), s.preamp, -15f..15f, { v -> Dsp.update { it.copy(preamp = (v * 2).roundToInt() / 2f) } }, { db(it) + " dB" }, neutral = 0f, enabled = s.enabled)
+                        Knob(tr("Basy"), s.bass, -12f..12f, { v -> Dsp.update { it.copy(bass = (v * 2).roundToInt() / 2f) } }, { db(it) + " dB" }, neutral = 0f, enabled = s.enabled)
+                        Knob(tr("Soprany"), s.treble, -12f..12f, { v -> Dsp.update { it.copy(treble = (v * 2).roundToInt() / 2f) } }, { db(it) + " dB" }, neutral = 0f, enabled = s.enabled)
+                    }
+                    VSpace(10.dp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Knob(tr("Szerokość stereo"), s.width, 0f..2f, { v -> Dsp.update { it.copy(width = (v * 20).roundToInt() / 20f) } }, { "${(it * 100).roundToInt()}%" }, neutral = 1f, enabled = s.enabled && !s.mono)
+                        Knob(tr("Balans"), s.balance, -1f..1f, { v -> Dsp.update { it.copy(balance = (v * 20).roundToInt() / 20f) } }, { balanceLabel(it) }, neutral = 0f, enabled = s.enabled)
+                        Knob(tr("Przestrzenność"), fx.virtualizer.toFloat(), 0f..1000f, { AudioFx.setVirtualizer(it.roundToInt()) }, { "${(it / 10).roundToInt()}%" }, enabled = s.enabled && fx.virtualizerSupported)
+                    }
+                    VSpace(10.dp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Knob(tr("Głośność (wzmocnienie)"), fx.loudness.toFloat(), 0f..1500f, { AudioFx.setLoudness((it / 50).roundToInt() * 50) }, { "+" + String.format(Locale.ROOT, "%.1f", it / 100) + " dB" }, enabled = s.enabled && fx.loudnessSupported)
+                    }
+                    VSpace(12.dp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PillToggle(tr("Limiter"), s.limiter, { Dsp.update { it.copy(limiter = !it.limiter) } })
+                        PillToggle(tr("Mono"), s.mono, { Dsp.update { it.copy(mono = !it.mono) } })
+                        PillToggle(tr("Zamiana kanałów"), s.swap, { Dsp.update { it.copy(swap = !it.swap) } })
+                    }
+                    VSpace(8.dp)
+                    Text(
+                        tr("Dotknij dwukrotnie pokrętła lub suwaka, aby przywrócić wartość domyślną. Limiter chroni przed przesterowaniem przy dużych podbiciach."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                lineTo(size.width, pts.last().y)
-            }
-            val fill = Path().apply {
-                addPath(path)
-                lineTo(size.width, y(0)); lineTo(0f, y(0)); close()
-            }
-            val a = if (eq.enabled) 1f else 0.4f
-            drawPath(fill, Brush.verticalGradient(listOf(accent.copy(alpha = 0.35f * a), accent.copy(alpha = 0.02f))))
-            drawPath(path, accent.copy(alpha = a), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-            pts.forEachIndexed { i, p ->
-                drawCircle(Color.White, if (i == active) 11.dp.toPx() else 8.dp.toPx(), p)
-                drawCircle(accent, if (i == active) 7.dp.toPx() else 5.dp.toPx(), p)
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            eq.freqs.forEach { f ->
-                Text(
-                    freqLabel(f), style = MaterialTheme.typography.labelSmall, color = text,
-                    modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
+    }
+}
+
+fun balanceLabel(v: Float): String = when {
+    v < -0.02f -> "L ${(-v * 100).roundToInt()}"
+    v > 0.02f -> "P ${(v * 100).roundToInt()}".let { if (com.blacksingularities.openamp.i18n.I18n.english) it.replace("P", "R") else it }
+    else -> "C"
+}
+
+/** Wykres: oś częstotliwości logarytmiczna, siatka dB, widmo na żywo, krzywe pasm i wypadkowa. */
+@Composable
+private fun ResponseGraph(s: DspState, live: LiveSpectrum, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    val grid = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
+    val label = MaterialTheme.colorScheme.onSurfaceVariant
+    val cur by rememberUpdatedState(s)
+    var drag by remember { mutableIntStateOf(-1) }
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = label)
+    // Charakterystyka liczona raz na zmianę ustawień (256 punktów w skali logarytmicznej).
+    val curve = remember(s) { FloatArray(CURVE_N) { Dsp.responseDb(s, F_MIN * (F_MAX / F_MIN).pow(it / (CURVE_N - 1f))) } }
+    val bandCurve = remember(s, selected) {
+        s.bands.getOrNull(selected)?.let { b -> FloatArray(CURVE_N) { Dsp.bandResponseDb(b, F_MIN * (F_MAX / F_MIN).pow(it / (CURVE_N - 1f))) } }
+    }
+    Canvas(
+        modifier.pointerInput(Unit) {
+            val pad = 18.dp.toPx()
+            fun yToDb(y: Float) = (DB_RANGE - (y - pad) / (size.height - 2 * pad) * 2 * DB_RANGE).coerceIn(-DB_RANGE, DB_RANGE)
+            detectDragGestures(
+                onDragStart = { o ->
+                    val w = size.width.toFloat()
+                    val idx = cur.bands.indices.minByOrNull { kotlin.math.abs(xOf(cur.bands[it].freq, w) - o.x) } ?: -1
+                    drag = idx; onSelect(idx)
+                },
+                onDragEnd = { drag = -1 },
+                onDragCancel = { drag = -1 },
+            ) { ch, _ ->
+                ch.consume()
+                val i = drag
+                if (i < 0 || !cur.enabled) return@detectDragGestures
+                val b = cur.bands[i]
+                val w = size.width.toFloat()
+                // Częstotliwość ograniczona sąsiednimi pasmami, żeby kolejność została zachowana.
+                val lo = cur.bands.getOrNull(i - 1)?.freq?.times(1.12f) ?: F_MIN
+                val hi = cur.bands.getOrNull(i + 1)?.freq?.div(1.12f) ?: F_MAX
+                val f = fOf(ch.position.x, w).coerceIn(lo, hi)
+                Dsp.setBand(i, b.copy(freq = f.roundToInt().toFloat(), gain = (yToDb(ch.position.y) * 2).roundToInt() / 2f))
+            }
+        },
+    ) {
+        @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val pad = 18.dp.toPx()
+        val h = size.height - 2 * pad
+        val w = size.width
+        fun y(dbv: Float) = pad + (DB_RANGE - dbv.coerceIn(-DB_RANGE - 2, DB_RANGE + 2)) / (2 * DB_RANGE) * h
+        // Widmo na żywo (log 40 Hz – 16 kHz, tak jak w procesorze widma)
+        val n = live.bands.size
+        val spec = Path().apply {
+            moveTo(xOf(40f, w), size.height)
+            for (i in 0 until n) {
+                val f = 40f * (16000f / 40f).pow(i / (n - 1f))
+                lineTo(xOf(f, w), size.height - live.bands[i] * size.height * 0.9f)
+            }
+            lineTo(xOf(16000f, w), size.height); close()
+        }
+        drawPath(spec, Brush.verticalGradient(listOf(accent.copy(alpha = 0.22f), accent.copy(alpha = 0.02f))))
+        // Siatka
+        for (dbv in listOf(-12f, -6f, 0f, 6f, 12f)) {
+            drawLine(if (dbv == 0f) grid.copy(alpha = 0.2f) else grid, Offset(0f, y(dbv)), Offset(w, y(dbv)), strokeWidth = 1.dp.toPx())
+            drawText(textMeasurer, (if (dbv > 0) "+" else "") + dbv.roundToInt(), Offset(4.dp.toPx(), y(dbv) - 14.dp.toPx()), labelStyle)
+        }
+        for (f in listOf(50f, 100f, 200f, 500f, 1000f, 2000f, 5000f, 10000f)) {
+            drawLine(grid, Offset(xOf(f, w), pad), Offset(xOf(f, w), size.height - pad), strokeWidth = 1.dp.toPx())
+            drawText(textMeasurer, freqLabel(f), Offset(xOf(f, w) + 3.dp.toPx(), size.height - pad + 2.dp.toPx()), labelStyle)
+        }
+        val alpha = if (s.enabled) 1f else 0.35f
+        fun curvePath(c: FloatArray) = Path().apply {
+            for (i in c.indices) {
+                val px = w * i / (c.size - 1f)
+                if (i == 0) moveTo(px, y(c[i])) else lineTo(px, y(c[i]))
             }
         }
+        // Krzywa zaznaczonego pasma
+        bandCurve?.let { drawPath(curvePath(it), accent.copy(alpha = 0.5f * alpha), style = Stroke(1.5.dp.toPx())) }
+        // Wypadkowa
+        val total = curvePath(curve)
+        val fill = Path().apply { addPath(total); lineTo(w, y(0f)); lineTo(0f, y(0f)); close() }
+        drawPath(fill, Brush.verticalGradient(listOf(accent.copy(alpha = 0.30f * alpha), accent.copy(alpha = 0.0f))))
+        drawPath(total, accent.copy(alpha = 0.35f * alpha), style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(total, Color.White.copy(alpha = 0.9f * alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        // Uchwyty pasm
+        s.bands.forEachIndexed { i, b ->
+            val c = Offset(xOf(b.freq, w), y(b.gain + s.preamp))
+            node(c, i == selected, accent, alpha)
+        }
+    }
+}
+
+private fun DrawScope.node(c: Offset, sel: Boolean, accent: Color, alpha: Float) {
+    if (sel) drawCircle(accent.copy(alpha = 0.3f * alpha), 16.dp.toPx(), c)
+    drawCircle(Color.Black.copy(alpha = 0.6f), 8.dp.toPx(), c)
+    drawCircle(if (sel) accent else Color.White, 6.dp.toPx(), c, alpha = alpha)
+}
+
+@Composable
+private fun BandEditor(b: EqBand, index: Int, onClose: () -> Unit) {
+    Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(tr("Pasmo {0}", index + 1), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text("${freqLabel(b.freq)} Hz  •  ${db(b.gain)} dB  •  Q ${String.format(Locale.ROOT, "%.2f", b.q)}", fontFamily = MonoNumbers, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, tr("Zamknij")) }
+        }
+        Text(tr("Częstotliwość"), style = MaterialTheme.typography.labelSmall)
+        Slider(ln(b.freq / F_MIN) / ln(F_MAX / F_MIN), { Dsp.setBand(index, b.copy(freq = (F_MIN * (F_MAX / F_MIN).pow(it)).roundToInt().toFloat())) })
+        Text(tr("Dobroć (szerokość pasma)"), style = MaterialTheme.typography.labelSmall)
+        Slider(b.q, { Dsp.setBand(index, b.copy(q = (it * 20).roundToInt() / 20f)) }, valueRange = 0.3f..8f)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillToggle(tr("Szerokie"), b.q < 1f, { Dsp.setBand(index, b.copy(q = 0.7f)) })
+            PillToggle(tr("Standard"), b.q in 1f..2f, { Dsp.setBand(index, b.copy(q = 1.41f)) })
+            PillToggle(tr("Wąskie"), b.q > 2f, { Dsp.setBand(index, b.copy(q = 4f)) })
+            PillToggle("ISO", b.freq == Dsp.ISO[index], { Dsp.setBand(index, b.copy(freq = Dsp.ISO[index])) })
+        }
+    }
+}
+
+/** Karta presetu z miniaturą krzywej. */
+@Composable
+private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        Modifier.width(112.dp).clip(shape)
+            .background(if (selected) accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, if (selected) accent else Color.Transparent, shape)
+            .clickable(onClick = onClick).padding(10.dp),
+    ) {
+        Canvas(Modifier.fillMaxWidth().height(40.dp)) {
+            val st = DspState(bands = gains.mapIndexed { i, g -> EqBand(Dsp.ISO.getOrElse(i) { 1000f }, g) })
+            val p = Path()
+            var x = 0f
+            while (x <= size.width) {
+                val d = Dsp.responseDb(st, fOf(x, size.width))
+                val yy = size.height / 2 - d / 24f * size.height
+                if (x == 0f) p.moveTo(x, yy) else p.lineTo(x, yy)
+                x += 2f
+            }
+            drawLine(Color.White.copy(alpha = 0.1f), Offset(0f, size.height / 2), Offset(size.width, size.height / 2))
+            drawPath(p, if (selected) accent else Color.White.copy(alpha = 0.75f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        }
+        VSpace(6.dp)
+        Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, color = if (selected) accent else MaterialTheme.colorScheme.onSurface)
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import com.blacksingularities.openamp.BuildConfig
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.R
+import com.blacksingularities.openamp.data.CoverShape
+import com.blacksingularities.openamp.data.NpBackground
 import com.blacksingularities.openamp.data.SeekStyle
 import com.blacksingularities.openamp.data.ThemeMode
 import com.blacksingularities.openamp.data.VisualizerStyle
@@ -76,6 +79,8 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
     val s by vm.settings.collectAsState()
     var choice by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
     var clearConfirm by remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf(false) }
+    if (picker) ColorPickerDialog(s.accent, { picker = false }) { c -> vm.updateSettings { it.copy(accent = c) } }
     choice?.invoke()
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -99,6 +104,22 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                     SwitchRow(tr("Kolory z okładki"), tr("Akcent interfejsu dopasowuje się do okładki odtwarzanego utworu"), s.artworkColors) { v -> vm.updateSettings { it.copy(artworkColors = v) } }
                     Text(tr("Kolor akcentu"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        item {
+                            // Dowolny kolor z próbnika
+                            Box(
+                                Modifier.size(40.dp).background(
+                                    androidx.compose.ui.graphics.Brush.sweepGradient((0..6).map { Color(android.graphics.Color.HSVToColor(floatArrayOf(it * 60f % 360f, 0.8f, 1f))) }),
+                                    CircleShape,
+                                ).clickable { picker = true },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Rounded.Palette, tr("Dowolny kolor"), tint = Color.Black) }
+                        }
+                        if (s.accent !in AccentChoices) item {
+                            Box(
+                                Modifier.size(40.dp).background(Color(s.accent), CircleShape).border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Rounded.Check, null, tint = Color.Black) }
+                        }
                         items(AccentChoices) { c ->
                             val sel = c == s.accent
                             Box(
@@ -109,6 +130,19 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                             ) { if (sel) Icon(Icons.Rounded.Check, null, tint = Color.Black) }
                         }
                     }
+                    if (s.artworkColors) Text(
+                        tr("Gdy włączone są kolory z okładki, wybrany kolor jest używany dla utworów bez okładki."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+
+            item {
+                Section(tr("Inteligencja")) {
+                    SwitchRow(tr("Sprytne mieszanie"), tr("Bez powtórek wykonawcy pod rząd, rzadziej słuchane i ulubione częściej"), s.smartShuffle) { v -> vm.updateSettings { it.copy(smartShuffle = v) } }
+                    SwitchRow(tr("Inteligentny korektor"), tr("Preset korektora dobierany automatycznie do gatunku utworu"), s.smartEq) { v -> vm.updateSettings { it.copy(smartEq = v) } }
+                    Text(tr("Miksy na ekranie Start powstają z Twojej historii słuchania – wszystko liczone na telefonie."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    OutlinedButton(onClick = { vm.open(Route.Stats) }, modifier = Modifier.padding(top = 8.dp)) { Text(tr("Statystyki")) }
                 }
             }
 
@@ -120,7 +154,16 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
                     ChoiceRow(tr("Taśma utworu"), seekLabel(s.seekStyle)) {
                         choice = { ChoiceDialog(tr("Taśma utworu"), SeekStyle.entries, s.seekStyle, ::seekLabel, { choice = null }) { v -> vm.updateSettings { it.copy(seekStyle = v) } } }
                     }
-                    SwitchRow(tr("Rozmyte tło z okładki"), null, s.blurBackground) { v -> vm.updateSettings { it.copy(blurBackground = v) } }
+                    ChoiceRow(tr("Tło"), bgLabel(s.npBackground)) {
+                        choice = { ChoiceDialog(tr("Tło"), NpBackground.entries, s.npBackground, ::bgLabel, { choice = null }) { v -> vm.updateSettings { it.copy(npBackground = v) } } }
+                    }
+                    ChoiceRow(tr("Kształt okładki"), shapeLabel(s.coverShape)) {
+                        choice = { ChoiceDialog(tr("Kształt okładki"), CoverShape.entries, s.coverShape, ::shapeLabel, { choice = null }) { v -> vm.updateSettings { it.copy(coverShape = v) } } }
+                    }
+                    SwitchRow(tr("Informacje techniczne pliku"), tr("Format, częstotliwość, bitrate pod tytułem"), s.showTechInfo) { v -> vm.updateSettings { it.copy(showTechInfo = v) } }
+                    SwitchRow(tr("Gest przesunięcia okładki"), tr("Przesuń okładkę w bok, aby zmienić utwór"), s.coverGestures) { v -> vm.updateSettings { it.copy(coverGestures = v) } }
+                    SwitchRow(tr("Nie wygaszaj ekranu"), tr("Podczas wyświetlania ekranu odtwarzania"), s.keepScreenOn) { v -> vm.updateSettings { it.copy(keepScreenOn = v) } }
+                    SwitchRow(tr("Tekst wyśrodkowany"), null, s.lyricsCenter) { v -> vm.updateSettings { it.copy(lyricsCenter = v) } }
                     SwitchRow(tr("Pokazuj tekst domyślnie"), null, s.lyricsByDefault) { v -> vm.updateSettings { it.copy(lyricsByDefault = v) } }
                     SwitchRow(tr("Szukaj tekstów w internecie (LRCLIB)"), tr("Gdy plik nie ma tekstu, OpenAMP zapyta bazę LRCLIB i zapamięta wynik"), s.lyricsOnline) { v ->
                         vm.updateSettings { it.copy(lyricsOnline = v) }
@@ -180,15 +223,15 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
 fun languageLabel(l: AppLanguage) = when (l) { AppLanguage.SYSTEM -> tr("Systemowy"); AppLanguage.PL -> "Polski"; AppLanguage.EN -> "English" }
 fun themeLabel(t: ThemeMode) = when (t) { ThemeMode.SYSTEM -> tr("Systemowy"); ThemeMode.DARK -> tr("Ciemny"); ThemeMode.LIGHT -> tr("Jasny"); ThemeMode.BLACK -> tr("Czarny (AMOLED)") }
 fun visLabel(v: VisualizerStyle) = when (v) { VisualizerStyle.BARS -> tr("Słupki widma"); VisualizerStyle.WAVE -> tr("Fala"); VisualizerStyle.CIRCLE -> tr("Okrąg"); VisualizerStyle.NONE -> tr("Brak") }
+fun bgLabel(v: NpBackground) = when (v) { NpBackground.BLUR -> tr("Rozmyta okładka"); NpBackground.GRADIENT -> tr("Gradient akcentu"); NpBackground.AURORA -> tr("Zorza (reaguje na muzykę)"); NpBackground.BLACK -> tr("Czysta czerń") }
+fun shapeLabel(v: CoverShape) = when (v) { CoverShape.ROUNDED -> tr("Zaokrąglona"); CoverShape.SQUARE -> tr("Kwadratowa"); CoverShape.CIRCLE -> tr("Okrągła"); CoverShape.VINYL -> tr("Płyta winylowa") }
 fun seekLabel(v: SeekStyle) = when (v) { SeekStyle.WAVEFORM -> tr("Fala dźwiękowa"); SeekStyle.SPECTROGRAM -> tr("Spektrogram"); SeekStyle.SIMPLE -> tr("Prosty pasek") }
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 6.dp))
-            content()
-        }
+    Panel {
+        Overline(title)
+        content()
     }
 }
 

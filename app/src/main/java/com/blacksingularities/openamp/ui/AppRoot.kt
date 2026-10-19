@@ -129,6 +129,7 @@ private fun Main(vm: MainViewModel) {
                     is Route.Detail -> DetailScreen(vm, r, bottom)
                     Route.Settings -> SettingsScreen(vm, bottom)
                     Route.Equalizer -> EqualizerScreen(vm, bottom)
+                    Route.Stats -> StatsScreen(vm, bottom)
                 }
             }
         }
