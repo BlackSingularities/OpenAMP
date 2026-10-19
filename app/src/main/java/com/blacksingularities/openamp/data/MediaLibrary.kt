@@ -2,7 +2,7 @@ package com.blacksingularities.openamp.data
 
 import android.content.Context
 import android.os.Build
-import android.provider.MediaStore
+import android.provider.MediaStore.Audio.Media as M
 import com.blacksingularities.openamp.i18n.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,21 +36,20 @@ class MediaLibrary(private val context: Context) {
     }
 
     private fun query(minSec: Int, excluded: List<String>): List<Track> {
-        val c = MediaStore.Audio.Media
         val proj = buildList {
-            add(c._ID); add(c.TITLE); add(c.ARTIST); add(c.ALBUM); add(c.ALBUM_ID); add("album_artist")
-            add(c.COMPOSER); add(c.YEAR); add(c.TRACK); add(c.DURATION); add(c.DATE_ADDED); add(c.SIZE)
-            add(c.DATA); add(c.MIME_TYPE)
-            if (Build.VERSION.SDK_INT >= 30) { add(c.GENRE); add(c.DISC_NUMBER) }
+            add(M._ID); add(M.TITLE); add(M.ARTIST); add(M.ALBUM); add(M.ALBUM_ID); add("album_artist")
+            add(M.COMPOSER); add(M.YEAR); add(M.TRACK); add(M.DURATION); add(M.DATE_ADDED); add(M.SIZE)
+            add(M.DATA); add(M.MIME_TYPE)
+            if (Build.VERSION.SDK_INT >= 30) { add(M.GENRE); add(M.DISC_NUMBER) }
         }.toTypedArray()
-        val sel = "${c.IS_MUSIC} != 0 AND ${c.DURATION} >= ?"
+        val sel = "${M.IS_MUSIC} != 0 AND ${M.DURATION} >= ?"
         val out = ArrayList<Track>()
-        context.contentResolver.query(c.EXTERNAL_CONTENT_URI, proj, sel, arrayOf((minSec * 1000L).toString()), null)?.use { cur ->
+        context.contentResolver.query(M.EXTERNAL_CONTENT_URI, proj, sel, arrayOf((minSec * 1000L).toString()), null)?.use { cur ->
             fun idx(n: String) = cur.getColumnIndex(n)
-            val iId = idx(c._ID); val iTitle = idx(c.TITLE); val iArtist = idx(c.ARTIST); val iAlbum = idx(c.ALBUM)
-            val iAlbumId = idx(c.ALBUM_ID); val iAA = idx("album_artist"); val iComp = idx(c.COMPOSER)
-            val iYear = idx(c.YEAR); val iTrack = idx(c.TRACK); val iDur = idx(c.DURATION); val iAdded = idx(c.DATE_ADDED)
-            val iSize = idx(c.SIZE); val iData = idx(c.DATA); val iMime = idx(c.MIME_TYPE)
+            val iId = idx(M._ID); val iTitle = idx(M.TITLE); val iArtist = idx(M.ARTIST); val iAlbum = idx(M.ALBUM)
+            val iAlbumId = idx(M.ALBUM_ID); val iAA = idx("album_artist"); val iComp = idx(M.COMPOSER)
+            val iYear = idx(M.YEAR); val iTrack = idx(M.TRACK); val iDur = idx(M.DURATION); val iAdded = idx(M.DATE_ADDED)
+            val iSize = idx(M.SIZE); val iData = idx(M.DATA); val iMime = idx(M.MIME_TYPE)
             val iGenre = idx("genre"); val iDisc = idx("disc_number")
             fun s(i: Int) = if (i >= 0) cur.getString(i) else null
             fun unknown(v: String?) = v.isNullOrBlank() || v == "<unknown>"
