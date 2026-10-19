@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.blacksingularities.openamp.Graph
+import com.blacksingularities.openamp.data.LibraryOps
 import com.blacksingularities.openamp.data.SmartList
 import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
@@ -203,12 +204,12 @@ object WidgetActions {
         when (s) {
             WidgetShortcut.SHUFFLE_ALL, WidgetShortcut.RESUME -> mixed(all)
             WidgetShortcut.DAILY_MIX -> mix("daily") ?: mixed(all)
-            WidgetShortcut.DISCOVER -> mix("discover") ?: mixed(Graph.library.smart(all, SmartList.NEVER_PLAYED, data))
+            WidgetShortcut.DISCOVER -> mix("discover") ?: mixed(LibraryOps.smart(all, SmartList.NEVER_PLAYED, data))
             WidgetShortcut.FORGOTTEN -> mix("forgotten") ?: emptyList()
-            WidgetShortcut.FAVORITES -> mixed(Graph.library.smart(all, SmartList.FAVORITES, data))
-            WidgetShortcut.RECENT_ADDED -> Graph.library.smart(all, SmartList.RECENTLY_ADDED, data)
-            WidgetShortcut.MOST_PLAYED -> Graph.library.smart(all, SmartList.MOST_PLAYED, data)
-            WidgetShortcut.NEVER_PLAYED -> mixed(Graph.library.smart(all, SmartList.NEVER_PLAYED, data))
+            WidgetShortcut.FAVORITES -> mixed(LibraryOps.smart(all, SmartList.FAVORITES, data))
+            WidgetShortcut.RECENT_ADDED -> LibraryOps.smart(all, SmartList.RECENTLY_ADDED, data)
+            WidgetShortcut.MOST_PLAYED -> LibraryOps.smart(all, SmartList.MOST_PLAYED, data)
+            WidgetShortcut.NEVER_PLAYED -> mixed(LibraryOps.smart(all, SmartList.NEVER_PLAYED, data))
             WidgetShortcut.SLEEP, WidgetShortcut.SEARCH, WidgetShortcut.EQUALIZER -> emptyList()
         }
     }
