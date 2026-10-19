@@ -140,6 +140,7 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
             item {
                 Section(tr("Inteligencja")) {
                     SwitchRow(tr("Sprytne mieszanie"), tr("Bez powtórek wykonawcy pod rząd, rzadziej słuchane i ulubione częściej"), s.smartShuffle) { v -> vm.updateSettings { it.copy(smartShuffle = v) } }
+                    SwitchRow(tr("Inteligentny tryb AMOLED"), tr("Po 20 s bez dotyku podczas grania ekran gaśnie do czerni z zegarem, okładką i tekstem; ochrona przed wypaleniem"), s.ambient) { v -> vm.updateSettings { it.copy(ambient = v) } }
                     SwitchRow(tr("Inteligentny korektor"), tr("Preset korektora dobierany automatycznie do gatunku utworu"), s.smartEq) { v -> vm.updateSettings { it.copy(smartEq = v) } }
                     Text(tr("Miksy na ekranie Start powstają z Twojej historii słuchania – wszystko liczone na telefonie."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                     OutlinedButton(onClick = { vm.open(Route.Stats) }, modifier = Modifier.padding(top = 8.dp)) { Text(tr("Statystyki")) }
@@ -225,7 +226,7 @@ fun themeLabel(t: ThemeMode) = when (t) { ThemeMode.SYSTEM -> tr("Systemowy"); T
 fun visLabel(v: VisualizerStyle) = when (v) { VisualizerStyle.BARS -> tr("Słupki widma"); VisualizerStyle.WAVE -> tr("Fala"); VisualizerStyle.CIRCLE -> tr("Okrąg"); VisualizerStyle.NONE -> tr("Brak") }
 fun bgLabel(v: NpBackground) = when (v) { NpBackground.BLUR -> tr("Rozmyta okładka"); NpBackground.GRADIENT -> tr("Gradient akcentu"); NpBackground.AURORA -> tr("Zorza (reaguje na muzykę)"); NpBackground.BLACK -> tr("Czysta czerń") }
 fun shapeLabel(v: CoverShape) = when (v) { CoverShape.ROUNDED -> tr("Zaokrąglona"); CoverShape.SQUARE -> tr("Kwadratowa"); CoverShape.CIRCLE -> tr("Okrągła"); CoverShape.VINYL -> tr("Płyta winylowa") }
-fun seekLabel(v: SeekStyle) = when (v) { SeekStyle.WAVEFORM -> tr("Fala dźwiękowa"); SeekStyle.SPECTROGRAM -> tr("Spektrogram"); SeekStyle.SIMPLE -> tr("Prosty pasek") }
+fun seekLabel(v: SeekStyle) = when (v) { SeekStyle.WAVEFORM -> tr("Fala dźwiękowa"); SeekStyle.TAPE -> tr("Taśma przesuwana"); SeekStyle.SPECTROGRAM -> tr("Spektrogram"); SeekStyle.SIMPLE -> tr("Prosty pasek") }
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

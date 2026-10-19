@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 enum class ThemeMode { SYSTEM, DARK, LIGHT, BLACK }
 enum class VisualizerStyle { BARS, WAVE, CIRCLE, NONE }
-enum class SeekStyle { WAVEFORM, SPECTROGRAM, SIMPLE }
+enum class SeekStyle { WAVEFORM, TAPE, SPECTROGRAM, SIMPLE }
 enum class RepeatMode { OFF, ALL, ONE }
 enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
 enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
@@ -17,12 +17,13 @@ enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val theme: ThemeMode = ThemeMode.BLACK,
-    val artworkColors: Boolean = true,
-    val accent: Int = 0xFFB45CFF.toInt(),
+    val artworkColors: Boolean = false,
+    val accent: Int = 0xFFFFFFFF.toInt(),
     val visualizer: VisualizerStyle = VisualizerStyle.BARS,
     val seekStyle: SeekStyle = SeekStyle.WAVEFORM,
     val blurBackground: Boolean = true,
     val smartEq: Boolean = false,
+    val ambient: Boolean = true,
     val smartShuffle: Boolean = true,
     val npBackground: NpBackground = NpBackground.BLUR,
     val coverShape: CoverShape = CoverShape.ROUNDED,
@@ -45,7 +46,8 @@ data class AppSettings(
     val autoUpdate: Boolean = true,
     val lastUpdateCheck: Long = 0L,
     // Biblioteka
-    val tab: LibraryTab = LibraryTab.HOME,
+    val tab: LibraryTab = LibraryTab.TRACKS,
+    val trackDensity: Int = 2,
     val trackSort: TrackSort = TrackSort.TITLE,
     val trackSortDesc: Boolean = false,
     val groupSort: GroupSort = GroupSort.NAME,
@@ -88,6 +90,7 @@ class SettingsStore(context: Context) {
                 seekStyle = enum("seekStyle", d.seekStyle),
                 blurBackground = getBoolean("blurBackground", d.blurBackground),
                 smartEq = getBoolean("smartEq", d.smartEq),
+                ambient = getBoolean("ambient", d.ambient),
                 smartShuffle = getBoolean("smartShuffle", d.smartShuffle),
                 npBackground = enum("npBackground", d.npBackground),
                 coverShape = enum("coverShape", d.coverShape),
@@ -110,6 +113,7 @@ class SettingsStore(context: Context) {
                 autoUpdate = getBoolean("autoUpdate", d.autoUpdate),
                 lastUpdateCheck = getLong("lastUpdateCheck", d.lastUpdateCheck),
                 tab = enum("tab", d.tab),
+                trackDensity = getInt("trackDensity", d.trackDensity),
                 trackSort = enum("trackSort", d.trackSort),
                 trackSortDesc = getBoolean("trackSortDesc", d.trackSortDesc),
                 groupSort = enum("groupSort", d.groupSort),
@@ -134,6 +138,7 @@ class SettingsStore(context: Context) {
             .putString("seekStyle", s.seekStyle.name)
             .putBoolean("blurBackground", s.blurBackground)
             .putBoolean("smartEq", s.smartEq)
+            .putBoolean("ambient", s.ambient)
             .putBoolean("smartShuffle", s.smartShuffle)
             .putString("npBackground", s.npBackground.name)
             .putString("coverShape", s.coverShape.name)
@@ -156,6 +161,7 @@ class SettingsStore(context: Context) {
             .putBoolean("autoUpdate", s.autoUpdate)
             .putLong("lastUpdateCheck", s.lastUpdateCheck)
             .putString("tab", s.tab.name)
+            .putInt("trackDensity", s.trackDensity)
             .putString("trackSort", s.trackSort.name)
             .putBoolean("trackSortDesc", s.trackSortDesc)
             .putString("groupSort", s.groupSort.name)

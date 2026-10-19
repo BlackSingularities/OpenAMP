@@ -50,30 +50,20 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Panel w stylu urządzenia: ciemna płyta z cienką obwódką w kolorze akcentu. */
+/** Panel: płaska, lekko rozjaśniona płyta na czarnym tle (jak w OpenPDF). */
 @Composable
 fun Panel(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable () -> Unit) {
-    val c = MaterialTheme.colorScheme
-    Box(
-        modifier
-            .clip(RoundedCornerShape(26.dp))
-            .background(c.surfaceContainer)
-            .border(1.dp, Brush.verticalGradient(listOf(c.primary.copy(alpha = 0.28f), c.outlineVariant.copy(alpha = 0.25f))), RoundedCornerShape(26.dp))
-            .padding(padding),
-    ) { Column { content() } }
+    Box(modifier.clip(RoundedCornerShape(22.dp)).background(Color(0x12FFFFFF)).padding(padding)) { Column { content() } }
 }
 
-/** Nagłówek sekcji: małe wersaliki z rozstrzeleniem i kropką w kolorze akcentu. */
+/** Nagłówek sekcji w panelu: pogrubiony tytuł, cienka linia i opcjonalny element po prawej. */
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     Row(modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text.uppercase(), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.6.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
-        )
-        trailing?.invoke()
+        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(Color(0x1FFFFFFF)))
+        if (trailing != null) { Spacer(Modifier.width(10.dp)); trailing() }
     }
 }
 

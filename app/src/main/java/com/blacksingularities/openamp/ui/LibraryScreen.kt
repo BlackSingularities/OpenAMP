@@ -83,8 +83,12 @@ import com.blacksingularities.openamp.i18n.plural
 import com.blacksingularities.openamp.i18n.tr
 
 fun LibraryTab.label() = when (this) {
-    LibraryTab.HOME -> tr("Start")
-    LibraryTab.TRACKS -> tr("Utwory")
+    LibraryTab.TRACKS -> tr("Wszystkie utwory")
+    LibraryTab.RECENT_ADDED -> tr("Ostatnio dodane")
+    LibraryTab.MOST_PLAYED -> tr("Najczęściej odtwarzane")
+    LibraryTab.RECENT_PLAYED -> tr("Ostatnio odtwarzane")
+    LibraryTab.FAVORITES -> tr("Ulubione")
+    LibraryTab.HOME -> tr("Miksy dla Ciebie")
     LibraryTab.ALBUMS -> tr("Albumy")
     LibraryTab.ARTISTS -> tr("Wykonawcy")
     LibraryTab.GENRES -> tr("Gatunki")
@@ -138,112 +142,12 @@ fun SmartList.icon(): ImageVector = when (this) {
 }
 
 @Composable
-fun LibraryScreen(vm: MainViewModel, bottomPadding: androidx.compose.ui.unit.Dp) {
-    val s by vm.settings.collectAsState()
-    val all by vm.tracks.collectAsState()
-    val data by vm.userData.collectAsState()
-    val scanning by vm.scanning.collectAsState()
-    val tab = s.tab
-    val tracks = remember(all, vm.query) { LibraryOps.search(all, vm.query) }
-
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        // Nagłówek
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (vm.searchOpen) {
-                TextField(
-                    value = vm.query,
-                    onValueChange = { vm.query = it },
-                    placeholder = { Text(tr("Szukaj w bibliotece")) },
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                    trailingIcon = { IconButton(onClick = { vm.searchOpen = false; vm.query = "" }) { Icon(Icons.Rounded.Close, tr("Zamknij")) } },
-                    shape = RoundedCornerShape(28.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                Text(tr("Biblioteka"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.searchOpen = true }) { Icon(Icons.Rounded.Search, tr("Szukaj")) }
-            }
-            SortMenu(vm)
-            IconButton(onClick = { vm.open(Route.Equalizer) }) { Icon(Icons.Rounded.Tune, tr("Korektor")) }
-            IconButton(onClick = { vm.open(Route.Settings) }) { Icon(Icons.Rounded.Settings, tr("Ustawienia")) }
-        }
-        PrimaryScrollableTabRow(
-            selectedTabIndex = tab.ordinal,
-            edgePadding = 12.dp,
-            containerColor = Color.Transparent,
-            divider = {},
-        ) {
-            LibraryTab.entries.forEach { t ->
-                Tab(
-                    selected = t == tab,
-                    onClick = { vm.updateSettings { it.copy(tab = t) } },
-                    text = { Text(t.label(), fontWeight = if (t == tab) FontWeight.Bold else FontWeight.Normal) },
-                )
-            }
-        }
-        AnimatedVisibility(scanning) { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-
-        val pad = PaddingValues(bottom = bottomPadding + 16.dp)
-        when (tab) {
-            LibraryTab.TRACKS -> {
-                val sorted = remember(tracks, s.trackSort, s.trackSortDesc, data.stats) {
-                    LibraryOps.sortTracks(tracks, s.trackSort, s.trackSortDesc, data.stats)
-                }
-                TrackCollection(vm, sorted, s.trackView, pad, header = { PlayHeader(vm, sorted) }, sort = s.trackSort)
-            }
-            LibraryTab.ALBUMS -> {
-                val albums = remember(tracks, s.groupSort, s.groupSortDesc, data.stats) {
-                    LibraryOps.sortGroups(LibraryOps.albums(tracks), s.groupSort, s.groupSortDesc, data.stats, { it.title }, { it.tracks })
-                }
-                GroupCollection(
-                    vm, albums, s.groupView, pad,
-                    title = { it.title }, subtitle = { a -> a.artist + if (a.year > 0) " • ${a.year}" else "" },
-                    cover = { it.cover }, tracksOf = { it.tracks },
-                    open = { vm.open(Route.Detail(DetailKind.ALBUM, it.id.toString())) },
-                )
-            }
-            LibraryTab.ARTISTS, LibraryTab.GENRES, LibraryTab.FOLDERS -> {
-                val kind = when (tab) { LibraryTab.ARTISTS -> DetailKind.ARTIST; LibraryTab.GENRES -> DetailKind.GENRE; else -> DetailKind.FOLDER }
-                val groups = remember(tracks, tab, s.groupSort, s.groupSortDesc, data.stats) {
-                    val g = when (tab) {
-                        LibraryTab.ARTISTS -> LibraryOps.artists(tracks)
-                        LibraryTab.GENRES -> LibraryOps.genres(tracks)
-                        else -> LibraryOps.folders(tracks)
-                    }
-                    LibraryOps.sortGroups(g, s.groupSort, s.groupSortDesc, data.stats, { it.name }, { it.tracks })
-                }
-                GroupCollection(
-                    vm, groups, s.groupView, pad,
-                    title = { it.name },
-                    subtitle = { g ->
-                        if (kind == DetailKind.ARTIST) {
-                            val albums = g.tracks.map { it.albumId }.distinct().size
-                            plural(albums, "{0} album", "{0} albumy", "{0} albumów") + " • " + plural(g.tracks.size, "{0} utwór", "{0} utwory", "{0} utworów")
-                        } else plural(g.tracks.size, "{0} utwór", "{0} utwory", "{0} utworów")
-                    },
-                    cover = { it.cover }, tracksOf = { it.tracks },
-                    circle = kind == DetailKind.ARTIST,
-                    folderIcon = kind == DetailKind.FOLDER,
-                    open = { vm.open(Route.Detail(kind, it.key)) },
-                )
-            }
-            LibraryTab.PLAYLISTS -> PlaylistsTab(vm, tracks, pad)
-            LibraryTab.HOME -> HomeScreen(vm, pad)
-        }
-    }
-}
-
-@Composable
-private fun SortMenu(vm: MainViewModel) {
+fun SortMenu(vm: MainViewModel) {
     val s by vm.settings.collectAsState()
     var open by remember { mutableStateOf(false) }
-    val tracksTab = s.tab == LibraryTab.TRACKS || s.tab == LibraryTab.HOME
+    val tracksTab = s.tab.isTrackList
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, tr("Sortuj")) }
+        RoundButton(Icons.AutoMirrored.Rounded.Sort, tr("Sortuj"), { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             Text(tr("Sortowanie"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
             if (tracksTab) {
@@ -443,7 +347,7 @@ fun Empty(text: String) {
 }
 
 @Composable
-private fun PlaylistsTab(vm: MainViewModel, tracks: List<Track>, padding: PaddingValues) {
+fun PlaylistsTab(vm: MainViewModel, tracks: List<Track>, padding: PaddingValues) {
     val data by vm.userData.collectAsState()
     var creating by remember { mutableStateOf(false) }
     if (creating) NameDialog(tr("Nowa playlista"), tr("Nazwa playlisty"), "", { creating = false }) {

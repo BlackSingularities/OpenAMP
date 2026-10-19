@@ -14,6 +14,8 @@ data class PlayStat(val count: Int = 0, val lastPlayed: Long = 0L, val listenMs:
 data class UserData(
     val stats: Map<Long, PlayStat> = emptyMap(),
     val favorites: Set<Long> = emptySet(),
+    /** „Nie lubię” – pomijane w miksach i sprytnym mieszaniu. */
+    val disliked: Set<Long> = emptySet(),
     val playlists: List<Playlist> = emptyList(),
     /** Czas słuchania w poszczególnych dniach (numer dnia od 1970 → ms). */
     val daily: Map<Long, Long> = emptyMap(),
@@ -57,6 +59,10 @@ class UserDataStore(context: Context) {
 
     fun toggleFavorite(trackId: Long) = update { d ->
         d.copy(favorites = if (trackId in d.favorites) d.favorites - trackId else d.favorites + trackId)
+    }
+
+    fun toggleDislike(trackId: Long) = update { d ->
+        d.copy(disliked = if (trackId in d.disliked) d.disliked - trackId else d.disliked + trackId, favorites = d.favorites - trackId)
     }
 
     fun createPlaylist(name: String, ids: List<Long> = emptyList()): String {
@@ -108,9 +114,11 @@ class UserDataStore(context: Context) {
                 lists += Playlist(p.getString("id"), p.getString("name"), List(t.length()) { t.getLong(it) })
             }
         }
+        val dis = HashSet<Long>()
+        o.optJSONArray("disliked")?.let { a -> for (i in 0 until a.length()) dis += a.getLong(i) }
         val daily = HashMap<Long, Long>()
         o.optJSONObject("daily")?.let { dd -> for (k in dd.keys()) daily[k.toLong()] = dd.getLong(k) }
-        UserData(stats, fav, lists, daily)
+        UserData(stats, fav, lists, daily).copy(disliked = dis)
     }.getOrDefault(UserData())
 
     private fun save(d: UserData) {
@@ -118,6 +126,7 @@ class UserDataStore(context: Context) {
         o.put("stats", JSONObject().apply { d.stats.forEach { (k, v) -> put(k.toString(), JSONArray().put(v.count).put(v.lastPlayed).put(v.listenMs)) } })
         o.put("daily", JSONObject().apply { d.daily.forEach { (k, v) -> put(k.toString(), v) } })
         o.put("favorites", JSONArray(d.favorites.toList()))
+        o.put("disliked", JSONArray(d.disliked.toList()))
         o.put("playlists", JSONArray().apply {
             d.playlists.forEach { p -> put(JSONObject().put("id", p.id).put("name", p.name).put("tracks", JSONArray(p.trackIds))) }
         })

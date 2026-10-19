@@ -240,11 +240,28 @@ class PlaybackService : MediaSessionService() {
                 if (headset && player.mediaItemCount > 0 && !player.isPlaying) player.play()
             }
         }
+        // Profil korektora wg aktualnego wyjścia (słuchawki / Bluetooth / USB / głośnik).
+        val profileCb = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = Dsp.switchProfile(currentOutputKind())
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = Dsp.switchProfile(currentOutputKind())
+        }
+        audioManager.registerAudioDeviceCallback(profileCb, Handler(Looper.getMainLooper()))
+        Dsp.switchProfile(currentOutputKind())
         // Przy rejestracji system zgłasza już podłączone urządzenia – ignorujemy pierwsze wywołanie.
         Handler(Looper.getMainLooper()).postDelayed({
             audioManager.registerAudioDeviceCallback(cb, Handler(Looper.getMainLooper()))
             headsetCallback = cb
         }, 1500)
+    }
+
+    private fun currentOutputKind(): String {
+        val outs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.toSet()
+        return when {
+            outs.any { it == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it == AudioDeviceInfo.TYPE_BLE_HEADSET || it == AudioDeviceInfo.TYPE_BLE_SPEAKER } -> "BLUETOOTH"
+            outs.any { it == AudioDeviceInfo.TYPE_WIRED_HEADSET || it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it == AudioDeviceInfo.TYPE_USB_HEADSET } -> "HEADPHONES"
+            outs.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> "USB"
+            else -> "SPEAKER"
+        }
     }
 
     private fun prefs() = getSharedPreferences("openamp_queue", MODE_PRIVATE)

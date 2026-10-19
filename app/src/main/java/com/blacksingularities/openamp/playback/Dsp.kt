@@ -21,7 +21,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tanh
 
-data class EqBand(val freq: Float, val gain: Float, val q: Float = 1.41f)
+enum class FilterType { PEAK, LOW_SHELF, HIGH_SHELF, LOW_PASS, HIGH_PASS, NOTCH }
+
+data class EqBand(val freq: Float, val gain: Float, val q: Float = 1.41f, val type: FilterType = FilterType.PEAK)
 
 data class DspPreset(val name: String, val bands: List<EqBand>, val builtIn: Boolean = false)
 
@@ -38,6 +40,15 @@ data class DspState(
     val limiter: Boolean = true,
     val preset: String = "Płaski",
     val userPresets: List<DspPreset> = emptyList(),
+    /** Kompresor dynamiki: próg (dB) i stosunek. */
+    val compressor: Boolean = false,
+    val compThreshold: Float = -18f,
+    val compRatio: Float = 3f,
+    /** Przesłuch słuchawkowy (0–1): łagodzi skrajną stereofonię nagrań. */
+    val crossfeed: Float = 0f,
+    /** Automatyczne profile korektora dla słuchawek, Bluetooth i głośnika. */
+    val autoProfiles: Boolean = true,
+    val profile: String = "SPEAKER",
 )
 
 /**
@@ -52,7 +63,71 @@ object Dsp {
     const val BASS_FREQ = 90f
     const val TREBLE_FREQ = 9000f
 
-    fun defaultBands() = ISO.map { EqBand(it, 0f) }
+    val BAND_COUNTS = listOf(5, 10, 15, 20, 31)
+
+    /** Częstotliwości pasm: 10 – oktawy ISO, 31 – tercje ISO, inne – rozkład logarytmiczny. */
+    fun freqsFor(n: Int): List<Float> = when (n) {
+        10 -> ISO.toList()
+        31 -> listOf(20f, 25f, 31.5f, 40f, 50f, 63f, 80f, 100f, 125f, 160f, 200f, 250f, 315f, 400f, 500f, 630f, 800f, 1000f, 1250f, 1600f, 2000f, 2500f, 3150f, 4000f, 5000f, 6300f, 8000f, 10000f, 12500f, 16000f, 20000f)
+        else -> List(n) { i -> (25.0 * Math.pow(16000.0 / 25.0, i / (n - 1.0))).toFloat().let { f -> if (f >= 1000) (Math.round(f / 100f) * 100f) else Math.round(f).toFloat() } }
+    }
+
+    /** Dobroć dopasowana do gęstości pasm (węższe przy większej liczbie pasm). */
+    fun qFor(n: Int) = when { n <= 5 -> 0.9f; n <= 10 -> 1.41f; n <= 15 -> 2.1f; n <= 20 -> 2.9f; else -> 4.3f }
+
+    fun defaultBands(n: Int = 10) = freqsFor(n).map { EqBand(it, 0f, qFor(n)) }
+
+    /** Wartość krzywej presetu (zdefiniowanej dla 10 pasm ISO) w dowolnej częstotliwości. */
+    fun curveAt(gains: List<Float>, f: Float): Float {
+        if (f <= ISO.first()) return gains.first()
+        if (f >= ISO.last()) return gains.last()
+        val i = ISO.indexOfLast { it <= f }
+        val a = kotlin.math.ln(ISO[i]); val b = kotlin.math.ln(ISO[i + 1])
+        val t = (kotlin.math.ln(f) - a) / (b - a)
+        return gains[i] + (gains[i + 1] - gains[i]) * t
+    }
+
+    /** Zmiana liczby pasm z zachowaniem kształtu krzywej. */
+    fun setBandCount(n: Int) = update { s ->
+        val bandsOnly = s.copy(preamp = 0f, bass = 0f, treble = 0f)
+        val q = qFor(n)
+        val newBands = freqsFor(n).map { f -> EqBand(f, (responseDb(bandsOnly, f) * 2).let { Math.round(it) / 2f }.coerceIn(-MAX_GAIN, MAX_GAIN), q) }
+        s.copy(bands = newBands)
+    }
+
+    /** Filtr dla pasma (wg typu). */
+    fun filterFor(b: EqBand, rate: Float): Biquad = when (b.type) {
+        FilterType.PEAK -> Biquad.peaking(b.freq, b.gain, b.q, rate)
+        FilterType.LOW_SHELF -> Biquad.lowShelf(b.freq, b.gain, rate)
+        FilterType.HIGH_SHELF -> Biquad.highShelf(b.freq, b.gain, rate)
+        FilterType.LOW_PASS -> Biquad.lowPass(b.freq, b.q, rate)
+        FilterType.HIGH_PASS -> Biquad.highPass(b.freq, b.q, rate)
+        FilterType.NOTCH -> Biquad.notch(b.freq, b.q, rate)
+    }
+
+    /** Czy pasmo w ogóle zmienia dźwięk (pasma z zerowym wzmocnieniem są pomijane). */
+    fun isActive(b: EqBand) = when (b.type) {
+        FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF -> kotlin.math.abs(b.gain) > 0.05f
+        else -> true
+    }
+
+    // ---------- Profile wyjścia (słuchawki / Bluetooth / głośnik / USB) ----------
+
+    /**
+     * Przełączenie profilu po zmianie urządzenia wyjściowego: bieżące ustawienia trafiają do
+     * starego profilu, a ustawienia nowego (jeśli były zapisane) są wczytywane.
+     */
+    fun switchProfile(kind: String) {
+        val cur = _state.value
+        if (cur.profile == kind) return
+        if (!cur.autoProfiles) { update { it.copy(profile = kind) }; return }
+        if (::prefs.isInitialized) prefs.edit().putString("profile_" + cur.profile, toJson(cur).toString()).apply()
+        val saved = if (::prefs.isInitialized) prefs.getString("profile_$kind", null) else null
+        update { s ->
+            val loaded = saved?.let { runCatching { fromJson(JSONObject(it)) }.getOrNull() }
+            (loaded ?: s).copy(userPresets = s.userPresets, autoProfiles = s.autoProfiles, profile = kind)
+        }
+    }
 
     private lateinit var prefs: SharedPreferences
     private val _state = MutableStateFlow(DspState())
@@ -107,11 +182,14 @@ object Dsp {
 
     fun applyPreset(name: String) = update { s ->
         val user = s.userPresets.firstOrNull { it.name == name }
-        val bands = user?.bands ?: builtIn.firstOrNull { it.first == name }?.second?.mapIndexed { i, gain -> EqBand(ISO[i], gain) } ?: return@update s
+        val n = s.bands.size
+        val bands = user?.bands ?: builtIn.firstOrNull { it.first == name }?.second?.let { gains ->
+            freqsFor(n).map { f -> EqBand(f, (Math.round(curveAt(gains, f) * 2) / 2f), qFor(n)) }
+        } ?: return@update s
         s.copy(bands = bands, preset = name, enabled = true)
     }
 
-    fun reset() = update { it.copy(bands = defaultBands(), preamp = 0f, bass = 0f, treble = 0f, balance = 0f, width = 1f, mono = false, swap = false, preset = "Płaski") }
+    fun reset() = update { it.copy(bands = defaultBands(it.bands.size), compressor = false, crossfeed = 0f, preamp = 0f, bass = 0f, treble = 0f, balance = 0f, width = 1f, mono = false, swap = false, preset = "Płaski") }
 
     fun savePreset(name: String) = update { s ->
         s.copy(userPresets = s.userPresets.filterNot { it.name == name } + DspPreset(name, s.bands), preset = name)
@@ -131,22 +209,22 @@ object Dsp {
     fun responseDb(s: DspState, f: Float, rate: Float = 48000f): Float {
         if (!s.enabled) return 0f
         var db = s.preamp
-        for (b in s.bands) if (b.gain != 0f) db += Biquad.peaking(b.freq, b.gain, b.q, rate).magnitudeDb(f, rate)
+        for (b in s.bands) if (isActive(b)) db += filterFor(b, rate).magnitudeDb(f, rate)
         if (s.bass != 0f) db += Biquad.lowShelf(BASS_FREQ, s.bass, rate).magnitudeDb(f, rate)
         if (s.treble != 0f) db += Biquad.highShelf(TREBLE_FREQ, s.treble, rate).magnitudeDb(f, rate)
         return db
     }
 
-    fun bandResponseDb(b: EqBand, f: Float, rate: Float = 48000f) = Biquad.peaking(b.freq, b.gain, b.q, rate).magnitudeDb(f, rate)
+    fun bandResponseDb(b: EqBand, f: Float, rate: Float = 48000f) = filterFor(b, rate).magnitudeDb(f, rate)
 
     // ---------- JSON ----------
 
     private fun bandsJson(list: List<EqBand>) = JSONArray().apply {
-        list.forEach { put(JSONArray().put(it.freq.toDouble()).put(it.gain.toDouble()).put(it.q.toDouble())) }
+        list.forEach { put(JSONArray().put(it.freq.toDouble()).put(it.gain.toDouble()).put(it.q.toDouble()).put(it.type.ordinal)) }
     }
 
     private fun bandsFrom(a: JSONArray?): List<EqBand>? = a?.let {
-        List(it.length()) { i -> it.getJSONArray(i).let { b -> EqBand(b.getDouble(0).toFloat(), b.getDouble(1).toFloat(), b.getDouble(2).toFloat()) } }
+        List(it.length()) { i -> it.getJSONArray(i).let { b -> EqBand(b.getDouble(0).toFloat(), b.getDouble(1).toFloat(), b.getDouble(2).toFloat(), FilterType.entries.getOrElse(b.optInt(3, 0)) { FilterType.PEAK }) } }
     }
 
     private fun toJson(s: DspState) = JSONObject()
@@ -154,6 +232,8 @@ object Dsp {
         .put("bass", s.bass.toDouble()).put("treble", s.treble.toDouble()).put("balance", s.balance.toDouble())
         .put("width", s.width.toDouble()).put("mono", s.mono).put("swap", s.swap).put("limiter", s.limiter)
         .put("preset", s.preset)
+        .put("comp", s.compressor).put("compT", s.compThreshold.toDouble()).put("compR", s.compRatio.toDouble())
+        .put("xfeed", s.crossfeed.toDouble()).put("autoProf", s.autoProfiles).put("profile", s.profile)
         .put("user", JSONArray().apply { s.userPresets.forEach { put(JSONObject().put("name", it.name).put("bands", bandsJson(it.bands))) } })
 
     private fun fromJson(o: JSONObject): DspState {
@@ -163,7 +243,7 @@ object Dsp {
         } ?: emptyList()
         return DspState(
             enabled = o.optBoolean("enabled", d.enabled),
-            bands = bandsFrom(o.optJSONArray("bands"))?.takeIf { it.size == ISO.size } ?: d.bands,
+            bands = bandsFrom(o.optJSONArray("bands"))?.takeIf { it.size >= 3 } ?: d.bands,
             preamp = o.optDouble("preamp", 0.0).toFloat(),
             bass = o.optDouble("bass", 0.0).toFloat(),
             treble = o.optDouble("treble", 0.0).toFloat(),
@@ -174,6 +254,12 @@ object Dsp {
             limiter = o.optBoolean("limiter", true),
             preset = o.optString("preset", d.preset),
             userPresets = user,
+            compressor = o.optBoolean("comp", false),
+            compThreshold = o.optDouble("compT", -18.0).toFloat(),
+            compRatio = o.optDouble("compR", 3.0).toFloat(),
+            crossfeed = o.optDouble("xfeed", 0.0).toFloat(),
+            autoProfiles = o.optBoolean("autoProf", true),
+            profile = o.optString("profile", "SPEAKER"),
         )
     }
 }
@@ -216,6 +302,26 @@ class Biquad(val b0: Float, val b1: Float, val b2: Float, val a1: Float, val a2:
         }
 
         fun lowShelf(f: Float, gainDb: Float, rate: Float) = shelf(f, gainDb, rate, false)
+
+        private fun wAlpha(f: Float, q: Float, rate: Float): Pair<Double, Double> {
+            val w = 2 * PI * f.coerceIn(10f, rate * 0.45f) / rate
+            return w to sin(w) / (2 * q.coerceAtLeast(0.1f))
+        }
+
+        fun lowPass(f: Float, q: Float, rate: Float): Biquad {
+            val (w, al) = wAlpha(f, q, rate); val c = cos(w)
+            return norm((1 - c) / 2, 1 - c, (1 - c) / 2, 1 + al, -2 * c, 1 - al)
+        }
+
+        fun highPass(f: Float, q: Float, rate: Float): Biquad {
+            val (w, al) = wAlpha(f, q, rate); val c = cos(w)
+            return norm((1 + c) / 2, -(1 + c), (1 + c) / 2, 1 + al, -2 * c, 1 - al)
+        }
+
+        fun notch(f: Float, q: Float, rate: Float): Biquad {
+            val (w, al) = wAlpha(f, q, rate); val c = cos(w)
+            return norm(1.0, -2 * c, 1.0, 1 + al, -2 * c, 1 - al)
+        }
         fun highShelf(f: Float, gainDb: Float, rate: Float) = shelf(f, gainDb, rate, true)
     }
 }
@@ -233,6 +339,9 @@ class DspProcessor : BaseAudioProcessor() {
     private var gainL = 1f
     private var gainR = 1f
     private var limGain = 1f
+    private var compEnv = 0f
+    private var xfL = 0f
+    private var xfR = 0f
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         val enc = inputAudioFormat.encoding
@@ -252,7 +361,7 @@ class DspProcessor : BaseAudioProcessor() {
         val r = rate.toFloat()
         val list = ArrayList<Biquad>()
         if (s.enabled) {
-            s.bands.filter { abs(it.gain) > 0.05f }.forEach { list += Biquad.peaking(it.freq, it.gain, it.q, r) }
+            s.bands.filter { Dsp.isActive(it) }.forEach { list += Dsp.filterFor(it, r) }
             if (abs(s.bass) > 0.05f) list += Biquad.lowShelf(Dsp.BASS_FREQ, s.bass, r)
             if (abs(s.treble) > 0.05f) list += Biquad.highShelf(Dsp.TREBLE_FREQ, s.treble, r)
         }
@@ -303,7 +412,35 @@ class DspProcessor : BaseAudioProcessor() {
                         val sd = (l - r) * 0.5f * s.width
                         l = m + sd; r = m - sd
                     }
+                    if (s.crossfeed > 0f) {
+                        // Filtr dolnoprzepustowy ~700 Hz na sygnale z przeciwnego kanału.
+                        val k = 1f - kotlin.math.exp(-2f * PI.toFloat() * 700f / rate)
+                        xfL += (l - xfL) * k; xfR += (r - xfR) * k
+                        val g = s.crossfeed * 0.45f
+                        val nl = (l + xfR * g) / (1f + g); val nr = (r + xfL * g) / (1f + g)
+                        l = nl; r = nr
+                    }
                     frame[0] = l * gainL; frame[1] = r * gainR
+                }
+                if (s.compressor) {
+                    var peak = 0f
+                    for (c in 0 until channels) peak = maxOf(peak, abs(frame[c]))
+                    // Detektor obwiedni: atak ~5 ms, powrót ~120 ms.
+                    val att = 1f - kotlin.math.exp(-1f / (rate * 0.005f))
+                    val rel = 1f - kotlin.math.exp(-1f / (rate * 0.12f))
+                    compEnv += (peak - compEnv) * (if (peak > compEnv) att else rel)
+                    val envDb = 20f * log10(compEnv.coerceAtLeast(1e-6f))
+                    val over = envDb - s.compThreshold
+                    if (over > 0f) {
+                        val gainDb = -over * (1f - 1f / s.compRatio.coerceAtLeast(1f))
+                        val makeup = -s.compThreshold * (1f - 1f / s.compRatio.coerceAtLeast(1f)) * 0.5f
+                        val g = 10f.pow((gainDb + makeup) / 20f)
+                        for (c in 0 until channels) frame[c] *= g
+                    } else {
+                        val makeup = -s.compThreshold * (1f - 1f / s.compRatio.coerceAtLeast(1f)) * 0.5f
+                        val g = 10f.pow(makeup / 20f)
+                        for (c in 0 until channels) frame[c] *= g
+                    }
                 }
                 if (s.limiter) {
                     var peak = 0f

@@ -1,6 +1,16 @@
 package com.blacksingularities.openamp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.Compress
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.Usb
+import com.blacksingularities.openamp.playback.FilterType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -124,7 +134,7 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
             item {
                 Panel(padding = 10.dp) {
                     ResponseGraph(s, live, selected, { selected = it }, Modifier.fillMaxWidth().height(250.dp))
-                    if (selected in s.bands.indices) BandEditor(s.bands[selected], selected) { selected = -1 }
+                    if (selected in s.bands.indices) BandEditor(s.bands[selected], selected, s.bands.size) { selected = -1 }
                 }
             }
             // Fadery
@@ -133,9 +143,10 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                     Overline(tr("Pasma"), trailing = {
                         Text(tr("Przedwzmacniacz") + " " + db(s.preamp) + " dB", style = MaterialTheme.typography.labelMedium, fontFamily = MonoNumbers, color = MaterialTheme.colorScheme.primary)
                     })
-                    Row(Modifier.fillMaxWidth()) {
+                    val many = s.bands.size > 10
+                    Row(if (many) Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()) else Modifier.fillMaxWidth()) {
                         s.bands.forEachIndexed { i, b ->
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(if (many) Modifier.width(38.dp) else Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     db(b.gain).removeSuffix(".0"), fontFamily = MonoNumbers, style = MaterialTheme.typography.labelSmall,
                                     color = if (i == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -181,6 +192,33 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                     PillToggle(tr("Inteligentny korektor: preset według gatunku utworu"), settings.smartEq, { vm.updateSettings { it.copy(smartEq = !it.smartEq) } })
                 }
             }
+            // Pasma, profile wyjścia, dynamika
+            item {
+                Panel(padding = 12.dp) {
+                    Overline(tr("Liczba pasm"))
+                    ChoiceTiles(Dsp.BAND_COUNTS, s.bands.size, { tr("{0} pasm", it) }) { selected = -1; Dsp.setBandCount(it) }
+                    Gap(14.dp)
+                    Overline(tr("Profile wyjścia"))
+                    ChoiceTiles(OUTPUTS, s.profile, { outputLabel(it) }, { outputIcon(it) }) { Dsp.switchProfile(it) }
+                    Gap(8.dp)
+                    TileGrid(listOf(
+                        Tile(Icons.Rounded.AutoAwesome, tr("Auto profil"), tr("Osobne ustawienia korektora dla słuchawek, Bluetooth, USB i głośnika – przełączane samoczynnie"), s.autoProfiles) { v -> Dsp.update { it.copy(autoProfiles = v) } },
+                        Tile(Icons.Rounded.Compress, tr("Kompresor"), tr("Kompresor dynamiki – wyrównuje głośne i ciche fragmenty"), s.compressor) { v -> Dsp.update { it.copy(compressor = v) } },
+                        Tile(Icons.Rounded.Headphones, tr("Crossfeed"), tr("Przesłuch słuchawkowy – mniej męczące stereo"), s.crossfeed > 0f) { v -> Dsp.update { it.copy(crossfeed = if (v) 0.5f else 0f) } },
+                        Tile(Icons.Rounded.Shield, tr("Limiter"), tr("Limiter chroni przed przesterowaniem"), s.limiter) { v -> Dsp.update { it.copy(limiter = v) } },
+                    ))
+                    if (s.compressor || s.crossfeed > 0f) {
+                        Gap(12.dp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            if (s.compressor) {
+                                Knob(tr("Próg"), s.compThreshold, -40f..0f, { v -> Dsp.update { it.copy(compThreshold = v.roundToInt().toFloat()) } }, { "${it.roundToInt()} dB" }, neutral = 0f, default = -18f)
+                                Knob(tr("Stosunek"), s.compRatio, 1f..10f, { v -> Dsp.update { it.copy(compRatio = (v * 2).roundToInt() / 2f) } }, { String.format(Locale.ROOT, "%.1f:1", it) }, neutral = 1f, default = 3f)
+                            }
+                            if (s.crossfeed > 0f) Knob(tr("Crossfeed"), s.crossfeed, 0f..1f, { v -> Dsp.update { it.copy(crossfeed = ((v * 20).roundToInt() / 20f).coerceAtLeast(0.05f)) } }, { "${(it * 100).roundToInt()}%" })
+                        }
+                    }
+                }
+            }
             // Barwa i przestrzeń
             item {
                 Panel(padding = 14.dp) {
@@ -202,7 +240,6 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                     }
                     VSpace(12.dp)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PillToggle(tr("Limiter"), s.limiter, { Dsp.update { it.copy(limiter = !it.limiter) } })
                         PillToggle(tr("Mono"), s.mono, { Dsp.update { it.copy(mono = !it.mono) } })
                         PillToggle(tr("Zamiana kanałów"), s.swap, { Dsp.update { it.copy(swap = !it.swap) } })
                     }
@@ -319,7 +356,7 @@ private fun DrawScope.node(c: Offset, sel: Boolean, accent: Color, alpha: Float)
 }
 
 @Composable
-private fun BandEditor(b: EqBand, index: Int, onClose: () -> Unit) {
+private fun BandEditor(b: EqBand, index: Int, n: Int, onClose: () -> Unit) {
     Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(tr("Pasmo {0}", index + 1), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -330,11 +367,16 @@ private fun BandEditor(b: EqBand, index: Int, onClose: () -> Unit) {
         Slider(ln(b.freq / F_MIN) / ln(F_MAX / F_MIN), { Dsp.setBand(index, b.copy(freq = (F_MIN * (F_MAX / F_MIN).pow(it)).roundToInt().toFloat())) })
         Text(tr("Dobroć (szerokość pasma)"), style = MaterialTheme.typography.labelSmall)
         Slider(b.q, { Dsp.setBand(index, b.copy(q = (it * 20).roundToInt() / 20f)) }, valueRange = 0.3f..8f)
+        Text(tr("Typ filtra"), style = MaterialTheme.typography.labelSmall)
+        Gap(4.dp)
+        ChoiceTiles(FilterType.entries, b.type, { filterLabel(it) }) { Dsp.setBand(index, b.copy(type = it, q = if (it == FilterType.PEAK) b.q else 0.71f)) }
+        Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillToggle(tr("Szerokie"), b.q < 1f, { Dsp.setBand(index, b.copy(q = 0.7f)) })
             PillToggle(tr("Standard"), b.q in 1f..2f, { Dsp.setBand(index, b.copy(q = 1.41f)) })
             PillToggle(tr("Wąskie"), b.q > 2f, { Dsp.setBand(index, b.copy(q = 4f)) })
-            PillToggle("ISO", b.freq == Dsp.ISO[index], { Dsp.setBand(index, b.copy(freq = Dsp.ISO[index])) })
+            val iso = Dsp.freqsFor(n).getOrNull(index)
+            if (iso != null) PillToggle("ISO", b.freq == iso, { Dsp.setBand(index, b.copy(freq = iso)) })
         }
     }
 }
@@ -366,4 +408,29 @@ private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onCl
         VSpace(6.dp)
         Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, color = if (selected) accent else MaterialTheme.colorScheme.onSurface)
     }
+}
+
+private val OUTPUTS = listOf("SPEAKER", "HEADPHONES", "BLUETOOTH", "USB")
+
+fun outputLabel(k: String) = when (k) {
+    "HEADPHONES" -> tr("Słuchawki przewodowe")
+    "BLUETOOTH" -> tr("Bluetooth")
+    "USB" -> tr("USB / DAC")
+    else -> tr("Głośnik")
+}
+
+private fun outputIcon(k: String) = when (k) {
+    "HEADPHONES" -> Icons.Rounded.Headphones
+    "BLUETOOTH" -> Icons.Rounded.Bluetooth
+    "USB" -> Icons.Rounded.Usb
+    else -> Icons.Rounded.Speaker
+}
+
+fun filterLabel(t: FilterType) = when (t) {
+    FilterType.PEAK -> tr("Szczyt")
+    FilterType.LOW_SHELF -> tr("Półka niska")
+    FilterType.HIGH_SHELF -> tr("Półka wysoka")
+    FilterType.LOW_PASS -> tr("Dolnoprzep.")
+    FilterType.HIGH_PASS -> tr("Górnoprzep.")
+    FilterType.NOTCH -> tr("Wycięcie")
 }

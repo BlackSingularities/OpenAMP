@@ -19,6 +19,28 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.blacksingularities.openamp.Graph
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -107,47 +129,96 @@ fun AppRoot(vm: MainViewModel) {
 private fun Main(vm: MainViewModel) {
     val snackbar = remember { SnackbarHostState() }
     val track by vm.currentTrack.collectAsState()
+    val hints = remember { HintState() }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
-    BackHandler(enabled = vm.nowPlayingOpen || vm.queueOpen || vm.searchOpen || vm.stack.size > 1) { vm.back() }
-    val miniHeight = if (track != null) 92.dp else 0.dp
+    BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.searchOpen || vm.stack.size > 1) { vm.back() }
+    val onPlayer = vm.route == Route.Player
+    val bottom = 72.dp + if (track != null && !onPlayer) 70.dp else 0.dp
 
-    Box(Modifier.fillMaxSize()) {
-        AnimatedContent(
-            vm.route to vm.stack.size,
-            transitionSpec = {
-                val forward = targetState.second >= initialState.second
-                (slideInHorizontally(tween(260)) { if (forward) it / 4 else -it / 4 } + fadeIn(tween(260))) togetherWith
-                    (slideOutHorizontally(tween(260)) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(200)))
-            },
-            contentKey = { it.first },
-            label = "route",
-        ) { (r, _) ->
-            val bottom = miniHeight
-            Box(Modifier.navigationBarsPadding()) {
-                when (r) {
-                    Route.Library -> LibraryScreen(vm, bottom)
-                    is Route.Detail -> DetailScreen(vm, r, bottom)
-                    Route.Settings -> SettingsScreen(vm, bottom)
-                    Route.Equalizer -> EqualizerScreen(vm, bottom)
-                    Route.Stats -> StatsScreen(vm, bottom)
+    CompositionLocalProvider(LocalHints provides hints) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            AnimatedContent(
+                vm.route to vm.stack.size,
+                transitionSpec = {
+                    val forward = targetState.second >= initialState.second
+                    (slideInHorizontally(tween(240)) { if (forward) it / 5 else -it / 5 } + fadeIn(tween(240))) togetherWith
+                        (slideOutHorizontally(tween(240)) { if (forward) -it / 5 else it / 5 } + fadeOut(tween(180)))
+                },
+                contentKey = { it.first },
+                label = "route",
+            ) { (r, _) ->
+                Box(Modifier.fillMaxSize().navigationBarsPadding()) {
+                    when (r) {
+                        Route.Player -> AmbientHost(vm, vm.settings.value.ambient) { NowPlayingScreen(vm, bottom) }
+                        Route.Library -> LibraryScreen(vm, bottom)
+                        is Route.Detail -> DetailScreen(vm, r, bottom)
+                        Route.Settings -> SettingsScreen(vm, bottom)
+                        Route.Equalizer -> EqualizerScreen(vm, bottom)
+                        Route.Stats -> StatsScreen(vm, bottom)
+                    }
                 }
             }
-        }
-        Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
-            AnimatedVisibility(!vm.nowPlayingOpen, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
-                MiniPlayer(vm)
+            Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
+                AnimatedVisibility(track != null && !onPlayer, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+                    MiniPlayer(vm)
+                }
+                BottomBar(vm)
             }
-        }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = miniHeight))
-        AnimatedVisibility(
-            vm.nowPlayingOpen,
-            enter = slideInVertically(tween(380)) { it } + fadeIn(tween(250)),
-            exit = slideOutVertically(tween(320)) { it } + fadeOut(tween(250)),
-        ) {
-            NowPlayingScreen(vm)
+            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = bottom))
+            HintBubble(hints, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp))
         }
     }
+    if (vm.menuOpen) MenuSheet(vm)
     UpdateDialog(vm)
+}
+
+/** Dolny pasek: biblioteka, korektor, szukaj, menu – płaskie ikony na czarnej pigułce. */
+@Composable
+private fun BottomBar(vm: MainViewModel) {
+    val r = vm.route
+    Row(
+        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp).fillMaxWidth().height(60.dp)
+            .clip(RoundedCornerShape(30.dp)).background(Flat.Block.copy(alpha = 0.92f)),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats
+        RoundButton(Icons.Rounded.GridView, tr("Biblioteka"), {
+            if (r == Route.Library) vm.nowPlayingOpen = true else vm.goTab(Route.Library)
+        }, active = inLibrary && !vm.searchOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        RoundButton(Icons.Rounded.Equalizer, tr("Korektor"), {
+            if (r == Route.Equalizer) vm.nowPlayingOpen = true else vm.goTab(Route.Equalizer)
+        }, active = r == Route.Equalizer, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        RoundButton(Icons.Rounded.Search, tr("Szukaj"), {
+            vm.goTab(Route.Library); vm.searchOpen = true
+        }, active = vm.searchOpen && r == Route.Library, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+    }
+}
+
+/** Menu (czwarty przycisk paska): skróty do wszystkich miejsc aplikacji. */
+@Composable
+private fun MenuSheet(vm: MainViewModel) {
+    val sleepAt by Graph.sleepAt.collectAsState()
+    ModalBottomSheet(onDismissRequest = { vm.menuOpen = false }, containerColor = Color.Black, dragHandle = null) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            SectionHeader(Icons.Rounded.Menu, "OpenAMP")
+            val go: (() -> Unit) -> () -> Unit = { a -> { vm.menuOpen = false; a() } }
+            TileGrid(
+                listOf(
+                    Tile(Icons.Rounded.PlayCircle, tr("Odtwarzacz"), tr("Teraz odtwarzane"), vm.route == Route.Player) { go { vm.nowPlayingOpen = true }() },
+                    Tile(Icons.AutoMirrored.Rounded.QueueMusic, tr("Kolejka"), tr("Kolejka"), false) { go { vm.nowPlayingOpen = true; vm.queueOpen = true }() },
+                    Tile(Icons.Rounded.BarChart, tr("Statystyki"), tr("Statystyki"), vm.route == Route.Stats) { go { vm.goTab(Route.Stats) }() },
+                    Tile(Icons.Rounded.Settings, tr("Ustawienia"), tr("Ustawienia"), vm.route == Route.Settings) { go { vm.goTab(Route.Settings) }() },
+                    Tile(Icons.Rounded.Bedtime, tr("Wyłącznik"), tr("Wyłącznik czasowy"), sleepAt != null) { go { vm.nowPlayingOpen = true; vm.sleepDialog = true }() },
+                    Tile(Icons.Rounded.Lyrics, tr("Tekst"), tr("Tekst utworu"), vm.showLyrics) { go { vm.nowPlayingOpen = true; vm.showLyrics = !vm.showLyrics }() },
+                    Tile(Icons.Rounded.Refresh, tr("Skanuj"), tr("Odśwież bibliotekę"), false) { go { vm.rescan() }() },
+                    Tile(Icons.Rounded.SystemUpdate, tr("Aktualizacje"), tr("Sprawdź teraz"), false) { go { vm.updateDialog = true; vm.checkUpdate() }() },
+                ),
+            )
+            Gap(12.dp)
+        }
+    }
 }
 
 @Composable

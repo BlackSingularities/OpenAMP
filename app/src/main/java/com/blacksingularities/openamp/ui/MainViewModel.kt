@@ -46,6 +46,7 @@ import kotlinx.coroutines.withContext
 enum class DetailKind { ALBUM, ARTIST, GENRE, FOLDER, PLAYLIST, SMART, MIX }
 
 sealed interface Route {
+    data object Player : Route
     data object Library : Route
     data class Detail(val kind: DetailKind, val key: String) : Route
     data object Settings : Route
@@ -74,8 +75,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val scanning: StateFlow<Boolean> = Graph.library.scanning
     val userData: StateFlow<UserData> = Graph.userData.state
 
-    val stack = mutableStateListOf<Route>(Route.Library)
-    var nowPlayingOpen by mutableStateOf(false)
+    val stack = mutableStateListOf<Route>(Route.Player)
+    /** Odtwarzacz to strona główna (korzeń stosu); „zamknięcie” go przechodzi do biblioteki. */
+    var nowPlayingOpen: Boolean
+        get() = route == Route.Player
+        set(v) {
+            if (v) { while (stack.size > 1) stack.removeAt(stack.lastIndex) }
+            else if (route == Route.Player) open(Route.Library)
+        }
+    var menuOpen by mutableStateOf(false)
+    /** Biblioteka pokazuje listę kategorii zamiast utworów. */
+    var libraryRoot by mutableStateOf(false)
+    var sleepDialog by mutableStateOf(false)
+
+    /** Dolny pasek: przejście do sekcji bez rozbudowy stosu. */
+    fun goTab(r: Route) {
+        while (stack.size > 1) stack.removeAt(stack.lastIndex)
+        if (r != Route.Player) stack.add(r)
+    }
     var queueOpen by mutableStateOf(false)
     var showLyrics by mutableStateOf(Graph.settings.value.lyricsByDefault)
     var query by mutableStateOf("")
@@ -206,8 +223,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun back(): Boolean {
         when {
             queueOpen -> queueOpen = false
-            nowPlayingOpen -> nowPlayingOpen = false
+            menuOpen -> menuOpen = false
             searchOpen -> { searchOpen = false; query = "" }
+            route == Route.Library && !libraryRoot -> libraryRoot = true
             stack.size > 1 -> stack.removeAt(stack.lastIndex)
             else -> return false
         }

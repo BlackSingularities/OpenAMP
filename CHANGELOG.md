@@ -1,5 +1,18 @@
 # Historia zmian
 
+## 1.2.0
+
+- Nowy układ w stylu OpenPDF: płaski czarno-biały interfejs, przyciski-koła i pigułki, sprężysta reakcja na dotyk z haptyką, dymki z nazwą po przytrzymaniu.
+- Odtwarzacz jest stroną główną: duża okładka z przyciskami „lubię / nie lubię” i kolejką, tytuł i wykonawca w pigułkach, rząd szybkich akcji z licznikiem pozycji w kolejce, fala dźwiękowa całego utworu z nałożonymi przyciskami sterowania i parametry pliku.
+- Dolny pasek: Biblioteka, Korektor, Szukaj, Menu (skróty do kolejki, statystyk, ustawień, wyłącznika, tekstu, skanowania i aktualizacji).
+- Kompaktowa biblioteka nastawiona na utwory: kategorie (wszystkie, ostatnio dodane, najczęściej i ostatnio odtwarzane, ulubione, miksy, albumy, wykonawcy, gatunki, foldery, playlisty), wiersze z metadanymi i sześć poziomów gęstości – od samego tekstu po siatkę – zmieniane szczypaniem dwoma palcami.
+- Zaznaczanie wielu utworów: odtwórz, zagraj jako następne, dodaj do kolejki, do playlisty lub ulubionych.
+- Korektor: od 5 do 31 pasm, typ filtra dla każdego pasma (szczyt, półki, dolno- i górnoprzepustowy, wycięcie), kompresor dynamiki, crossfeed dla słuchawek.
+- Inteligentne profile korektora: osobne ustawienia dla głośnika, słuchawek, Bluetooth i USB przełączane samoczynnie po zmianie wyjścia.
+- „Nie lubię”: pomija utwór i wyklucza go z miksów i sprytnego mieszania.
+- Inteligentny tryb AMOLED: po 20 s bez dotyku podczas grania ekran przechodzi w czarny tryb z zegarem, okładką i bieżącą linią tekstu, z ochroną przed wypaleniem.
+- Nowe style paska przewijania: fala całego utworu (domyślna) i przesuwana taśma.
+
 ## 1.1.0
 
 - Nowy silnik dźwięku OpenAMP (DSP w torze odtwarzacza, niezależny od korektora telefonu): 10-pasmowy korektor parametryczny z regulacją częstotliwości, wzmocnienia i dobroci Q każdego pasma, półki basów i sopranów, przedwzmacniacz z trybem automatycznym, balans, szerokość stereo, mono, zamiana kanałów i limiter.

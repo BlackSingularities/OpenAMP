@@ -19,7 +19,8 @@ object Smart {
      * Sprytne mieszanie: losowość ważona (rzadziej słuchane i ulubione częściej na początku),
      * a potem rozsuwanie utworów tego samego wykonawcy, żeby nie grały jeden po drugim.
      */
-    fun shuffle(tracks: List<Track>, data: UserData, seed: Long = System.nanoTime()): List<Track> {
+    fun shuffle(all: List<Track>, data: UserData, seed: Long = System.nanoTime()): List<Track> {
+        val tracks = all.filter { it.id !in data.disliked }.ifEmpty { all }
         if (tracks.size < 3) return tracks.shuffled()
         val rnd = Random(seed)
         val now = System.currentTimeMillis()
@@ -40,7 +41,8 @@ object Smart {
         return out
     }
 
-    fun mixes(all: List<Track>, data: UserData): List<Mix> {
+    fun mixes(library: List<Track>, data: UserData): List<Mix> {
+        val all = library.filter { it.id !in data.disliked }
         if (all.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
         val out = ArrayList<Mix>()
