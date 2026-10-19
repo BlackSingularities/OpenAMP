@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_cover_name">OpenAMP · Okładka</string>
+    <string name="widget_cover_desc">Okładka na całą powierzchnię z tytułem i przyciskami</string>
+    <string name="widget_bar_name">OpenAMP · Pasek</string>
+    <string name="widget_bar_desc">Zwarty pasek: okładka, tytuł, serduszko i sterowanie</string>
+    <string name="widget_player_name">OpenAMP · Odtwarzacz</string>
+    <string name="widget_player_desc">Pełny odtwarzacz: postęp, czasy, losowanie, powtarzanie i serduszko</string>
+    <string name="widget_shortcuts_name">OpenAMP · Skróty</string>
+    <string name="widget_shortcuts_desc">Miksy, losuj wszystko, ulubione, wyłącznik czasowy i więcej</string>
+</resources>

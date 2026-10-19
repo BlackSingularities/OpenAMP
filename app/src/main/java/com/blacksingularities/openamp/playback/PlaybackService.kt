@@ -28,6 +28,7 @@ import com.blacksingularities.openamp.R
 import com.blacksingularities.openamp.data.RepeatMode
 import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
+import com.blacksingularities.openamp.widget.WidgetHub
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -127,6 +128,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     private val listener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            // Widżety na pulpicie: nowy utwór, pauza, losowanie, powtarzanie…
+            WidgetHub.publish(player)
+        }
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             flushListen()
             pendingId = mediaItem?.mediaId?.toLongOrNull()
@@ -203,6 +209,7 @@ class PlaybackService : MediaSessionService() {
                     if (++saveCounter >= 10) { saveCounter = 0; saveQueue() }
                 }
                 lastTick = now
+                WidgetHub.tick(player)
                 val at = Graph.sleepAt.value
                 if (at != null && now >= at) {
                     Graph.clearSleep()
@@ -297,6 +304,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        WidgetHub.serviceStopped()
         saveQueue()
         flushListen()
         headsetCallback?.let { audioManager.unregisterAudioDeviceCallback(it) }

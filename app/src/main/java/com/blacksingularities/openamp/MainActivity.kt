@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.blacksingularities.openamp.ui.AppRoot
 import com.blacksingularities.openamp.ui.MainViewModel
+import com.blacksingularities.openamp.ui.Route
 import com.blacksingularities.openamp.update.UpdateManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -35,7 +36,14 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         intent ?: return
-        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) vm.nowPlayingOpen = true
+        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) vm.goTab(Route.Player)
+        // Skróty z widżetów na pulpicie.
+        when (intent.getStringExtra(EXTRA_ROUTE)) {
+            "queue" -> vm.goTab(Route.Queue)
+            "library" -> vm.goTab(Route.Library)
+            "search" -> vm.goTab(Route.Search)
+            "equalizer" -> vm.goTab(Route.Equalizer)
+        }
         if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE, false)) {
             vm.updateDialog = true
             vm.checkUpdate()
@@ -61,5 +69,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_PLAYER = "open_player"
         const val EXTRA_OPEN_UPDATE = "open_update"
+        const val EXTRA_ROUTE = "route"
     }
 }
