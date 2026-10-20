@@ -151,6 +151,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             launch {
                 val bmp = ArtworkLoader.load(getApplication(), t, 900)
                 _artAccent.value = bmp?.let { withContext(Dispatchers.Default) { vibrantColor(it) } }
+                com.blacksingularities.openamp.Graph.artAccent.value = _artAccent.value
             }
             launch { _fileInfo.value = withContext(Dispatchers.IO) { readFileInfo(t) } }
             launch { _waveform.value = Waveform.load(getApplication(), t) }

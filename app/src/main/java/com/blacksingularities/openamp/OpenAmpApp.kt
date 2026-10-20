@@ -27,6 +27,9 @@ object Graph {
     lateinit var curator: com.blacksingularities.openamp.ai.CuratorStore
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Akcent z okładki bieżącego utworu – wspólny dla aplikacji i okien poza nią (edytor widżetu). */
+    val artAccent = MutableStateFlow<Int?>(null)
+
     private val scanLock = Mutex()
     private var scannedOnce = false
 
