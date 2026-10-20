@@ -41,13 +41,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.rounded.Pause
@@ -432,16 +432,21 @@ private fun SeekArea(
     }
 }
 
-/** Górny pasek: „więcej” po lewej, po prawej przycisk listy – kolejne dotknięcia: lista odtwarzania, potem biblioteka. */
+/** Górny pasek, celowo stonowany: po lewej przejście do listy odtwarzania, po prawej „więcej”. */
 @Composable
 private fun PlayerTopBar(vm: MainViewModel, ps: com.blacksingularities.openamp.playback.PlayerUiState, onMenu: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Glassy, size = 36.dp, iconSize = 20.dp)
+    val dim = Color.White.copy(alpha = 0.62f)
+    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 6.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.reactive(tr("Lista")) { vm.goTab(Route.Queue) }.clip(RoundedCornerShape(50)).padding(start = 4.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.ChevronLeft, null, tint = dim, modifier = Modifier.size(20.dp))
+            Text(tr("Lista"), color = dim, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+            if (ps.queue.isNotEmpty()) Text("  ${ps.index + 1}/${ps.queue.size}", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, maxLines = 1)
+        }
         Spacer(Modifier.weight(1f))
-        PillButton(
-            if (ps.queue.isNotEmpty()) tr("Lista") + "  ${ps.index + 1}/${ps.queue.size}" else tr("Lista"),
-            { vm.goTab(Route.Queue) }, icon = Icons.Rounded.NorthEast, background = Glassy,
-        )
+        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Color.Transparent, tint = dim, size = 34.dp, iconSize = 18.dp)
     }
 }
 

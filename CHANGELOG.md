@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 1.6.4
+
+- Ekran odtwarzania: subtelniejszy górny pasek nad okładką – **Lista** w lewym górnym rogu, „więcej” (kropki) w prawym, bez tła i z przygaszonymi ikonami.
+
 ## 1.6.3
 
 - Naprawiony crash przy starcie: po doczytaniu okładki powiadomienie było odświeżane z wątku w tle, a odtwarzacz wolno obsługiwać tylko z głównego wątku.
