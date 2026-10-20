@@ -108,14 +108,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.blacksingularities.openamp.Graph
-import com.blacksingularities.openamp.data.ThemeMode
 import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.ui.ColorPickerDialog
 import com.blacksingularities.openamp.ui.Flat
 import com.blacksingularities.openamp.ui.HintBubble
 import com.blacksingularities.openamp.ui.HintState
 import com.blacksingularities.openamp.ui.LocalHints
+import com.blacksingularities.openamp.ui.ArtworkLoader
 import com.blacksingularities.openamp.ui.PillButton
+import com.blacksingularities.openamp.ui.RoundButton
+import com.blacksingularities.openamp.ui.theme.vibrantColor
+import androidx.compose.runtime.collectAsState
 import com.blacksingularities.openamp.ui.SectionHeader
 import com.blacksingularities.openamp.ui.SetAction
 import com.blacksingularities.openamp.ui.SetCard
@@ -154,10 +157,22 @@ class WidgetConfigActivity : ComponentActivity() {
         val launchedKind = kindOf(this, launchedId)
 
         setContent {
-            OpenAmpTheme(Graph.settings.value.accent, ThemeMode.BLACK) {
+            // Ten sam motyw i akcent co w aplikacji – edytor z launchera wygląda dokładnie jak w ustawieniach.
+            val s by Graph.settings.state.collectAsState()
+            val art by Graph.artAccent.collectAsState()
+            LaunchedEffect(s.artworkColors) {
+                if (s.artworkColors && Graph.artAccent.value == null) {
+                    val ctx = this@WidgetConfigActivity
+                    val track = WidgetHub.current(ctx).trackId?.let { Graph.library.get(it) }
+                    if (track != null) withContext(Dispatchers.Default) {
+                        ArtworkLoader.load(ctx, track, 900)?.let { vibrantColor(it) }
+                    }?.let { Graph.artAccent.value = it }
+                }
+            }
+            OpenAmpTheme(if (s.artworkColors) art ?: s.accent else s.accent, s.theme) {
                 val hints = remember { HintState() }
                 CompositionLocalProvider(LocalHints provides hints) {
-                    Box(Modifier.fillMaxSize().background(Color.Black)) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                         var editing by remember { mutableStateOf(launchedKind?.let { launchedId to it }) }
                         val current = editing
                         if (current != null) {
@@ -288,9 +303,10 @@ private val sizesSupported = Build.VERSION.SDK_INT >= 31
 
 @Composable
 private fun TopBar(title: String, onBack: () -> Unit, action: (@Composable () -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), tint = Color.White) }
-        Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Nagłówek jak w ustawieniach aplikacji.
+        RoundButton(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), onBack, background = Color.Transparent, size = 40.dp)
+        Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f).padding(start = 4.dp), maxLines = 1)
         if (action != null) { action(); Spacer(Modifier.width(8.dp)) }
     }
 }
