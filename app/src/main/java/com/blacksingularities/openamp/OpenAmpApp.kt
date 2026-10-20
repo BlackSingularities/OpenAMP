@@ -81,6 +81,7 @@ object Graph {
 class OpenAmpApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         Graph.app = this
         Graph.settings = SettingsStore(this)
         Graph.userData = UserDataStore(this)

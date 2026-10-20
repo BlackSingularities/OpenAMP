@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 1.6.2
+
+- Zapis błędów: gdy aplikacja się wywróci, przy następnym uruchomieniu pokazuje szczegóły błędu z przyciskami **Kopiuj** i **Udostępnij**.
+
 ## 1.6.1
 
 - Naprawiony crash zaraz po uruchomieniu: nowe powiadomienie wysyłało okładkę w pełnej rozdzielczości (1024 px) w obu widokach, przez co system odrzucał je przy starcie odtwarzacza. Okładka w powiadomieniu jest teraz przeskalowana.
