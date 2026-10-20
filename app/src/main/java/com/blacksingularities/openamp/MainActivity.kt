@@ -24,6 +24,11 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        if (CrashLog.showIfAny(this) { start() }) return
+        start()
+    }
+
+    private fun start() {
         UpdateManager.clearUpdatedNotification(this)
         handle(intent)
         setContent { AppRoot(vm) }
