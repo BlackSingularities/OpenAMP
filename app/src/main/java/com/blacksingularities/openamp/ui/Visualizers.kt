@@ -47,6 +47,10 @@ class LiveSpectrum {
     val bands = FloatArray(Spectrum.BANDS)
     val wave = FloatArray(Spectrum.WAVE)
     var level = 0f
+    /** Impuls basu 0..1 (skacze przy uderzeniu, potem opada). */
+    var beat = 0f
+    internal var gain = 0.3f
+    internal var bassAvg = 0f
     var tick by mutableLongStateOf(0L)
     /** Historia dla spektrogramu (najnowsza na końcu). */
     val history = ArrayDeque<FloatArray>()
@@ -74,16 +78,33 @@ fun rememberLiveSpectrum(playing: Boolean, keepHistory: Int = 0): LiveSpectrum {
                 while (queue.isNotEmpty() && System.nanoTime() - queue.first().first >= latency) pick = queue.removeFirst().second
                 pick
             }
-            for (i in live.bands.indices) {
-                val t = if (playing && target != null) target.bands[i] else if (playing) live.bands[i] else 0f
-                live.bands[i] = if (t > live.bands[i]) live.bands[i] + (t - live.bands[i]) * 0.6f else live.bands[i] + (t - live.bands[i]) * 0.15f
+            // Automatyczne wzmocnienie: cicha muzyka też wypełnia skalę, a krzywa potęgowa
+            // zwiększa kontrast, więc słupki wyraźnie skaczą zamiast stać na stałej wysokości.
+            if (playing && target != null) {
+                var peak = 0f
+                for (v in target.bands) if (v > peak) peak = v
+                live.gain = max(max(live.gain * 0.996f, peak), 0.25f)
             }
+            for (i in live.bands.indices) {
+                val raw = if (playing && target != null) target.bands[i] else if (playing) -1f else 0f
+                if (raw < 0f) continue
+                val norm = (raw / live.gain).coerceIn(0f, 1f)
+                val t = norm * norm * (3f - 2f * norm) * 0.35f + norm * norm * 0.65f
+                live.bands[i] = if (t > live.bands[i]) live.bands[i] + (t - live.bands[i]) * 0.85f else live.bands[i] + (t - live.bands[i]) * 0.28f
+            }
+            var bass = 0f
+            for (i in 0 until 6) bass += live.bands[i]
+            bass /= 6f
+            live.bassAvg = live.bassAvg * 0.95f + bass * 0.05f
+            val hit = ((bass - live.bassAvg * 1.08f) * 4f).coerceIn(0f, 1f)
+            live.beat = if (hit > live.beat) hit else live.beat * 0.88f
             if (target != null && playing) {
                 target.wave.copyInto(live.wave)
-                live.level = live.level * 0.6f + target.level * 0.4f
+                live.level = live.level * 0.4f + (target.level * 1.6f).coerceAtMost(1f) * 0.6f
             } else if (!playing) {
                 for (i in live.wave.indices) live.wave[i] *= 0.85f
                 live.level *= 0.9f
+                live.beat *= 0.85f
             }
             if (keepHistory > 0 && playing && now - lastHistory > 33_000_000L) {
                 lastHistory = now
@@ -126,7 +147,8 @@ fun WaveScope(live: LiveSpectrum, color: Color, modifier: Modifier) {
         val path = Path()
         for (i in 0 until n) {
             val x = size.width * i / (n - 1)
-            val y = mid - live.wave[i] * size.height * 1.6f
+            val g = 1f / max(live.gain, 0.25f)
+            val y = mid - (live.wave[i] * size.height * 1.6f * g).coerceIn(-mid, mid)
             if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         drawPath(path, color.copy(alpha = 0.25f), style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
@@ -149,7 +171,7 @@ fun CircleSpectrum(live: LiveSpectrum, color: Color, modifier: Modifier, innerFr
             val i = if (k < n) k else total - 1 - k
             val v = live.bands[i]
             val a = (k.toFloat() / total) * 2 * PI - PI / 2
-            val len = maxLen * (0.08f + v * 0.92f)
+            val len = maxLen * (0.06f + v * 0.94f) * (0.85f + live.beat * 0.15f)
             val ca = cos(a).toFloat(); val sa = sin(a).toFloat()
             drawLine(
                 color.copy(alpha = 0.35f + v * 0.65f),
@@ -161,3 +183,87 @@ fun CircleSpectrum(live: LiveSpectrum, color: Color, modifier: Modifier, innerFr
     }
 }
 
+
+/** Pulsująca poświata za okładką i fala uderzeniowa przy mocnym basie. */
+@Composable
+fun PulseGlow(live: LiveSpectrum, color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val r = size.minDimension / 2
+        val e = live.beat * 0.7f + live.level * 0.3f
+        val gr = r * (0.85f + e * 0.15f)
+        drawCircle(Brush.radialGradient(listOf(color.copy(alpha = 0.25f + e * 0.55f), Color.Transparent), center, gr), gr, center)
+        if (live.beat > 0.05f) drawCircle(
+            color.copy(alpha = live.beat * 0.8f), r * (0.78f + (1f - live.beat) * 0.2f), center,
+            style = Stroke((2f + live.beat * 6f).dp.toPx()),
+        )
+    }
+}
+
+/** Słupki rosnące symetrycznie od środka w obie strony (bas w środku). */
+@Composable
+fun MirrorBars(live: LiveSpectrum, color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val n = Spectrum.BANDS / 2
+        val slots = n * 2
+        val step = size.width / slots
+        val w = step * 0.62f
+        val mid = size.height / 2
+        for (k in 0 until slots) {
+            val i = if (k < n) n - 1 - k else k - n
+            val v = live.bands[i * 2]
+            val h = max(size.height * v, w)
+            val x = k * step + (step - w) / 2
+            drawRoundRect(color.copy(alpha = 0.45f + v * 0.55f), Offset(x, mid - h / 2), Size(w, h), CornerRadius(w / 2))
+        }
+    }
+}
+
+/** Fala dźwięku zawinięta w okrąg wokół okładki. */
+@Composable
+fun RingWave(live: LiveSpectrum, color: Color, modifier: Modifier, innerFraction: Float = 0.84f) {
+    Canvas(modifier) {
+        @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val n = live.wave.size
+        val r0 = size.minDimension / 2 * innerFraction
+        val amp = size.minDimension / 2 - r0
+        val g = 1f / max(live.gain, 0.25f)
+        val path = Path()
+        for (i in 0..n) {
+            val idx = i % n
+            // Wygasza końce fali, żeby okrąg domykał się bez skoku.
+            val fade = sin(PI * idx / n).toFloat()
+            val v = (live.wave[idx] * 3f * g * fade).coerceIn(-1f, 1f)
+            val r = r0 + amp * (0.3f + v * 0.5f + live.beat * 0.2f)
+            val a = 2 * PI * idx / n - PI / 2
+            val x = center.x + cos(a).toFloat() * r
+            val y = center.y + sin(a).toFloat() * r
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        drawPath(path, color.copy(alpha = 0.3f), style = Stroke(9.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, color, style = Stroke((2.5f + live.beat * 2f).dp.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+/** Gładka, wypełniona krzywa widma u dołu okładki. */
+@Composable
+fun SpectrumLine(live: LiveSpectrum, color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val n = live.bands.size
+        val pts = List(n) { i -> Offset(size.width * i / (n - 1), size.height * (1f - live.bands[i] * 0.95f)) }
+        val line = Path().apply {
+            moveTo(pts[0].x, pts[0].y)
+            for (i in 1 until n) {
+                val p = pts[i - 1]; val q = pts[i]
+                val mx = (p.x + q.x) / 2
+                cubicTo(mx, p.y, mx, q.y, q.x, q.y)
+            }
+        }
+        val area = Path().apply { addPath(line); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
+        drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = (0.45f + live.beat * 0.4f).coerceAtMost(1f)), Color.Transparent)))
+        drawPath(line, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+    }
+}

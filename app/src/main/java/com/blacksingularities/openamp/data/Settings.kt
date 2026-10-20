@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 enum class ThemeMode { SYSTEM, DARK, LIGHT, BLACK }
-enum class VisualizerStyle { BARS, WAVE, CIRCLE, NONE }
+enum class VisualizerStyle { BARS, WAVE, CIRCLE, PULSE, MIRROR, RING_WAVE, LINE, NONE }
 enum class SeekStyle { WAVEFORM, MIRROR, LINE, DOTS, SEGMENTS, TAPE, SPECTROGRAM, CASSETTE }
 enum class RepeatMode { OFF, ALL, ONE }
 enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
