@@ -948,4 +948,6 @@ private val En: Map<String, String> = mapOf(
     "Wyśrodkuj" to "Centre",
     "Tytuł, wykonawca i album wyśrodkowane" to "Title, artist and album centred",
     "Tytuł i wykonawca wyśrodkowane" to "Title and artist centred",
+    "Zaokrąglenie okładki" to "Artwork corner radius",
+    "0% – ostre rogi, 50% – koło" to "0% – sharp corners, 50% – circle",
 )

@@ -501,6 +501,10 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                                 SetSegment(Icons.Rounded.RoundedCorner, tr("Kształt okładki"), WidgetCoverShape.entries, cfg.coverShape, ::shapeLabel, short = {
                                     when (it) { WidgetCoverShape.ROUNDED -> tr("Zaokr."); WidgetCoverShape.SQUARE -> tr("Kwadrat"); WidgetCoverShape.CIRCLE -> tr("Koło") }
                                 }) { v -> set { it.copy(coverShape = v) } }
+                                if (cfg.coverShape == WidgetCoverShape.ROUNDED) SetSlider(
+                                    Icons.Rounded.RoundedCorner, tr("Zaokrąglenie okładki"), "${cfg.coverRadius}%", cfg.coverRadius.toFloat(), 0f..50f, 9,
+                                    subtitle = tr("0% – ostre rogi, 50% – koło"),
+                                ) { v -> set { it.copy(coverRadius = (v / 5).roundToInt() * 5) } }
                             }
                         }
                     }

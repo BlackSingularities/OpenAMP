@@ -47,6 +47,8 @@ data class WidgetConfig(
     val accent: WidgetAccent = WidgetAccent.ART,
     val accentColor: Int = 0xFFFFFFFF.toInt(),
     val coverShape: WidgetCoverShape = WidgetCoverShape.ROUNDED,
+    /** Zaokrąglenie rogów okładki w % jej boku (0 – ostre rogi, 50 – koło); dla kształtu „zaokrąglona”. */
+    val coverRadius: Int = 16,
     val showCover: Boolean = true,
     val showArtist: Boolean = true,
     val showAlbum: Boolean = true,
@@ -130,6 +132,7 @@ object WidgetConfigStore {
                 accent = enum(k("accent"), d.accent),
                 accentColor = getInt(k("accentColor"), d.accentColor),
                 coverShape = enum(k("coverShape"), d.coverShape),
+                coverRadius = getInt(k("coverRadius"), d.coverRadius),
                 showCover = getBoolean(k("showCover"), d.showCover),
                 showArtist = getBoolean(k("showArtist"), d.showArtist),
                 showAlbum = getBoolean(k("showAlbum"), d.showAlbum),
@@ -178,6 +181,7 @@ object WidgetConfigStore {
             .putString(k("accent"), c.accent.name)
             .putInt(k("accentColor"), c.accentColor)
             .putString(k("coverShape"), c.coverShape.name)
+            .putInt(k("coverRadius"), c.coverRadius)
             .putBoolean(k("showCover"), c.showCover)
             .putBoolean(k("showArtist"), c.showArtist)
             .putBoolean(k("showAlbum"), c.showAlbum)

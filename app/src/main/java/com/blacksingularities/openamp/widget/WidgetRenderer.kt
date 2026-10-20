@@ -653,7 +653,7 @@ object WidgetRenderer {
             }
         }
         val r = when (i.cfg.coverShape) {
-            WidgetCoverShape.ROUNDED -> px * 0.16f
+            WidgetCoverShape.ROUNDED -> px * i.cfg.coverRadius.coerceIn(0, 50) / 100f
             WidgetCoverShape.SQUARE -> px * 0.04f
             WidgetCoverShape.CIRCLE -> px / 2f
         }
