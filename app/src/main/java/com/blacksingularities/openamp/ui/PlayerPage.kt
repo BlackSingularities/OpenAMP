@@ -139,8 +139,12 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                 SeekArea(vm, ps, pos, wave, live, s.seekStyle, accent)
             }
         }
-        val techH = if (s.showTechInfo && track != null) 26.dp else 0.dp
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp)) { TechLine(track, info, s.showTechInfo) { details = true } }
+        val next = ps.nextId?.let { Graph.library.get(it) }
+        val techH = (if (s.showTechInfo && track != null) 26.dp else 0.dp) + (if (next != null) 20.dp else 0.dp)
+        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            TechLine(track, info, s.showTechInfo) { details = true }
+            NextLine(next) { vm.goTab(Route.Queue) }
+        }
         Column(Modifier.statusBarsPadding().padding(bottom = bottomPadding + techH).fillMaxSize()) {
             PlayerTopBar(vm, ps, onMenu = { menu = true })
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -488,6 +492,18 @@ private fun LyricsCard(vm: MainViewModel, track: Track?) {
             LyricsPanel(vm, Modifier.weight(1f).fillMaxWidth())
         }
     }
+}
+
+/** Pod tagami: następny utwór w kolejce; dotknięcie otwiera listę odtwarzania. */
+@Composable
+private fun NextLine(next: Track?, onClick: () -> Unit) {
+    if (next == null) return
+    val who = next.artist.takeIf { it.isNotBlank() }
+    Text(
+        tr("Następny: {0}", listOfNotNull(who, next.title).joinToString(" – ")),
+        color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 4.dp).widthIn(max = 320.dp).reactive(tr("Lista odtwarzania"), onClick = onClick).padding(horizontal = 12.dp, vertical = 1.dp),
+    )
 }
 
 @Composable

@@ -867,4 +867,6 @@ private val En: Map<String, String> = mapOf(
     "Bas powiększa plamy, uderzenia dają błysk; 0% – tylko spokojny ruch" to "Bass grows the blobs, beats flash; 0% – calm motion only",
     "Intensywność" to "Intensity",
     "Niżej – spokojniejsze, ciemniejsze tło" to "Lower – calmer, darker background",
+    "Następny: {0}" to "Next: {0}",
+    "Lista odtwarzania" to "Playlist",
 )
