@@ -32,6 +32,12 @@ enum class WidgetTimePos { BELOW, SIDES }
  */
 enum class WidgetControlsPos { BELOW_BAR, ABOVE_BAR, IN_COLUMN }
 
+/**
+ * Styl przycisków: tło przycisku odtwarzania (koło, zaokrąglony kwadrat, obwódka, brak)
+ * albo delikatne koła pod wszystkimi przyciskami.
+ */
+enum class WidgetButtonStyle { CIRCLE, SQUARE, RING, PLAIN, BUBBLES }
+
 /** Co robi dotknięcie okładki / tytułu. */
 enum class WidgetTap { OPEN_PLAYER, PLAY_PAUSE, NEXT, OPEN_QUEUE, OPEN_LIBRARY }
 
@@ -83,7 +89,12 @@ data class WidgetConfig(
     val compact: Boolean = false,
     val showLike: Boolean = true,
     val showQueuePos: Boolean = true,
-    val filledPlay: Boolean = true,
+    val buttonStyle: WidgetButtonStyle = WidgetButtonStyle.CIRCLE,
+    /** Dodatkowe odstępy nad i pod przyciskami w dp (Android 12+). */
+    val controlsTop: Int = 0,
+    val controlsBottom: Int = 0,
+    /** Odstęp nad paskiem postępu w dp, gdy pasek jest pod okładką i tytułem (Android 12+). */
+    val barTop: Int = 6,
     val textScale: Int = 100,
     val tap: WidgetTap = WidgetTap.OPEN_PLAYER,
     val shortcuts: List<WidgetShortcut> = listOf(WidgetShortcut.RESUME, WidgetShortcut.SHUFFLE_ALL, WidgetShortcut.DAILY_MIX, WidgetShortcut.FAVORITES),
@@ -160,7 +171,11 @@ object WidgetConfigStore {
                 compact = getBoolean(k("compact"), d.compact),
                 showLike = getBoolean(k("showLike"), d.showLike),
                 showQueuePos = getBoolean(k("showQueuePos"), d.showQueuePos),
-                filledPlay = getBoolean(k("filledPlay"), d.filledPlay),
+                // Dawny przełącznik „pełny ▶” – wyłączony oznacza przyciski bez tła.
+                buttonStyle = if (!contains(k("buttonStyle")) && !getBoolean(k("filledPlay"), true)) WidgetButtonStyle.PLAIN else enum(k("buttonStyle"), d.buttonStyle),
+                controlsTop = getInt(k("controlsTop"), d.controlsTop),
+                controlsBottom = getInt(k("controlsBottom"), d.controlsBottom),
+                barTop = getInt(k("barTop"), d.barTop),
                 textScale = getInt(k("textScale"), d.textScale),
                 tap = enum(k("tap"), d.tap),
                 shortcuts = getString(k("shortcuts"), null)?.split(',')
@@ -207,7 +222,10 @@ object WidgetConfigStore {
             .putBoolean(k("compact"), c.compact)
             .putBoolean(k("showLike"), c.showLike)
             .putBoolean(k("showQueuePos"), c.showQueuePos)
-            .putBoolean(k("filledPlay"), c.filledPlay)
+            .putString(k("buttonStyle"), c.buttonStyle.name)
+            .putInt(k("controlsTop"), c.controlsTop)
+            .putInt(k("controlsBottom"), c.controlsBottom)
+            .putInt(k("barTop"), c.barTop)
             .putInt(k("textScale"), c.textScale)
             .putString(k("tap"), c.tap.name)
             .putString(k("shortcuts"), c.shortcuts.joinToString(",") { it.name })

@@ -538,6 +538,10 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                                 { when (it) { null -> tr("Ukryty"); WidgetTimePos.BELOW -> tr("Pod paskiem"); WidgetTimePos.SIDES -> tr("Po bokach paska") } },
                                 short = { when (it) { null -> tr("Brak"); WidgetTimePos.BELOW -> tr("Pod"); WidgetTimePos.SIDES -> tr("Boki") } },
                             ) { v -> set { if (v == null) it.copy(showTime = false) else it.copy(showTime = true, timePos = v) } }
+                            if (cfg.controlsPos != WidgetControlsPos.ABOVE_BAR) SetSlider(
+                                Icons.Rounded.VerticalAlignTop, tr("Odstęp nad paskiem"), "${cfg.barTop} dp", cfg.barTop.toFloat(), 0f..24f, 23,
+                                subtitle = if (sizesSupported) tr("Między okładką z tytułem a paskiem postępu") else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                            ) { v -> set { it.copy(barTop = v.roundToInt()) } }
                             if (cfg.controlsPos != WidgetControlsPos.IN_COLUMN) SetSlider(
                                 Icons.Rounded.SpaceBar, tr("Odstęp od przycisków"), "${cfg.progressGap} dp", cfg.progressGap.toFloat(), 0f..16f, 15,
                                 subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
@@ -555,9 +559,19 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                                     if (player) Tile(Icons.Rounded.Shuffle, tr("Losowanie"), tr("Przycisk losowej kolejności (gdy widżet jest dość szeroki)"), cfg.showShuffle) { v -> set { it.copy(showShuffle = v) } } else null,
                                     if (player) Tile(Icons.Rounded.Repeat, tr("Powtarzanie"), tr("Przycisk powtarzania: wszystko / jeden utwór (gdy widżet jest dość szeroki)"), cfg.showRepeat) { v -> set { it.copy(showRepeat = v) } } else null,
                                     Tile(Icons.Rounded.Favorite, tr("Serduszko"), tr("Dodaje bieżący utwór do ulubionych"), cfg.showLike) { v -> set { it.copy(showLike = v) } },
-                                    Tile(Icons.Rounded.PlayCircle, tr("Pełny ▶"), tr("Koło w kolorze akcentu pod przyciskiem odtwarzania"), cfg.filledPlay) { v -> set { it.copy(filledPlay = v) } },
                                 ),
                             )
+                            SetDropdown(Icons.Rounded.PlayCircle, tr("Styl przycisków"), WidgetButtonStyle.entries, cfg.buttonStyle, ::buttonStyleLabel) { v -> set { it.copy(buttonStyle = v) } }
+                            if (player) {
+                                SetSlider(
+                                    Icons.Rounded.VerticalAlignTop, tr("Odstęp nad przyciskami"), "${cfg.controlsTop} dp", cfg.controlsTop.toFloat(), 0f..24f, 23,
+                                    subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                                ) { v -> set { it.copy(controlsTop = v.roundToInt()) } }
+                                SetSlider(
+                                    Icons.Rounded.VerticalAlignBottom, tr("Odstęp pod przyciskami"), "${cfg.controlsBottom} dp", cfg.controlsBottom.toFloat(), 0f..24f, 23,
+                                    subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                                ) { v -> set { it.copy(controlsBottom = v.roundToInt()) } }
+                            }
                             SetSlider(
                                 Icons.Rounded.ZoomIn, tr("Wielkość przycisków"), "${cfg.buttonScale}%", cfg.buttonScale.toFloat(), 60f..140f, 15,
                                 subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
@@ -643,6 +657,14 @@ private fun controlsPosIcon(p: WidgetControlsPos): ImageVector = when (p) {
     WidgetControlsPos.BELOW_BAR -> Icons.Rounded.VerticalAlignBottom
     WidgetControlsPos.ABOVE_BAR -> Icons.Rounded.VerticalAlignTop
     WidgetControlsPos.IN_COLUMN -> Icons.Rounded.ViewColumn
+}
+
+private fun buttonStyleLabel(s: WidgetButtonStyle) = when (s) {
+    WidgetButtonStyle.CIRCLE -> tr("Koło pod ▶")
+    WidgetButtonStyle.SQUARE -> tr("Zaokrąglony kwadrat pod ▶")
+    WidgetButtonStyle.RING -> tr("Obwódka wokół ▶")
+    WidgetButtonStyle.PLAIN -> tr("Same ikony")
+    WidgetButtonStyle.BUBBLES -> tr("Wszystkie w kołach")
 }
 
 private fun controlsPosHint(p: WidgetControlsPos) = when (p) {

@@ -210,9 +210,11 @@ object WidgetRenderer {
             val dip = TypedValue.COMPLEX_UNIT_DIP
             // Odstęp taśma–przyciski: gdy taśma jest nad przyciskami – margines przycisków, gdy pod – margines taśmy.
             val above = bar === barTop && !inColumn
-            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, if (above) c.progressGap.toFloat() else 0f, dip)
-            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above || inColumn) (if (c.compact) 0f else 6f) else c.progressGap.toFloat(), dip)
-            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_TOP, if (c.compact) 0f else 6f, dip)
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, (if (above) c.progressGap else 0) + c.controlsTop.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_BOTTOM, c.controlsBottom.toFloat(), dip)
+            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above || inColumn) (if (c.compact) 0f else c.barTop.toFloat()) else c.progressGap.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_TOP, (if (c.compact) 0f else 6f) + c.controlsTop, dip)
+            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_BOTTOM, c.controlsBottom.toFloat(), dip)
             rv.setViewLayoutMargin(R.id.w_cover_box, RemoteViews.MARGIN_END, if (c.compact) 8f else 12f, dip)
             rv.setViewLayoutMargin(R.id.w_cover_end_box, RemoteViews.MARGIN_START, if (c.compact) 6f else 8f, dip)
             rv.setViewLayoutMargin(R.id.w_cover_top, RemoteViews.MARGIN_BOTTOM, if (c.compact) 2f else 8f, dip)
@@ -220,9 +222,9 @@ object WidgetRenderer {
 
         // Okładka we własnym kontenerze: przy 100% ma wysokość całego wiersza – w kolumnowym układzie
         // przycisków to cały widżet poza taśmą postępu (Android 12+, na starszych stała).
-        val barDp = if (!showRow) 0 else (if (c.compact) 0 else 6) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
+        val barDp = if (!showRow) 0 else (if (c.compact) 0 else c.barTop) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
             (if (c.showTime && !sides) 15 else 0)
-        val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100 + c.progressGap
+        val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100 + c.progressGap + c.controlsTop + c.controlsBottom
         val free = (h - c.padding * 2 - buttonsDp - barDp).coerceAtLeast(32)
         val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
             // Nad tytułem: zostaje miejsce na tytuł i wykonawcę.
@@ -413,14 +415,30 @@ object WidgetRenderer {
     private fun controls(context: Context, rv: RemoteViews, i: Input, pal: Palette, ctl: Ctl = ctlRow) {
         val playing = i.state.playing
         rv.setImageViewResource(ctl.play, if (playing) R.drawable.ic_w_pause else R.drawable.ic_w_play)
-        if (i.cfg.filledPlay) {
-            rv.setViewVisibility(ctl.playBg, View.VISIBLE)
-            rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
-            rv.setInt(ctl.play, "setColorFilter", pal.onAccent)
-        } else {
-            rv.setViewVisibility(ctl.playBg, View.GONE)
-            rv.setInt(ctl.play, "setColorFilter", pal.fg)
+        val style = i.cfg.buttonStyle
+        when (style) {
+            WidgetButtonStyle.CIRCLE, WidgetButtonStyle.SQUARE, WidgetButtonStyle.BUBBLES -> {
+                rv.setViewVisibility(ctl.playBg, View.VISIBLE)
+                rv.setImageViewResource(ctl.playBg, if (style == WidgetButtonStyle.SQUARE) R.drawable.widget_rsquare else R.drawable.widget_circle)
+                rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
+                rv.setInt(ctl.play, "setColorFilter", pal.onAccent)
+            }
+            WidgetButtonStyle.RING -> {
+                rv.setViewVisibility(ctl.playBg, View.VISIBLE)
+                rv.setImageViewResource(ctl.playBg, R.drawable.widget_ring)
+                rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
+                rv.setInt(ctl.play, "setColorFilter", pal.accent)
+            }
+            WidgetButtonStyle.PLAIN -> {
+                rv.setViewVisibility(ctl.playBg, View.GONE)
+                rv.setInt(ctl.play, "setColorFilter", pal.fg)
+            }
         }
+        // „Wszystkie w kołach”: delikatne koła pod poprzednim i następnym (i losowaniem/powtarzaniem w Odtwarzaczu).
+        val soft = if (style == WidgetButtonStyle.BUBBLES) (if (pal.light) R.drawable.widget_soft_circle_dark else R.drawable.widget_soft_circle) else 0
+        val others = if (i.kind == WidgetKind.PLAYER) intArrayOf(ctl.prev, ctl.next, ctl.shuffle, ctl.repeat) else if (i.kind == WidgetKind.SHORTCUTS) intArrayOf() else intArrayOf(ctl.prev, ctl.next)
+        // Pozostałe style zostawiają tło z układu (efekt dotknięcia).
+        if (soft != 0) for (id in others) rv.setInt(id, "setBackgroundResource", soft)
         rv.setContentDescription(ctl.play, if (playing) tr("Pauza") else tr("Odtwórz"))
         rv.setOnClickPendingIntent(ctl.play, action(context, i, WidgetActions.PLAY_PAUSE, 1))
         icon(rv, ctl.next, R.drawable.ic_w_next, pal.fg)
