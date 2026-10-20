@@ -1,6 +1,17 @@
 package com.blacksingularities.openamp.playback
 
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.os.Bundle
+import androidx.core.content.ContextCompat
+import androidx.media3.session.CacheBitmapLoader
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.blacksingularities.openamp.lock.LockscreenLauncher
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import android.content.Context
 import android.content.Intent
 import android.media.AudioDeviceCallback
@@ -92,6 +103,8 @@ class PlaybackService : MediaSessionService() {
         session = MediaSession.Builder(this, player)
             .setSessionActivity(open)
             .setCallback(callback)
+            .setBitmapLoader(CacheBitmapLoader(ArtBitmapLoader(this)))
+            .setMediaButtonPreferences(SessionCommands.buttons(player))
             .build()
 
         setMediaNotificationProvider(
@@ -106,6 +119,51 @@ class PlaybackService : MediaSessionService() {
         tickLoop()
         registerHeadset()
         scope.launch { restoreQueue() }
+        // Przyciski powiadomienia zależą od ulubionych i od ustawień.
+        scope.launch { Graph.userData.state.map { it.favorites }.distinctUntilChanged().collect { refreshButtons() } }
+        scope.launch {
+            Graph.settings.state.map { Triple(it.notifButton1, it.notifButton2, it.autoCloseMin) }.distinctUntilChanged().collect {
+                refreshButtons()
+                scheduleIdleClose()
+            }
+        }
+        ContextCompat.registerReceiver(this, screenReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    /** Wygaszenie ekranu podczas grania – własny ekran blokady (gdy włączony w ustawieniach). */
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_OFF && player.isPlaying) LockscreenLauncher.show(this@PlaybackService)
+        }
+    }
+
+    private fun refreshButtons() {
+        session?.setMediaButtonPreferences(SessionCommands.buttons(player))
+    }
+
+    private var idleJob: Job? = null
+
+    /** Samoczynne zamknięcie odtwarzacza i powiadomienia po dłuższej pauzie. */
+    private fun scheduleIdleClose() {
+        idleJob?.cancel()
+        val min = Graph.settings.value.autoCloseMin
+        if (min < 0 || player.isPlaying || player.playWhenReady || player.playbackState == Player.STATE_IDLE) return
+        idleJob = scope.launch {
+            delay(if (min == 0) 10_000L else min * 60_000L)
+            if (!player.isPlaying && !player.playWhenReady) closePlayer()
+        }
+    }
+
+    /** Zamknięcie: zapis kolejki, zatrzymanie (znika powiadomienie) i koniec pracy serwisu. */
+    private fun closePlayer() {
+        idleJob?.cancel()
+        saveQueue()
+        flushListen()
+        player.pause()
+        player.stop()
+        LockscreenLauncher.cancel(this)
+        WidgetHub.publish(player)
+        stopSelf()
     }
 
     private val callback = object : MediaSession.Callback {
@@ -115,6 +173,35 @@ class PlaybackService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> =
             Futures.immediateFuture(mediaItems.map { resolve(it) }.toMutableList())
+
+        override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+            SessionCommands.all.forEach { commands.add(it) }
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands.build())
+                .setMediaButtonPreferences(SessionCommands.buttons(player))
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                SessionCommands.LIKE -> player.currentMediaItem?.mediaId?.toLongOrNull()?.let { Graph.userData.toggleFavorite(it) }
+                SessionCommands.SHUFFLE -> player.shuffleModeEnabled = !player.shuffleModeEnabled
+                SessionCommands.REPEAT -> player.repeatMode = when (player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+                SessionCommands.CLOSE -> closePlayer()
+            }
+            refreshButtons()
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
     }
 
     /** Element kolejki przekazany przez kontroler ma tylko identyfikator – tu dostaje adres pliku. */
@@ -131,6 +218,13 @@ class PlaybackService : MediaSessionService() {
         override fun onEvents(player: Player, events: Player.Events) {
             // Widżety na pulpicie: nowy utwór, pauza, losowanie, powtarzanie…
             WidgetHub.publish(player)
+            if (events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED,
+                )
+            ) refreshButtons()
+            if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) {
+                scheduleIdleClose()
+            }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -305,6 +399,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         WidgetHub.serviceStopped()
+        idleJob?.cancel()
+        runCatching { unregisterReceiver(screenReceiver) }
         saveQueue()
         flushListen()
         headsetCallback?.let { audioManager.unregisterAudioDeviceCallback(it) }
@@ -332,7 +428,7 @@ fun Track.toMediaItem(): MediaItem = MediaItem.Builder()
             .setTrackNumber(trackNumber.takeIf { it > 0 })
             .setReleaseYear(year.takeIf { it > 0 })
             .setDurationMs(durationMs)
-            .setArtworkUri(Uri.parse("content://media/external/audio/albumart/$albumId"))
+            .setArtworkUri(artworkUriFor(id))
             .setIsPlayable(true)
             .setIsBrowsable(false)
             .build(),

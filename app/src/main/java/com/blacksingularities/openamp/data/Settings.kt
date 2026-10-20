@@ -13,6 +13,11 @@ enum class SeekStyle { WAVEFORM, TAPE, SPECTROGRAM, SIMPLE }
 enum class RepeatMode { OFF, ALL, ONE }
 enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
 enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
+/** Dodatkowe przyciski w powiadomieniu (obok poprzedni / odtwórz / następny). */
+enum class NotifButton { NONE, LIKE, SHUFFLE, REPEAT, CLOSE }
+enum class LockBackground { BLUR, ART_COLOR, BLACK }
+/** Uproszczony ekran „always on” odtwarzacza na ekranie blokady. */
+enum class AodMode { OFF, CHARGING, ALWAYS }
 
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
@@ -62,6 +67,23 @@ data class AppSettings(
     val repeat: RepeatMode = RepeatMode.OFF,
     val speed: Float = 1f,
     val pitch: Float = 1f,
+    // Powiadomienie
+    val notifButton1: NotifButton = NotifButton.LIKE,
+    val notifButton2: NotifButton = NotifButton.CLOSE,
+    /** Zamknięcie odtwarzacza (i powiadomienia) po tylu minutach pauzy; -1 – nigdy, 0 – od razu. */
+    val autoCloseMin: Int = 5,
+    // Ekran blokady i AOD
+    val lockScreen: Boolean = false,
+    val lockBackground: LockBackground = LockBackground.BLUR,
+    val lockClock: Boolean = true,
+    val lockSeek: Boolean = true,
+    val lockNext: Boolean = true,
+    val lockLike: Boolean = true,
+    val lockShuffleRepeat: Boolean = false,
+    val aodMode: AodMode = AodMode.CHARGING,
+    val aodTimeoutSec: Int = 15,
+    val aodDim: Boolean = true,
+    val aodArt: Boolean = true,
 )
 
 /** Ustawienia w SharedPreferences, wystawione jako StateFlow. */
@@ -130,6 +152,20 @@ class SettingsStore(context: Context) {
                 repeat = enum("repeat", d.repeat),
                 speed = getFloat("speed", d.speed),
                 pitch = getFloat("pitch", d.pitch),
+                notifButton1 = enum("notifButton1", d.notifButton1),
+                notifButton2 = enum("notifButton2", d.notifButton2),
+                autoCloseMin = getInt("autoCloseMin", d.autoCloseMin),
+                lockScreen = getBoolean("lockScreen", d.lockScreen),
+                lockBackground = enum("lockBackground", d.lockBackground),
+                lockClock = getBoolean("lockClock", d.lockClock),
+                lockSeek = getBoolean("lockSeek", d.lockSeek),
+                lockNext = getBoolean("lockNext", d.lockNext),
+                lockLike = getBoolean("lockLike", d.lockLike),
+                lockShuffleRepeat = getBoolean("lockShuffleRepeat", d.lockShuffleRepeat),
+                aodMode = enum("aodMode", d.aodMode),
+                aodTimeoutSec = getInt("aodTimeoutSec", d.aodTimeoutSec),
+                aodDim = getBoolean("aodDim", d.aodDim),
+                aodArt = getBoolean("aodArt", d.aodArt),
             )
         }
     }
@@ -181,6 +217,20 @@ class SettingsStore(context: Context) {
             .putString("repeat", s.repeat.name)
             .putFloat("speed", s.speed)
             .putFloat("pitch", s.pitch)
+            .putString("notifButton1", s.notifButton1.name)
+            .putString("notifButton2", s.notifButton2.name)
+            .putInt("autoCloseMin", s.autoCloseMin)
+            .putBoolean("lockScreen", s.lockScreen)
+            .putString("lockBackground", s.lockBackground.name)
+            .putBoolean("lockClock", s.lockClock)
+            .putBoolean("lockSeek", s.lockSeek)
+            .putBoolean("lockNext", s.lockNext)
+            .putBoolean("lockLike", s.lockLike)
+            .putBoolean("lockShuffleRepeat", s.lockShuffleRepeat)
+            .putString("aodMode", s.aodMode.name)
+            .putInt("aodTimeoutSec", s.aodTimeoutSec)
+            .putBoolean("aodDim", s.aodDim)
+            .putBoolean("aodArt", s.aodArt)
             .apply()
     }
 }
