@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 1.6.3
+
+- Naprawiony crash przy starcie: po doczytaniu okładki powiadomienie było odświeżane z wątku w tle, a odtwarzacz wolno obsługiwać tylko z głównego wątku.
+
 ## 1.6.2
 
 - Zapis błędów: gdy aplikacja się wywróci, przy następnym uruchomieniu pokazuje szczegóły błędu z przyciskami **Kopiuj** i **Udostępnij**.
