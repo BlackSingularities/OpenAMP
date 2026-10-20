@@ -109,7 +109,7 @@ class SpectrumProcessor : BaseAudioProcessor() {
             // Amplituda w dB (-70..0) → 0..1, lekkie podbicie wysokich pasm.
             val db = 10f * log10(peak + 1e-12f) - 20f * log10(n / 4f) + b * 0.25f
             val v = ((db + 70f) / 70f).coerceIn(0f, 1f)
-            smooth[b] = if (v > smooth[b]) v else smooth[b] * 0.82f + v * 0.18f
+            smooth[b] = if (v > smooth[b]) v else smooth[b] * 0.55f + v * 0.45f
             bands[b] = smooth[b]
         }
         val wave = FloatArray(Spectrum.WAVE) { i -> ring[(ringPos + n - Spectrum.WAVE * 4 + i * 4) % n] }

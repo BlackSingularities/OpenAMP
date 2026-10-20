@@ -1,5 +1,10 @@
 # Historia zmian
 
+## 1.6.5
+
+- Wizualizacje na okładce: cztery nowe style – **Puls** (poświata i okładka pulsujące z basem), **Lustrzane słupki**, **Fala w okręgu** i **Krzywa widma**.
+- Wszystkie wizualizacje mocniej reagują na dźwięk: automatyczne wzmocnienie dla cichszych nagrań, większy kontrast, szybszy spadek słupków i wykrywanie uderzeń basu.
+
 ## 1.6.4
 
 - Ekran odtwarzania: subtelniejszy górny pasek nad okładką – **Lista** w lewym górnym rogu, „więcej” (kropki) w prawym, bez tła i z przygaszonymi ikonami.

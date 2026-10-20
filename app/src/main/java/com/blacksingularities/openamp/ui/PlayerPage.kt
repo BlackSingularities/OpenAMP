@@ -200,7 +200,8 @@ private fun CoverBlock(
     val hasNext by rememberUpdatedState(ps.nextId != null)
     val hasPrev by rememberUpdatedState(ps.prevId != null)
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
-    val round = vis == VisualizerStyle.CIRCLE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
+    val ringVis = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || vis == VisualizerStyle.PULSE
+    val round = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
     val shape = when {
         round -> CircleShape
         shapeMode == CoverShape.SQUARE -> RoundedCornerShape(6.dp)
@@ -262,8 +263,10 @@ private fun CoverBlock(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (vis == VisualizerStyle.CIRCLE) CircleSpectrum(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
+                    if (vis == VisualizerStyle.RING_WAVE) RingWave(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
+                    if (vis == VisualizerStyle.PULSE) PulseGlow(live, accent, Modifier.fillMaxSize())
                     val frac = { (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) }
-                    val fill = if (vis == VisualizerStyle.CIRCLE) 0.76f else 1f
+                    val fill = if (ringVis) 0.76f else 1f
                     // Okładki sąsiadów (podgląd podczas przesuwania)
                     if (offset.value < 0f && nextTrack != null) Artwork(
                         nextTrack,
@@ -284,11 +287,15 @@ private fun CoverBlock(
                         .graphicsLayer {
                             translationX = offset.value
                             rotationZ = offset.value / width * 4f
-                            val sc = scale * (1f - 0.08f * frac()); scaleX = sc; scaleY = sc
+                            // Odczyt tick w warstwie odświeża ją co klatkę tylko dla stylu „Puls”.
+                            val pulse = if (vis == VisualizerStyle.PULSE) { live.tick; 1f + live.beat * 0.05f } else 1f
+                            val sc = scale * pulse * (1f - 0.08f * frac()); scaleX = sc; scaleY = sc
                         }
                         .shadow(24.dp, shape)
                     if (shapeMode == CoverShape.VINYL) Vinyl(shown, playing, accent, m) else Artwork(shown, m, size = 1000, shape = shape, crossfade = !gestures)
                     if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(70.dp).padding(bottom = 58.dp), mirror = false)
+                    if (vis == VisualizerStyle.MIRROR) MirrorBars(live, Color.White.copy(alpha = 0.9f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(100.dp).padding(bottom = 50.dp))
+                    if (vis == VisualizerStyle.LINE) SpectrumLine(live, Color.White, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.86f).height(90.dp).padding(bottom = 50.dp))
                     if (vis == VisualizerStyle.WAVE) WaveScope(live, Color.White, Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp))
                 }
             }
