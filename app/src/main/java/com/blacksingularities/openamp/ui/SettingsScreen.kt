@@ -486,7 +486,7 @@ private fun About() {
     Column(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         androidx.compose.foundation.Image(
             androidx.compose.ui.res.painterResource(R.drawable.ic_launcher_foreground), null,
-            Modifier.size(44.dp).background(Color(0xFF1C1030), RoundedCornerShape(12.dp)),
+            Modifier.size(44.dp),
         )
         Text(tr("OpenAMP – odtwarzacz muzyki"), fontSize = 13.sp, color = Color.White, modifier = Modifier.padding(top = 6.dp))
         Text(tr("Wersja {0}", BuildConfig.VERSION_NAME), fontSize = 11.sp, color = Compact.TextDim)
