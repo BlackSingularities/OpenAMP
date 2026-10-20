@@ -945,4 +945,7 @@ private val En: Map<String, String> = mapOf(
     "Zagraj" to "Play",
     "Kiedyś grane często, ostatnio ponad dwa miesiące temu." to "Once played often, last played over two months ago.",
     "{0} · ostatnio {1}" to "{0} · last {1}",
+    "Wyśrodkuj" to "Centre",
+    "Tytuł, wykonawca i album wyśrodkowane" to "Title, artist and album centred",
+    "Tytuł i wykonawca wyśrodkowane" to "Title and artist centred",
 )

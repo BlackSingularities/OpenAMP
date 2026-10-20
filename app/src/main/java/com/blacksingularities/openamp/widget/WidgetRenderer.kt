@@ -389,6 +389,14 @@ object WidgetRenderer {
         rv.setTextViewText(R.id.w_artist, artist)
         textStyle(rv, R.id.w_title, titleSp * scale, pal.fg)
         textStyle(rv, R.id.w_artist, artistSp * scale, pal.fg2)
+        // Wyrównanie wszystkich wierszy tekstu (album i znaczniki są tylko w Odtwarzaczu – tam ustawiane osobno).
+        val g = if (i.cfg.centerText) android.view.Gravity.CENTER_HORIZONTAL else android.view.Gravity.START
+        rv.setInt(R.id.w_title, "setGravity", g)
+        rv.setInt(R.id.w_artist, "setGravity", g)
+        if (i.kind == WidgetKind.PLAYER) {
+            rv.setInt(R.id.w_album, "setGravity", g)
+            rv.setInt(R.id.w_meta, "setGravity", g)
+        }
     }
 
     private fun icon(rv: RemoteViews, id: Int, res: Int, color: Int) {

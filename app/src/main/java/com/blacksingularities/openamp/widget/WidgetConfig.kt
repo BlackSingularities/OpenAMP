@@ -74,6 +74,8 @@ data class WidgetConfig(
     val padding: Int = 10,
     val titleLines: Int = 2,
     val boldTitle: Boolean = true,
+    /** Tytuł, wykonawca i pozostałe wiersze tekstu wyśrodkowane. */
+    val centerText: Boolean = false,
     val controlsPos: WidgetControlsPos = WidgetControlsPos.BELOW_BAR,
     /** Zwarty układ: bez odstępów między okładką, tekstem, taśmą i przyciskami. */
     val compact: Boolean = false,
@@ -150,6 +152,7 @@ object WidgetConfigStore {
                 padding = getInt(k("padding"), d.padding),
                 titleLines = getInt(k("titleLines"), d.titleLines),
                 boldTitle = getBoolean(k("boldTitle"), d.boldTitle),
+                centerText = getBoolean(k("centerText"), d.centerText),
                 controlsPos = enum(k("controlsPos"), d.controlsPos),
                 compact = getBoolean(k("compact"), d.compact),
                 showLike = getBoolean(k("showLike"), d.showLike),
@@ -195,6 +198,7 @@ object WidgetConfigStore {
             .putInt(k("padding"), c.padding)
             .putInt(k("titleLines"), c.titleLines)
             .putBoolean(k("boldTitle"), c.boldTitle)
+            .putBoolean(k("centerText"), c.centerText)
             .putString(k("controlsPos"), c.controlsPos.name)
             .putBoolean(k("compact"), c.compact)
             .putBoolean(k("showLike"), c.showLike)

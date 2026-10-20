@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.ViewColumn
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatBold
 import androidx.compose.material.icons.rounded.FormatListNumbered
 import androidx.compose.material.icons.rounded.FormatSize
@@ -571,11 +572,13 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                                     if (player && cfg.showAlbum) Tile(Icons.Rounded.Notes, tr("Wyk. – album"), tr("Wykonawca i album w jednym wierszu: „Wykonawca – Album”"), cfg.artistAlbumLine) { v -> set { it.copy(artistAlbumLine = v) } } else null,
                                     if (player) Tile(Icons.Rounded.FormatListNumbered, tr("Kolejka"), tr("Pozycja w kolejce, np. 12 / 240, i znacznik wyłącznika czasowego"), cfg.showQueuePos) { v -> set { it.copy(showQueuePos = v) } } else null,
                                     Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
+                                    Tile(Icons.Rounded.FormatAlignCenter, tr("Wyśrodkuj"), tr("Tytuł, wykonawca i album wyśrodkowane"), cfg.centerText) { v -> set { it.copy(centerText = v) } },
                                 ),
                             ) else CardTiles(
                                 listOf(
                                     Tile(Icons.Rounded.Label, tr("Podpisy"), tr("Podpisy pod ikonami skrótów"), cfg.shortcutLabels) { v -> set { it.copy(shortcutLabels = v) } },
                                     Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
+                                    Tile(Icons.Rounded.FormatAlignCenter, tr("Wyśrodkuj"), tr("Tytuł i wykonawca wyśrodkowane"), cfg.centerText) { v -> set { it.copy(centerText = v) } },
                                 ),
                             )
                             SetSlider(Icons.Rounded.FormatSize, tr("Rozmiar tekstu"), "${cfg.textScale}%", cfg.textScale.toFloat(), 80f..130f, 9) { v -> set { it.copy(textScale = (v / 5).roundToInt() * 5) } }
