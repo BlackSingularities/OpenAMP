@@ -130,9 +130,9 @@ fun QueueSheet(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box {
-                        Artwork(t, Modifier.size(44.dp), size = 160, shape = RoundedCornerShape(10.dp))
-                        if (current) Box(Modifier.size(44.dp).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                            PlayingIndicator(ps.isPlaying, color = Color.White)
+                        Artwork(t, Modifier.size(44.dp), size = 160, shape = Shapes.Small)
+                        if (current) Box(Modifier.size(44.dp).background(Color.Black.copy(alpha = 0.45f), Shapes.Small), contentAlignment = Alignment.Center) {
+                            PlayingIndicator(ps.isPlaying, color = Flat.Fg)
                         }
                     }
                     Spacer(Modifier.width(12.dp))
@@ -216,13 +216,13 @@ fun MiniPlayer(vm: MainViewModel, modifier: Modifier = Modifier) {
                 detectVerticalDragGestures { c, dy -> if (dy < -12) { c.consume(); vm.nowPlayingOpen = true } }
             },
         onClick = { vm.nowPlayingOpen = true },
-        shape = RoundedCornerShape(22.dp),
+        shape = Shapes.XLarge,
         color = Flat.Block,
         shadowElevation = 0.dp,
     ) {
         Column {
             Row(Modifier.padding(8.dp).graphicsLayer { translationX = swipe * 0.3f }, verticalAlignment = Alignment.CenterVertically) {
-                Artwork(t, Modifier.size(48.dp), size = 160, shape = RoundedCornerShape(12.dp), crossfade = true)
+                Artwork(t, Modifier.size(48.dp), size = 160, shape = Shapes.Medium, crossfade = true)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, modifier = Modifier.basicMarquee())

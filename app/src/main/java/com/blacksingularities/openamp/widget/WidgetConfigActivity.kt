@@ -122,6 +122,7 @@ import androidx.compose.runtime.collectAsState
 import com.blacksingularities.openamp.ui.SectionHeader
 import com.blacksingularities.openamp.ui.SetAction
 import com.blacksingularities.openamp.ui.SetCard
+import com.blacksingularities.openamp.ui.Shapes
 import com.blacksingularities.openamp.ui.SetDropdown
 import com.blacksingularities.openamp.ui.SetSwitch
 import com.blacksingularities.openamp.ui.TabChips
@@ -306,7 +307,7 @@ private fun TopBar(title: String, onBack: () -> Unit, action: (@Composable () ->
     Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         // Nagłówek jak w ustawieniach aplikacji.
         RoundButton(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), onBack, background = Color.Transparent, size = 40.dp)
-        Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f).padding(start = 4.dp), maxLines = 1)
+        Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, modifier = Modifier.weight(1f).padding(start = 4.dp), maxLines = 1)
         if (action != null) { action(); Spacer(Modifier.width(8.dp)) }
     }
 }
@@ -410,7 +411,7 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
             val h = (size.hDp.toFloat() * (w.value / size.wDp)).dp.coerceAtMost(260.dp)
             val wall = if (lightWallpaper) listOf(Color(0xFFE9E4FF), Color(0xFFFFE3D3)) else listOf(Color(0xFF241B3A), Color(0xFF0B2A33))
             Box(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(wall))
+                Modifier.fillMaxWidth().clip(Shapes.XLarge).background(Brush.linearGradient(wall))
                     .clickable { lightWallpaper = !lightWallpaper }.padding(vertical = 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -704,17 +705,17 @@ private fun ShortcutsEditor(cfg: WidgetConfig, onChange: (WidgetConfig) -> Unit)
         cfg.shortcuts.forEachIndexed { n, sc ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(30.dp).background(Flat.Block, CircleShape), contentAlignment = Alignment.Center) {
-                    Text("${n + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("${n + 1}", color = Flat.Fg, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(WidgetRenderer.shortcutLabel(sc), color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(start = 10.dp))
+                Text(WidgetRenderer.shortcutLabel(sc), color = Flat.Fg, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(start = 10.dp))
                 IconButton(onClick = {
                     if (n > 0) onChange(cfg.copy(shortcuts = cfg.shortcuts.toMutableList().apply { add(n - 1, removeAt(n)) }))
-                }, enabled = n > 0) { Icon(Icons.Rounded.KeyboardArrowUp, tr("W górę"), tint = if (n > 0) Color.White else Flat.Faded) }
+                }, enabled = n > 0) { Icon(Icons.Rounded.KeyboardArrowUp, tr("W górę"), tint = if (n > 0) Flat.Fg else Flat.Faded) }
                 IconButton(onClick = {
                     if (n < cfg.shortcuts.lastIndex) onChange(cfg.copy(shortcuts = cfg.shortcuts.toMutableList().apply { add(n + 1, removeAt(n)) }))
-                }, enabled = n < cfg.shortcuts.lastIndex) { Icon(Icons.Rounded.KeyboardArrowDown, tr("W dół"), tint = if (n < cfg.shortcuts.lastIndex) Color.White else Flat.Faded) }
+                }, enabled = n < cfg.shortcuts.lastIndex) { Icon(Icons.Rounded.KeyboardArrowDown, tr("W dół"), tint = if (n < cfg.shortcuts.lastIndex) Flat.Fg else Flat.Faded) }
                 IconButton(onClick = { onChange(cfg.copy(shortcuts = cfg.shortcuts - sc)) }, enabled = cfg.shortcuts.size > 1) {
-                    Icon(Icons.Rounded.Close, tr("Usuń"), tint = if (cfg.shortcuts.size > 1) Color.White else Flat.Faded)
+                    Icon(Icons.Rounded.Close, tr("Usuń"), tint = if (cfg.shortcuts.size > 1) Flat.Fg else Flat.Faded)
                 }
             }
         }
@@ -751,13 +752,13 @@ private fun ColorRow(selected: Int, options: List<Int>, onPick: (Int?) -> Unit) 
             val sel = c == selected
             Box(
                 Modifier.size(34.dp).background(Color(c), CircleShape)
-                    .then(if (sel) Modifier.border(3.dp, Color.White, CircleShape) else Modifier.border(1.dp, Flat.Hair, CircleShape))
+                    .then(if (sel) Modifier.border(3.dp, Flat.Fg, CircleShape) else Modifier.border(1.dp, Flat.Hair, CircleShape))
                     .clickable { onPick(c) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (sel) Icon(
                     Icons.Rounded.Check, null, modifier = Modifier.size(16.dp),
-                    tint = if (androidx.core.graphics.ColorUtils.calculateLuminance(c) > 0.5) Color.Black else Color.White,
+                    tint = if (androidx.core.graphics.ColorUtils.calculateLuminance(c) > 0.5) Color.Black else Flat.Fg,
                 )
             }
         }

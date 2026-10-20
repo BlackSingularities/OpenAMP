@@ -127,7 +127,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        NowPlayingBackground(track, s.npBackground, accent, live)
+        NowPlayingBackground(track, s.npBackground, accent, live, s)
         val wide = maxWidth > maxHeight
         val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, s.showLikes, data.favorites, data.disliked, m) }
         val controls: @Composable () -> Unit = {

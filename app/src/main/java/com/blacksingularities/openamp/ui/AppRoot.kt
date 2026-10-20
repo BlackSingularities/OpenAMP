@@ -193,7 +193,7 @@ private fun BottomBar(vm: MainViewModel) {
     val r = vm.route
     // Pasek na całą szerokość, wtopiony w dolną krawędź (tło sięga pod systemowy pasek nawigacji).
     Row(
-        Modifier.fillMaxWidth().background(Color.Black).navigationBarsPadding().height(54.dp),
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding().height(54.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -214,7 +214,7 @@ private fun BottomBar(vm: MainViewModel) {
 /** Menu (czwarty przycisk paska): skróty do wszystkich miejsc aplikacji. */
 @Composable
 private fun MenuSheet(vm: MainViewModel) {
-    ModalBottomSheet(onDismissRequest = { vm.menuOpen = false }, containerColor = Color.Black, dragHandle = null) {
+    ModalBottomSheet(onDismissRequest = { vm.menuOpen = false }, containerColor = MaterialTheme.colorScheme.background, dragHandle = null) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             val go: (() -> Unit) -> () -> Unit = { a -> { vm.menuOpen = false; a() } }
             TileGrid(

@@ -89,7 +89,7 @@ fun StatsScreen(vm: MainViewModel, bottomPadding: Dp) {
                     topTracks.forEachIndexed { i, (t, c) ->
                         Row(Modifier.fillMaxWidth().clickable { vm.player.play(topTracks.map { it.first }, i) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("${i + 1}", fontFamily = MonoNumbers, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(28.dp))
-                            Artwork(t, Modifier.size(42.dp), size = 160, shape = RoundedCornerShape(10.dp))
+                            Artwork(t, Modifier.size(42.dp), size = 160, shape = Shapes.Small)
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

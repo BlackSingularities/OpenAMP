@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.blacksingularities.openamp.data.AppSettings
 import com.blacksingularities.openamp.data.NpBackground
 import com.blacksingularities.openamp.data.Track
 import kotlin.math.cos
@@ -41,8 +42,9 @@ import kotlin.math.sin
 
 /** Tło ekranu odtwarzania w wybranym stylu. */
 @Composable
-fun NowPlayingBackground(track: Track?, mode: NpBackground, accent: Color, live: LiveSpectrum) {
+fun NowPlayingBackground(track: Track?, mode: NpBackground, accent: Color, live: LiveSpectrum, s: AppSettings) {
     when (mode) {
+        NpBackground.LIVE -> LiveBackground(track, s.liveColors, s.liveCustom, accent, live, s.liveMotion, s.liveReact, s.liveIntensity)
         NpBackground.BLACK -> Box(Modifier.fillMaxSize().background(Color.Black))
         NpBackground.BLUR -> {
             Box(Modifier.fillMaxSize().background(Color.Black))

@@ -36,6 +36,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,9 +60,9 @@ import androidx.compose.ui.unit.sp
  * opis 10 sp, przełączniki pomniejszone, wybór jednej opcji jako segment w tym samym wierszu.
  */
 object Compact {
-    val Menu = Color(0xFF171717)
-    val TextDim = Color(0x99FFFFFF)
-    val TextFaint = Color(0x55FFFFFF)
+    val Menu: Color @Composable @ReadOnlyComposable get() = if (Flat.light) Color(0xFFF4F2F7) else Color(0xFF171717)
+    val TextDim: Color @Composable @ReadOnlyComposable get() = Flat.Fg.copy(alpha = 0.6f)
+    val TextFaint: Color @Composable @ReadOnlyComposable get() = Flat.Fg.copy(alpha = 0.33f)
 }
 
 @Composable
@@ -75,7 +76,7 @@ fun RowIcon(icon: ImageVector, tint: Color = MaterialTheme.colorScheme.primary, 
 @Composable
 private fun RowTexts(title: String, subtitle: String?, enabled: Boolean, modifier: Modifier) {
     Column(modifier) {
-        Text(title, fontSize = 13.sp, color = if (enabled) Color.White else Compact.TextFaint, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+        Text(title, fontSize = 13.sp, color = if (enabled) Flat.Fg else Compact.TextFaint, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
         if (subtitle != null) Text(subtitle, fontSize = 10.sp, color = if (enabled) Compact.TextDim else Compact.TextFaint, lineHeight = 12.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -84,7 +85,7 @@ private fun RowTexts(title: String, subtitle: String?, enabled: Boolean, modifie
 fun SetSwitch(icon: ImageVector, title: String, subtitle: String?, value: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled) { onChange(!value) }.padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 42.dp),
+        Modifier.fillMaxWidth().clip(Shapes.Medium).clickable(enabled = enabled) { onChange(!value) }.padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 42.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(icon, enabled = enabled)
@@ -125,14 +126,14 @@ fun <T> SetSegment(
 fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, icon: ((T) -> ImageVector)? = null, enabled: Boolean = true, onSelect: (T) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val on = MaterialTheme.colorScheme.onPrimary
-    Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).padding(2.dp).alpha(if (enabled) 1f else 0.4f)) {
+    Row(Modifier.clip(Shapes.Pill).background(Flat.Fg.copy(alpha = 0.06f)).padding(2.dp).alpha(if (enabled) 1f else 0.4f)) {
         options.forEach { o ->
             val sel = o == selected
             val bg by animateColorAsState(if (sel) accent else Color.Transparent, tween(160), label = "seg")
             Box(
-                Modifier.clip(RoundedCornerShape(50)).background(bg)
+                Modifier.clip(Shapes.Pill).background(bg)
                     .selectable(sel, enabled = enabled, role = Role.RadioButton) { onSelect(o) }
-                    .padding(horizontal = if (icon != null) 9.dp else 9.dp, vertical = 5.dp),
+                    .padding(horizontal = Shapes.PillHCompact, vertical = Shapes.PillVCompact),
                 contentAlignment = Alignment.Center,
             ) {
                 if (icon != null) Icon(icon(o), label(o), tint = if (sel) on else Compact.TextDim, modifier = Modifier.size(16.dp))
@@ -162,12 +163,12 @@ fun <T> SetDropdown(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled) { open = true }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Column(Modifier.fillMaxWidth().clip(Shapes.Medium).clickable(enabled = enabled) { open = true }.padding(horizontal = 8.dp, vertical = 4.dp)) {
             Row(Modifier.heightIn(min = 42.dp), verticalAlignment = Alignment.CenterVertically) {
                 RowIcon(icon, enabled = enabled)
                 RowTexts(title, subtitle, enabled, Modifier.weight(1f).padding(horizontal = 10.dp))
                 Row(
-                    Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp).widthIn(max = 170.dp),
+                    Modifier.clip(Shapes.Pill).background(Flat.Fg.copy(alpha = 0.06f)).padding(start = Shapes.PillHCompact, end = 6.dp, top = Shapes.PillVCompact, bottom = Shapes.PillVCompact).widthIn(max = 170.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(label(selected), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.primary else Compact.TextFaint, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -177,7 +178,7 @@ fun <T> SetDropdown(
             if (preview != null) {
                 Box(
                     Modifier.padding(start = 40.dp, top = 2.dp, bottom = 4.dp).fillMaxWidth().height(40.dp)
-                        .clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 10.dp, vertical = 6.dp)
+                        .clip(Shapes.Small).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 10.dp, vertical = 6.dp)
                         .alpha(if (enabled) 1f else 0.4f),
                 ) { preview(selected, Modifier.fillMaxSize()) }
             }
@@ -204,16 +205,16 @@ fun <T> SetDropdown(
 private fun PreviewMenuItem(text: String, checked: Boolean, preview: @Composable (Modifier) -> Unit, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp).clip(RoundedCornerShape(10.dp))
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp).clip(Shapes.Small)
             .background(if (checked) accent.copy(alpha = 0.12f) else Color.Transparent)
             .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(width = 92.dp, height = 34.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black).padding(horizontal = 5.dp, vertical = 4.dp)) {
+        Box(Modifier.size(width = 92.dp, height = 34.dp).clip(Shapes.Small).background(Color.Black).padding(horizontal = 5.dp, vertical = 4.dp)) {
             preview(Modifier.fillMaxSize())
         }
         Spacer(Modifier.width(10.dp))
-        Text(text, fontSize = 13.sp, color = if (checked) accent else Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal)
+        Text(text, fontSize = 13.sp, color = if (checked) accent else Flat.Fg, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal)
         if (checked) Icon(Icons.Rounded.Check, null, tint = accent, modifier = Modifier.size(15.dp))
     }
 }
@@ -239,7 +240,7 @@ fun SetSlider(
         Slider(
             current, onChange, valueRange = range, steps = steps, enabled = enabled,
             modifier = Modifier.padding(start = 34.dp).height(28.dp),
-            colors = SliderDefaults.colors(inactiveTrackColor = Color.White.copy(alpha = 0.1f)),
+            colors = SliderDefaults.colors(inactiveTrackColor = Flat.Fg.copy(alpha = 0.1f)),
         )
     }
 }
@@ -256,7 +257,7 @@ fun SetAction(
 ) {
     val tint = if (danger) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.primary
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp).heightIn(min = 42.dp),
+        Modifier.fillMaxWidth().clip(Shapes.Medium).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp).heightIn(min = 42.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(icon, tint, enabled)
@@ -268,14 +269,14 @@ fun SetAction(
 @Composable
 fun InfoRow(icon: ImageVector, title: String, value: String, onClick: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+        Modifier.fillMaxWidth().clip(Shapes.Medium).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(icon)
         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
             Text(title, fontSize = 10.sp, color = Compact.TextDim, lineHeight = 12.sp)
-            Text(value.ifBlank { "—" }, fontSize = 13.sp, color = Color.White, lineHeight = 16.sp)
+            Text(value.ifBlank { "—" }, fontSize = 13.sp, color = Flat.Fg, lineHeight = 16.sp)
         }
     }
 }
@@ -283,7 +284,7 @@ fun InfoRow(icon: ImageVector, title: String, value: String, onClick: (() -> Uni
 /** Karta grupy ustawień: tytuł sekcji i zwarte wiersze. */
 @Composable
 fun SetCard(title: String?, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0x0FFFFFFF)).padding(vertical = 6.dp, horizontal = 2.dp)) {
+    Column(modifier.fillMaxWidth().clip(Shapes.Large).background(Flat.Faint).padding(vertical = 6.dp, horizontal = 2.dp)) {
         if (title != null) Text(
             title.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
@@ -303,7 +304,7 @@ fun CompactMenu(expanded: Boolean, onDismiss: () -> Unit, modifier: Modifier = M
     DropdownMenu(
         expanded = expanded, onDismissRequest = onDismiss,
         modifier = modifier.widthIn(min = if (wide) 260.dp else 168.dp, max = if (wide) 300.dp else 260.dp),
-        shape = RoundedCornerShape(16.dp), containerColor = Compact.Menu, tonalElevation = 0.dp, shadowElevation = 10.dp,
+        shape = Shapes.Large, containerColor = Compact.Menu, tonalElevation = 0.dp, shadowElevation = 10.dp,
     ) { content() }
 }
 
@@ -314,10 +315,10 @@ fun CMenuItem(text: String, icon: ImageVector? = null, checked: Boolean = false,
         !enabled -> Compact.TextFaint
         danger -> Color(0xFFFF6B6B)
         checked -> accent
-        else -> Color.White
+        else -> Flat.Fg
     }
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp).clip(RoundedCornerShape(10.dp)).clickable(enabled = enabled, onClick = onClick)
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp).clip(Shapes.Small).clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp).height(36.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -333,7 +334,7 @@ fun CMenuLabel(text: String) {
 }
 
 @Composable
-fun CMenuDivider() = Box(Modifier.padding(vertical = 3.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.07f)))
+fun CMenuDivider() = Box(Modifier.padding(vertical = 3.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Flat.Fg.copy(alpha = 0.07f)))
 
 /** Rząd zakładek-chipów (przewijany w poziomie). */
 @Composable
@@ -345,12 +346,12 @@ fun <T> TabChips(tabs: List<T>, selected: T, label: (T) -> String, icon: (T) -> 
             val sel = t == selected
             val bg by animateColorAsState(if (sel) accent else Flat.Block, tween(160), label = "tab")
             Row(
-                Modifier.reactive(label(t)) { onSelect(t) }.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 11.dp, vertical = 7.dp),
+                Modifier.reactive(label(t)) { onSelect(t) }.clip(Shapes.Pill).background(bg).padding(horizontal = Shapes.PillH, vertical = Shapes.PillV),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(icon(t), null, tint = if (sel) on else Color.White, modifier = Modifier.size(15.dp))
+                Icon(icon(t), null, tint = if (sel) on else Flat.Fg, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(label(t), color = if (sel) on else Color.White, fontSize = 12.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium)
+                Text(label(t), color = if (sel) on else Flat.Fg, fontSize = 12.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium)
             }
         }
     }

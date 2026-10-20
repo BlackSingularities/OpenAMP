@@ -11,7 +11,10 @@ enum class ThemeMode { SYSTEM, DARK, LIGHT, BLACK }
 enum class VisualizerStyle { BARS, WAVE, CIRCLE, PULSE, MIRROR, RING_WAVE, LINE, NONE }
 enum class SeekStyle { WAVEFORM, MIRROR, LINE, DOTS, SEGMENTS, TAPE, SPECTROGRAM, CASSETTE }
 enum class RepeatMode { OFF, ALL, ONE }
-enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
+enum class NpBackground { BLUR, GRADIENT, AURORA, LIVE, BLACK }
+
+/** Skąd tło „Żywe kolory” bierze barwy: z okładki, z akcentu, z gotowej palety albo z własnego koloru. */
+enum class LiveColors { ARTWORK, ACCENT, SUNSET, OCEAN, NEON, FOREST, CANDY, MONO, CUSTOM }
 enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
 /** Dodatkowe przyciski w powiadomieniu (obok poprzedni / odtwórz / następny). */
 enum class NotifButton { NONE, LIKE, SHUFFLE, REPEAT, CLOSE }
@@ -34,6 +37,14 @@ data class AppSettings(
     val showLikes: Boolean = true,
     val smartShuffle: Boolean = true,
     val npBackground: NpBackground = NpBackground.BLUR,
+    val liveColors: LiveColors = LiveColors.ARTWORK,
+    val liveCustom: Int = 0xFF7C5CFF.toInt(),
+    /** Prędkość ruchu plam 0–100. */
+    val liveMotion: Int = 45,
+    /** Siła reakcji na muzykę 0–100. */
+    val liveReact: Int = 60,
+    /** Jasność / nasycenie tła 0–100 (niżej – spokojniej, lepsza czytelność). */
+    val liveIntensity: Int = 70,
     val coverShape: CoverShape = CoverShape.ROUNDED,
     val showTechInfo: Boolean = true,
     val keepScreenOn: Boolean = false,
@@ -137,6 +148,11 @@ class SettingsStore(context: Context) {
                 showLikes = getBoolean("showLikes", d.showLikes),
                 smartShuffle = getBoolean("smartShuffle", d.smartShuffle),
                 npBackground = enum("npBackground", d.npBackground),
+                liveColors = enum("liveColors", d.liveColors),
+                liveCustom = getInt("liveCustom", d.liveCustom),
+                liveMotion = getInt("liveMotion", d.liveMotion),
+                liveReact = getInt("liveReact", d.liveReact),
+                liveIntensity = getInt("liveIntensity", d.liveIntensity),
                 coverShape = enum("coverShape", d.coverShape),
                 showTechInfo = getBoolean("showTechInfo", d.showTechInfo),
                 keepScreenOn = getBoolean("keepScreenOn", d.keepScreenOn),
@@ -212,6 +228,11 @@ class SettingsStore(context: Context) {
             .putBoolean("showLikes", s.showLikes)
             .putBoolean("smartShuffle", s.smartShuffle)
             .putString("npBackground", s.npBackground.name)
+            .putString("liveColors", s.liveColors.name)
+            .putInt("liveCustom", s.liveCustom)
+            .putInt("liveMotion", s.liveMotion)
+            .putInt("liveReact", s.liveReact)
+            .putInt("liveIntensity", s.liveIntensity)
             .putString("coverShape", s.coverShape.name)
             .putBoolean("showTechInfo", s.showTechInfo)
             .putBoolean("keepScreenOn", s.keepScreenOn)

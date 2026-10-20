@@ -113,7 +113,7 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
         Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             RoundButton(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), { vm.back() }, background = Color.Transparent, size = 40.dp)
             Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(tr("Korektor"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, lineHeight = 22.sp)
+                Text(tr("Korektor"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, lineHeight = 22.sp)
                 Text(if (s.enabled) tr(s.preset) else tr("Wyłączone"), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
             Box {
@@ -183,7 +183,7 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                                     PresetCard(p.name, p.bands.map { it.gain }, s.preset == p.name) { selected = -1; Dsp.applyPreset(p.name) }
                                     Icon(
                                         Icons.Rounded.Close, tr("Usuń"),
-                                        Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(RoundedCornerShape(50)).clickable { Dsp.deletePreset(p.name) },
+                                        Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(Shapes.Pill).clickable { Dsp.deletePreset(p.name) },
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
@@ -270,6 +270,7 @@ private fun ResponseGraph(s: DspState, live: LiveSpectrum, selected: Int, onSele
     val bandCurve = remember(s, selected) {
         s.bands.getOrNull(selected)?.let { b -> FloatArray(CURVE_N) { Dsp.bandResponseDb(b, F_MIN * (F_MAX / F_MIN).pow(it / (CURVE_N - 1f))) } }
     }
+    val fg = Flat.Fg
     Canvas(
         modifier.pointerInput(Unit) {
             val pad = 18.dp.toPx()
@@ -335,19 +336,19 @@ private fun ResponseGraph(s: DspState, live: LiveSpectrum, selected: Int, onSele
         val fill = Path().apply { addPath(total); lineTo(w, y(0f)); lineTo(0f, y(0f)); close() }
         drawPath(fill, Brush.verticalGradient(listOf(accent.copy(alpha = 0.30f * alpha), accent.copy(alpha = 0.0f))))
         drawPath(total, accent.copy(alpha = 0.35f * alpha), style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
-        drawPath(total, Color.White.copy(alpha = 0.9f * alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(total, fg.copy(alpha = 0.9f * alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         // Uchwyty pasm
         s.bands.forEachIndexed { i, b ->
             val c = Offset(xOf(b.freq, w), y(b.gain + s.preamp))
-            node(c, i == selected, accent, alpha)
+            node(c, i == selected, accent, alpha, fg)
         }
     }
 }
 
-private fun DrawScope.node(c: Offset, sel: Boolean, accent: Color, alpha: Float) {
+private fun DrawScope.node(c: Offset, sel: Boolean, accent: Color, alpha: Float, fg: Color) {
     if (sel) drawCircle(accent.copy(alpha = 0.3f * alpha), 16.dp.toPx(), c)
     drawCircle(Color.Black.copy(alpha = 0.6f), 8.dp.toPx(), c)
-    drawCircle(if (sel) accent else Color.White, 6.dp.toPx(), c, alpha = alpha)
+    drawCircle(if (sel) accent else fg, 6.dp.toPx(), c, alpha = alpha)
 }
 
 @Composable
@@ -379,12 +380,13 @@ private fun BandEditor(b: EqBand, index: Int, n: Int, onClose: () -> Unit) {
 @Composable
 private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Shapes.Large
     Column(
         Modifier.width(96.dp).clip(shape)
             .background(if (selected) accent.copy(alpha = 0.22f) else Flat.Block)
             .clickable(onClick = onClick).padding(8.dp),
     ) {
+        val fg = Flat.Fg
         Canvas(Modifier.fillMaxWidth().height(32.dp)) {
             val st = DspState(bands = gains.mapIndexed { i, g -> EqBand(Dsp.ISO.getOrElse(i) { 1000f }, g) })
             val p = Path()
@@ -395,11 +397,11 @@ private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onCl
                 if (x == 0f) p.moveTo(x, yy) else p.lineTo(x, yy)
                 x += 2f
             }
-            drawLine(Color.White.copy(alpha = 0.1f), Offset(0f, size.height / 2), Offset(size.width, size.height / 2))
-            drawPath(p, if (selected) accent else Color.White.copy(alpha = 0.75f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+            drawLine(fg.copy(alpha = 0.1f), Offset(0f, size.height / 2), Offset(size.width, size.height / 2))
+            drawPath(p, if (selected) accent else fg.copy(alpha = 0.75f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         }
         VSpace(6.dp)
-        Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, color = if (selected) accent else Color.White)
+        Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, color = if (selected) accent else Flat.Fg)
     }
 }
 

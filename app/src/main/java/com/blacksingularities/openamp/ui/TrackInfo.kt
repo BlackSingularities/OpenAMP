@@ -87,15 +87,15 @@ fun TrackDetailsDialog(vm: MainViewModel, track: Track, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier.padding(14.dp).widthIn(max = 520.dp).fillMaxWidth().heightIn(max = 720.dp)
-                .clip(RoundedCornerShape(24.dp)).background(Compact.Menu),
+                .clip(Shapes.XLarge).background(Compact.Menu),
         ) {
             // Nagłówek w kolorze okładki
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf((tint ?: Color.White).copy(alpha = 0.28f), Color.Transparent)))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf((tint ?: Flat.Fg).copy(alpha = 0.28f), Color.Transparent)))) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Artwork(track, Modifier.size(84.dp), size = 600, shape = RoundedCornerShape(16.dp))
+                    Artwork(track, Modifier.size(84.dp), size = 600, shape = Shapes.Large)
                     Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                        Text(track.title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
-                        Text(track.artist, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(track.title, color = Flat.Fg, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
+                        Text(track.artist, color = Flat.Fg.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(listOfNotNull(track.album, track.year.takeIf { it > 0 }?.toString()).joinToString(" • "), color = Compact.TextDim, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Chip(track.format)
@@ -161,7 +161,7 @@ fun TrackDetailsDialog(vm: MainViewModel, track: Track, onDismiss: () -> Unit) {
 
 @Composable
 private fun Chip(text: String) {
-    Text(text, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 7.dp, vertical = 2.dp))
+    Text(text, color = Flat.Fg, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(Shapes.Pill).background(Flat.Fg.copy(alpha = 0.12f)).padding(horizontal = 7.dp, vertical = 2.dp))
 }
 
 fun shareTrack(context: Context, track: Track) {

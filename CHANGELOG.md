@@ -1,5 +1,13 @@
 # Historia zmian
 
+## 2.1.0
+
+- **Tło „Żywe kolory”**: płynące, nakładające się plamy światła reagujące na muzykę – bas powiększa plamy, średnie i wysokie tony poruszają pozostałymi, uderzenia dają krótki błysk, głośność przyspiesza ruch. Barwy z okładki (kilka kolorów, nie jeden), z akcentu, z gotowych palet (zachód słońca, ocean, neon, las, pastele, monochromatyczne) albo wokół własnego koloru; płynne przejścia między utworami. Suwaki ruchu, reakcji na muzykę i intensywności, animowany podgląd palet.
+- **Jasny motyw** naprawiony: tekst, kafelki, karty, menu i arkusze biorą kolory z motywu zamiast stałej bieli i czerni.
+- Spójny design w całej aplikacji: wspólne promienie zaokrągleń (małe, wiersze i kafelki, karty, okna, pigułki) i niższe odstępy w pigułkach, zakładkach i segmentach.
+- Edytor widżetu z launchera wygląda dokładnie jak w aplikacji (motyw, akcent z okładki, nagłówek).
+- Ekran odtwarzania: mniejsze odstępy górnego paska, o połowę mniejszy margines okładki.
+
 ## 2.0
 
 - **Modele AI jak w OpenDesktop**: okno wyboru z wyszukiwarką, filtrem „Darmowe” i sortowaniem po nazwie, cenie i kontekście; przy modelu cena (USD za 1 mln tokenów) i długość kontekstu, gdy dostawca je podaje. Modele niebędące czatem są odfiltrowane.

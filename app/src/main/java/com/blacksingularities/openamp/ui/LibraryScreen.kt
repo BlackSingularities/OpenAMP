@@ -332,15 +332,15 @@ fun <T> GroupCollection(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (folderIcon) {
-                            Box(Modifier.size(if (compact) 36.dp else 48.dp).clip(RoundedCornerShape(11.dp)).background(Flat.Block), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(if (compact) 36.dp else 48.dp).clip(Shapes.Small).background(Flat.Block), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.Folder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             }
                         } else {
-                            Artwork(cover(g), Modifier.size(if (compact) 36.dp else 48.dp), size = 160, shape = if (circle) CircleShape else RoundedCornerShape(11.dp))
+                            Artwork(cover(g), Modifier.size(if (compact) 36.dp else 48.dp), size = 160, shape = if (circle) CircleShape else Shapes.Small)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(title(g), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(title(g), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Flat.Fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(subtitle(g), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -400,18 +400,18 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 private fun PlaylistRow(title: String, subtitle: String, icon: ImageVector, cover: Track?, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(46.dp)) {
-            if (cover != null) Artwork(cover, Modifier.fillMaxSize(), size = 160, shape = RoundedCornerShape(12.dp))
+            if (cover != null) Artwork(cover, Modifier.fillMaxSize(), size = 160, shape = Shapes.Medium)
             Box(
                 Modifier.fillMaxSize().background(
                     if (cover != null) Color.Black.copy(alpha = 0.45f) else MaterialTheme.colorScheme.secondaryContainer,
-                    RoundedCornerShape(12.dp),
+                    Shapes.Medium,
                 ),
                 contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, tint = if (cover != null) Color.White else MaterialTheme.colorScheme.primary) }
+            ) { Icon(icon, null, tint = if (cover != null) Flat.Fg else MaterialTheme.colorScheme.primary) }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Flat.Fg)
             Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

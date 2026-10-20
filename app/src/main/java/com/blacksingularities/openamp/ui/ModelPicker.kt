@@ -101,13 +101,13 @@ fun ModelPickerDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.padding(horizontal = 14.dp, vertical = 24.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Compact.Menu).padding(12.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 24.dp).fillMaxWidth().clip(Shapes.XLarge).background(Compact.Menu).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RowIcon(Icons.Rounded.Psychology)
                 Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                    Text(tr("Model AI"), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(tr("Model AI"), color = Flat.Fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text(providerLabel, color = Compact.TextDim, fontSize = 11.sp)
                 }
                 RoundButton(Icons.Rounded.Refresh, tr("Odśwież"), { if (!loading) onRefresh() }, size = 36.dp, iconSize = 18.dp, enabled = !loading)
@@ -116,7 +116,7 @@ fun ModelPickerDialog(
             }
             // Wyszukiwarka
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Flat.Block).padding(horizontal = 12.dp, vertical = 9.dp),
+                Modifier.fillMaxWidth().clip(Shapes.Pill).background(Flat.Block).padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.Search, null, tint = Compact.TextDim, modifier = Modifier.size(17.dp))
@@ -125,7 +125,7 @@ fun ModelPickerDialog(
                     if (query.isEmpty()) Text(if (priced) tr("Szukaj (claude, gpt, llama, free…)") else tr("Szukaj modelu"), color = Compact.TextFaint, fontSize = 13.sp)
                     BasicTextField(
                         query, { query = it }, singleLine = true, cursorBrush = SolidColor(accent),
-                        textStyle = TextStyle(color = Color.White, fontSize = 13.sp), modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Flat.Fg, fontSize = 13.sp), modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (query.isNotEmpty()) Icon(Icons.Rounded.Close, tr("Wyczyść"), tint = Compact.TextDim, modifier = Modifier.size(17.dp).clickable { query = "" })
@@ -164,13 +164,13 @@ fun ModelPickerDialog(
 private fun ModelRow(m: AiModelInfo, selected: Boolean, priced: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .background(if (selected) accent.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.04f))
+        Modifier.fillMaxWidth().clip(Shapes.Medium)
+            .background(if (selected) accent.copy(alpha = 0.16f) else Flat.Fg.copy(alpha = 0.04f))
             .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(m.title, color = if (selected) accent else Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(m.title, color = if (selected) accent else Flat.Fg, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (m.title != m.id) Text(m.id, fontSize = 10.sp, color = Compact.TextFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val meta = buildString {
                 if (priced) {
