@@ -157,6 +157,7 @@ fun <T> SetDropdown(
     subtitle: String? = null,
     enabled: Boolean = true,
     preview: (@Composable (T, Modifier) -> Unit)? = null,
+    group: ((T) -> String)? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -183,7 +184,13 @@ fun <T> SetDropdown(
         }
         Box(Modifier.align(Alignment.TopEnd)) {
             CompactMenu(open, { open = false }, wide = preview != null) {
-                options.forEach { o ->
+                options.forEachIndexed { n, o ->
+                    // Nagłówek grupy przy pierwszej opcji nowego typu.
+                    val g = group?.invoke(o)
+                    if (g != null && (n == 0 || group(options[n - 1]) != g)) {
+                        if (n > 0) CMenuDivider()
+                        CMenuLabel(g)
+                    }
                     if (preview == null) CMenuItem(label(o), checked = o == selected) { onSelect(o); open = false }
                     else PreviewMenuItem(label(o), o == selected, { preview(o, it) }) { onSelect(o); open = false }
                 }

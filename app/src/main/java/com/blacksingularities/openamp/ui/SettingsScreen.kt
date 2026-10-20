@@ -259,8 +259,8 @@ private fun PlayerSection(vm: MainViewModel) {
         val demo = rememberDemoSpectrum()
         val accent = MaterialTheme.colorScheme.primary
         SetDropdown(
-            Icons.Rounded.GraphicEq, tr("Wizualizacja"), VisualizerStyle.entries, s.visualizer, ::visLabel,
-            preview = { v, m -> VisualizerPreview(v, demo, accent, m) },
+            Icons.Rounded.GraphicEq, tr("Wizualizacja"), VisualizerByType, s.visualizer, ::visLabel,
+            preview = { v, m -> VisualizerPreview(v, demo, accent, m) }, group = ::visGroup,
         ) { v -> vm.updateSettings { it.copy(visualizer = v) } }
         SetDropdown(
             Icons.Rounded.Waves, tr("Taśma utworu"), SeekStyle.entries, s.seekStyle, ::seekLabel, subtitle = tr("Przewijanie palcem w całym polu przycisków"),
@@ -602,6 +602,21 @@ fun aodLabel(m: AodMode) = when (m) { AodMode.OFF -> tr("Wyłączony"); AodMode.
 
 fun languageLabel(l: AppLanguage) = when (l) { AppLanguage.SYSTEM -> tr("Systemowy"); AppLanguage.PL -> "Polski"; AppLanguage.EN -> "English" }
 fun themeLabel(t: ThemeMode) = when (t) { ThemeMode.SYSTEM -> tr("Systemowy"); ThemeMode.DARK -> tr("Ciemny"); ThemeMode.LIGHT -> tr("Jasny"); ThemeMode.BLACK -> tr("Czarny (AMOLED)") }
+/** Wizualizacje pogrupowane według typu: słupki, fale, okrągłe, na końcu „brak”. */
+private val VisualizerByType = listOf(
+    VisualizerStyle.BARS, VisualizerStyle.MIRROR,
+    VisualizerStyle.WAVE, VisualizerStyle.LINE,
+    VisualizerStyle.CIRCLE, VisualizerStyle.RING_WAVE, VisualizerStyle.PULSE,
+    VisualizerStyle.NONE,
+)
+
+private fun visGroup(v: VisualizerStyle) = when (v) {
+    VisualizerStyle.BARS, VisualizerStyle.MIRROR -> tr("Słupki")
+    VisualizerStyle.WAVE, VisualizerStyle.LINE -> tr("Fale i linie")
+    VisualizerStyle.CIRCLE, VisualizerStyle.RING_WAVE, VisualizerStyle.PULSE -> tr("Wokół okładki")
+    VisualizerStyle.NONE -> tr("Bez wizualizacji")
+}
+
 fun visLabel(v: VisualizerStyle) = when (v) { VisualizerStyle.BARS -> tr("Słupki widma"); VisualizerStyle.WAVE -> tr("Fala"); VisualizerStyle.CIRCLE -> tr("Okrąg"); VisualizerStyle.PULSE -> tr("Puls"); VisualizerStyle.MIRROR -> tr("Lustrzane słupki"); VisualizerStyle.RING_WAVE -> tr("Fala w okręgu"); VisualizerStyle.LINE -> tr("Krzywa widma"); VisualizerStyle.NONE -> tr("Brak") }
 fun bgLabel(v: NpBackground) = when (v) { NpBackground.BLUR -> tr("Rozmyta okładka"); NpBackground.GRADIENT -> tr("Gradient akcentu"); NpBackground.AURORA -> tr("Zorza (reaguje na muzykę)"); NpBackground.BLACK -> tr("Czysta czerń") }
 fun shapeLabel(v: CoverShape) = when (v) { CoverShape.ROUNDED -> tr("Zaokrąglona"); CoverShape.SQUARE -> tr("Kwadratowa"); CoverShape.CIRCLE -> tr("Okrągła"); CoverShape.VINYL -> tr("Płyta winylowa") }

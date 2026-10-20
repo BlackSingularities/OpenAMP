@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -88,9 +90,12 @@ fun HintBubble(state: HintState, modifier: Modifier = Modifier) {
     LaunchedEffect(state.token) {
         if (state.text != null) { delay(1400); state.hide() }
     }
-    AnimatedVisibility(state.text != null, modifier, enter = fadeIn(tween(120)), exit = fadeOut(tween(200))) {
+    // Ostatni tekst zostaje na czas znikania – inaczej przez chwilę widać pustą pigułkę.
+    var last by remember { mutableStateOf("") }
+    state.text?.let { last = it }
+    AnimatedVisibility(state.text != null, modifier, enter = fadeIn(tween(120)), exit = fadeOut(tween(160))) {
         Text(
-            state.text ?: "", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            last, color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }
@@ -197,7 +202,7 @@ fun SectionHeader(icon: ImageVector?, title: String, modifier: Modifier = Modifi
     }
 }
 
-/** Kafelek-przełącznik (4 w rzędzie): ikona + krótki podpis, pełny opis po przytrzymaniu. */
+/** Kafelek-przełącznik: ikona + krótki podpis, pełny opis po przytrzymaniu. */
 class Tile(
     val icon: ImageVector,
     val short: String,
@@ -206,21 +211,29 @@ class Tile(
     val onChange: (Boolean) -> Unit,
 )
 
+/**
+ * Przełączniki w jednym wierszu (do 6; więcej – równo podzielone na wiersze), wyśrodkowane,
+ * wszystkie tej samej wysokości – niezależnie od długości podpisu.
+ */
 @Composable
-fun TileGrid(tiles: List<Tile>, columns: Int = 4) {
+fun TileGrid(tiles: List<Tile>, columns: Int = if (tiles.size <= 6) tiles.size.coerceAtLeast(1) else (tiles.size + 1) / 2) {
     val accent = MaterialTheme.colorScheme.primary
     val on = MaterialTheme.colorScheme.onPrimary
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         tiles.chunked(columns).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+                // Niepełny wiersz – wolne miejsce po równo z obu stron, kafelki zostają wyśrodkowane.
+                val free = columns - row.size
+                if (free > 0) Spacer(Modifier.weight(free / 2f))
                 row.forEach { t ->
                     Column(
-                        Modifier.weight(1f)
+                        Modifier.weight(1f).fillMaxHeight()
                             .reactive(t.full) { t.onChange(!t.value) }
                             .clip(RoundedCornerShape(14.dp))
                             .background(if (t.value) accent else Flat.Faint)
                             .padding(vertical = 9.dp, horizontal = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Icon(t.icon, null, tint = if (t.value) on else Flat.Dim, modifier = Modifier.size(20.dp))
                         Text(
@@ -231,7 +244,7 @@ fun TileGrid(tiles: List<Tile>, columns: Int = 4) {
                         )
                     }
                 }
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                if (free > 0) Spacer(Modifier.weight(free / 2f))
             }
         }
     }

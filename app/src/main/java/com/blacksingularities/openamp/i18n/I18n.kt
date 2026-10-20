@@ -833,4 +833,8 @@ private val En: Map<String, String> = mapOf(
     "Okładka wypełnia cały widżet; wyłączona – tło z ustawień" to "Artwork fills the whole widget; off – background from settings",
     "Wyk. – album" to "Artist – album",
     "Wykonawca i album w jednym wierszu: „Wykonawca – Album”" to "Artist and album in one line: “Artist – Album”",
+    "Słupki" to "Bars",
+    "Fale i linie" to "Waves and lines",
+    "Wokół okładki" to "Around artwork",
+    "Bez wizualizacji" to "No visualizer",
 )
