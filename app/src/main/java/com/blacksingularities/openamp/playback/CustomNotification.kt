@@ -37,6 +37,24 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
     private var artFor: Long? = null
     private var art: Bitmap? = null
     private var artColor: Int? = null
+    // Okładka przeskalowana do powiadomienia: cała paczka idzie przez Binder (limit ~1 MB),
+    // a pełne 1024 px w dwóch widokach to ~8 MB – system odrzuca to i aplikacja się wywraca.
+    private var artBig: Bitmap? = null
+    private var artSmall: Bitmap? = null
+
+    private fun setArt(bmp: Bitmap?) {
+        art = bmp
+        artBig = bmp?.let { scaled(it, 320) }
+        artSmall = bmp?.let { scaled(it, 144) }
+    }
+
+    private fun scaled(b: Bitmap, max: Int): Bitmap {
+        val m = maxOf(b.width, b.height)
+        if (m <= max) return b
+        val f = max.toFloat() / m
+        val src = if (b.config == Bitmap.Config.HARDWARE) b.copy(Bitmap.Config.ARGB_8888, false) ?: return b else b
+        return Bitmap.createScaledBitmap(src, (b.width * f).toInt().coerceAtLeast(1), (b.height * f).toInt().coerceAtLeast(1), true)
+    }
 
     override fun createNotification(
         mediaSession: MediaSession,
@@ -52,14 +70,14 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
         val track = id?.let { Graph.library.get(it) }
         if (id != artFor) {
             artFor = id
-            art = track?.let { ArtworkLoader.peek(it, 1024) }
+            setArt(track?.let { ArtworkLoader.peek(it, 1024) })
             artColor = art?.let { runCatching { vibrantColor(it) }.getOrNull() }
             if (art == null && track != null) {
                 // Okładka wczytuje się w tle – potem podmieniamy powiadomienie.
                 Graph.scope.launch {
                     val bmp = ArtworkLoader.load(context, track, 1024) ?: return@launch
                     if (artFor != id) return@launch
-                    art = bmp
+                    setArt(bmp)
                     artColor = runCatching { vibrantColor(bmp) }.getOrNull()
                     val n = build(mediaSession, mediaButtonPreferences, actionFactory)
                     onNotificationChangedCallback.onNotificationChanged(n)
@@ -85,7 +103,7 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
         fun views(layout: Int, big: Boolean): RemoteViews = RemoteViews(context.packageName, layout).apply {
             setTextViewText(R.id.n_text, text)
             setTextColor(R.id.n_text, fg)
-            val bmp = art
+            val bmp = if (big) artBig else artSmall
             if (bmp != null) setImageViewBitmap(R.id.n_cover, bmp) else { setImageViewResource(R.id.n_cover, R.drawable.ic_w_note); setInt(R.id.n_cover, "setColorFilter", fg) }
             fun bind(view: Int, icon: Int, intent: android.app.PendingIntent?) {
                 setImageViewResource(view, icon)

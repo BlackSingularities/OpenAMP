@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 1.6.1
+
+- Naprawiony crash zaraz po uruchomieniu: nowe powiadomienie wysyłało okładkę w pełnej rozdzielczości (1024 px) w obu widokach, przez co system odrzucał je przy starcie odtwarzacza. Okładka w powiadomieniu jest teraz przeskalowana.
+
 ## 1.6.0
 
 - **Analiza AI biblioteki**: nowa grupa **Kategorie AI** (nastroje, style, epoki, okazje) i miksy AI w „Miksach dla Ciebie”. Z własnym kluczem API Anthropic analizę robi Claude (Opus 5.5, Sonnet 5.5 lub Haiku 5.5 – do modelu trafia tylko lista utworów z metadanymi, nie pliki); bez klucza działa analiza lokalna na telefonie. Propozycja analizy pojawia się, gdy biblioteka zmieni się o co najmniej 5 utworów.
