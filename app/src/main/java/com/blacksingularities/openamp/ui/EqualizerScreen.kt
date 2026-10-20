@@ -3,6 +3,7 @@ package com.blacksingularities.openamp.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.DevicesOther
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.foundation.layout.Spacer
@@ -196,11 +197,9 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
             // Pasma, profile wyjścia, dynamika
             item {
                 Panel(padding = 12.dp) {
-                    Overline(tr("Liczba pasm"))
-                    ChoiceTiles(Dsp.BAND_COUNTS, s.bands.size, { tr("{0} pasm", it) }) { selected = -1; Dsp.setBandCount(it) }
-                    Gap(14.dp)
-                    Overline(tr("Profile wyjścia"))
-                    ChoiceTiles(OUTPUTS, s.profile, { outputLabel(it) }, { outputIcon(it) }) { Dsp.switchProfile(it) }
+                    ChoiceTiles(Dsp.BAND_COUNTS, s.bands.size, { tr("{0} pasm", it) }, title = tr("Liczba pasm"), titleIcon = Icons.Rounded.Tune) { selected = -1; Dsp.setBandCount(it) }
+                    Gap(6.dp)
+                    ChoiceTiles(OUTPUTS, s.profile, { outputLabel(it) }, { outputIcon(it) }, title = tr("Profil wyjścia")) { Dsp.switchProfile(it) }
                     Gap(8.dp)
                     TileGrid(listOf(
                         Tile(Icons.Rounded.DevicesOther, tr("Auto profil"), tr("Osobne ustawienia korektora dla słuchawek, Bluetooth, USB i głośnika – przełączane samoczynnie"), s.autoProfiles) { v -> Dsp.update { it.copy(autoProfiles = v) } },
@@ -363,9 +362,8 @@ private fun BandEditor(b: EqBand, index: Int, n: Int, onClose: () -> Unit) {
         Slider(ln(b.freq / F_MIN) / ln(F_MAX / F_MIN), { Dsp.setBand(index, b.copy(freq = (F_MIN * (F_MAX / F_MIN).pow(it)).roundToInt().toFloat())) })
         Text(tr("Dobroć (szerokość pasma)"), style = MaterialTheme.typography.labelSmall)
         Slider(b.q, { Dsp.setBand(index, b.copy(q = (it * 20).roundToInt() / 20f)) }, valueRange = 0.3f..8f)
-        Text(tr("Typ filtra"), style = MaterialTheme.typography.labelSmall)
         Gap(4.dp)
-        ChoiceTiles(FilterType.entries, b.type, { filterLabel(it) }) { Dsp.setBand(index, b.copy(type = it, q = if (it == FilterType.PEAK) b.q else 0.71f)) }
+        ChoiceTiles(FilterType.entries, b.type, { filterLabel(it) }, title = tr("Typ filtra"), titleIcon = Icons.Rounded.Tune) { Dsp.setBand(index, b.copy(type = it, q = if (it == FilterType.PEAK) b.q else 0.71f)) }
         Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillToggle(tr("Szerokie"), b.q < 1f, { Dsp.setBand(index, b.copy(q = 0.7f)) })

@@ -256,8 +256,16 @@ private fun PlayerSection(vm: MainViewModel) {
     SetCard(tr("Okładka i tło")) {
         SetDropdown(Icons.Rounded.Image, tr("Tło"), NpBackground.entries, s.npBackground, ::bgLabel) { v -> vm.updateSettings { it.copy(npBackground = v) } }
         SetDropdown(Icons.Rounded.Crop, tr("Kształt okładki"), CoverShape.entries, s.coverShape, ::shapeLabel) { v -> vm.updateSettings { it.copy(coverShape = v) } }
-        SetDropdown(Icons.Rounded.GraphicEq, tr("Wizualizacja"), VisualizerStyle.entries, s.visualizer, ::visLabel) { v -> vm.updateSettings { it.copy(visualizer = v) } }
-        SetDropdown(Icons.Rounded.Waves, tr("Taśma utworu"), SeekStyle.entries, s.seekStyle, ::seekLabel, subtitle = tr("Przewijanie palcem w całym polu przycisków")) { v -> vm.updateSettings { it.copy(seekStyle = v) } }
+        val demo = rememberDemoSpectrum()
+        val accent = MaterialTheme.colorScheme.primary
+        SetDropdown(
+            Icons.Rounded.GraphicEq, tr("Wizualizacja"), VisualizerStyle.entries, s.visualizer, ::visLabel,
+            preview = { v, m -> VisualizerPreview(v, demo, accent, m) },
+        ) { v -> vm.updateSettings { it.copy(visualizer = v) } }
+        SetDropdown(
+            Icons.Rounded.Waves, tr("Taśma utworu"), SeekStyle.entries, s.seekStyle, ::seekLabel, subtitle = tr("Przewijanie palcem w całym polu przycisków"),
+            preview = { v, m -> SeekPreview(v, demo, accent, m) },
+        ) { v -> vm.updateSettings { it.copy(seekStyle = v) } }
     }
     SetCard(tr("Tytuł i wykonawca")) {
         SetSegment(
