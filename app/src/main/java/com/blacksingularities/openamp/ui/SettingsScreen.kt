@@ -436,7 +436,7 @@ private fun OtherTab(vm: MainViewModel) {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.Image(
                     androidx.compose.ui.res.painterResource(R.drawable.ic_launcher_foreground), null,
-                    Modifier.size(44.dp).background(Color(0xFF1C1030), RoundedCornerShape(12.dp)),
+                    Modifier.size(44.dp),
                 )
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("OpenAMP", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
