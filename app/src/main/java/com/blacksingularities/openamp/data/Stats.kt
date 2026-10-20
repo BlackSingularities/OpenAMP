@@ -19,6 +19,8 @@ data class UserData(
     val playlists: List<Playlist> = emptyList(),
     /** Czas słuchania w poszczególnych dniach (numer dnia od 1970 → ms). */
     val daily: Map<Long, Long> = emptyMap(),
+    /** Czas słuchania w poszczególnych godzinach doby (0–23 → ms), zbierany od wersji 2.1. */
+    val hourly: Map<Int, Long> = emptyMap(),
 )
 
 /**
@@ -48,9 +50,11 @@ class UserDataStore(context: Context) {
         update { d ->
             val s = d.stats[trackId] ?: PlayStat()
             val day = Math.floorDiv(System.currentTimeMillis() + java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()), 86_400_000L)
+            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
             d.copy(
                 stats = d.stats + (trackId to s.copy(listenMs = s.listenMs + ms)),
                 daily = d.daily + (day to ((d.daily[day] ?: 0L) + ms)),
+                hourly = d.hourly + (hour to ((d.hourly[hour] ?: 0L) + ms)),
             )
         }
     }
@@ -71,7 +75,7 @@ class UserDataStore(context: Context) {
         return removed
     }
 
-    fun clearStats() = update { it.copy(stats = emptyMap(), daily = emptyMap()) }
+    fun clearStats() = update { it.copy(stats = emptyMap(), daily = emptyMap(), hourly = emptyMap()) }
 
     fun toggleFavorite(trackId: Long) = update { d ->
         d.copy(favorites = if (trackId in d.favorites) d.favorites - trackId else d.favorites + trackId)
@@ -134,13 +138,16 @@ class UserDataStore(context: Context) {
         o.optJSONArray("disliked")?.let { a -> for (i in 0 until a.length()) dis += a.getLong(i) }
         val daily = HashMap<Long, Long>()
         o.optJSONObject("daily")?.let { dd -> for (k in dd.keys()) daily[k.toLong()] = dd.getLong(k) }
-        UserData(stats = stats, favorites = fav, disliked = dis, playlists = lists, daily = daily)
+        val hourly = HashMap<Int, Long>()
+        o.optJSONObject("hourly")?.let { hh -> for (k in hh.keys()) hourly[k.toInt()] = hh.getLong(k) }
+        UserData(stats = stats, favorites = fav, disliked = dis, playlists = lists, daily = daily, hourly = hourly)
     }.getOrDefault(UserData())
 
     private fun save(d: UserData) {
         val o = JSONObject()
         o.put("stats", JSONObject().apply { d.stats.forEach { (k, v) -> put(k.toString(), JSONArray().put(v.count).put(v.lastPlayed).put(v.listenMs)) } })
         o.put("daily", JSONObject().apply { d.daily.forEach { (k, v) -> put(k.toString(), v) } })
+        o.put("hourly", JSONObject().apply { d.hourly.forEach { (k, v) -> put(k.toString(), v) } })
         o.put("favorites", JSONArray(d.favorites.toList()))
         o.put("disliked", JSONArray(d.disliked.toList()))
         o.put("playlists", JSONArray().apply {

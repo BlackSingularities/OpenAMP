@@ -2,6 +2,9 @@
 
 ## 2.1.0
 
+- **Nowe statystyki**: łączny czas z przeliczeniem na doby muzyki, dziś, ten tydzień z trendem, średnia dzienna, seria dni i rekord; wykres aktywności (14 dni / 30 dni / rok) z linią średniej i podglądem wartości po dotknięciu; rytm tygodnia i pora dnia; rankingi utworów (odtworzenia albo czas), wykonawców, albumów i gatunków z odtwarzaniem po dotknięciu; dekady, formaty plików, pokrycie biblioteki, ostatnio słuchane i zapomniane perełki.
+- Ekran odtwarzania: pod tagami pliku następny utwór z kolejki.
+- Wizualizacje na okładce z lekkim cieniem – widoczne także na jasnych okładkach; okładka przy starcie odtwarzania rośnie tylko o 2 px.
 - **Tło „Żywe kolory”**: płynące, nakładające się plamy światła reagujące na muzykę – bas powiększa plamy, średnie i wysokie tony poruszają pozostałymi, uderzenia dają krótki błysk, głośność przyspiesza ruch. Barwy z okładki (kilka kolorów, nie jeden), z akcentu, z gotowych palet (zachód słońca, ocean, neon, las, pastele, monochromatyczne) albo wokół własnego koloru; płynne przejścia między utworami. Suwaki ruchu, reakcji na muzykę i intensywności, animowany podgląd palet.
 - **Jasny motyw** naprawiony: tekst, kafelki, karty, menu i arkusze biorą kolory z motywu zamiast stałej bieli i czerni.
 - Spójny design w całej aplikacji: wspólne promienie zaokrągleń (małe, wiersze i kafelki, karty, okna, pigułki) i niższe odstępy w pigułkach, zakładkach i segmentach.
