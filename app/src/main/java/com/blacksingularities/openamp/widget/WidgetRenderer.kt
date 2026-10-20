@@ -162,11 +162,18 @@ object WidgetRenderer {
         val c = i.cfg
         val s = i.state
         val h = i.size.hDp
+        val inColumn = c.controlsPos == WidgetControlsPos.IN_COLUMN
         texts(rv, i, pal, titleSp = 17f, artistSp = 13f)
         rv.setViewVisibility(R.id.w_artist, vis(c.showArtist || s.trackId == null))
-        val album = s.album?.takeIf { c.showAlbum && h >= 160 && it.isNotBlank() }
-        rv.setViewVisibility(R.id.w_album, vis(album != null))
-        if (album != null) {
+        val joined = c.artistAlbumLine && s.trackId != null
+        val album = s.album?.takeIf { c.showAlbum && (joined || h >= 160) && it.isNotBlank() }
+        // „Wykonawca – Album” w jednym wierszu zamiast osobnego wiersza albumu.
+        if (joined && album != null) {
+            rv.setTextViewText(R.id.w_artist, if (c.showArtist) "${s.artist?.takeIf { it.isNotBlank() } ?: tr("Nieznany wykonawca")} – $album" else album)
+            rv.setViewVisibility(R.id.w_artist, View.VISIBLE)
+        }
+        rv.setViewVisibility(R.id.w_album, vis(album != null && !joined))
+        if (album != null && !joined) {
             rv.setTextViewText(R.id.w_album, album)
             textStyle(rv, R.id.w_album, 12f * c.textScale / 100f, pal.fg3)
         }
@@ -202,52 +209,64 @@ object WidgetRenderer {
         if (Build.VERSION.SDK_INT >= 31) {
             val dip = TypedValue.COMPLEX_UNIT_DIP
             // Odstęp taśma–przyciski: gdy taśma jest nad przyciskami – margines przycisków, gdy pod – margines taśmy.
-            val above = bar === barTop
+            val above = bar === barTop && !inColumn
             rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, if (above) c.progressGap.toFloat() else 0f, dip)
-            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above) (if (c.compact) 0f else 6f) else c.progressGap.toFloat(), dip)
-            rv.setViewLayoutMargin(R.id.w_cover, RemoteViews.MARGIN_END, if (c.compact) 8f else 12f, dip)
-            rv.setViewLayoutMargin(R.id.w_cover_end, RemoteViews.MARGIN_START, if (c.compact) 6f else 8f, dip)
+            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above || inColumn) (if (c.compact) 0f else 6f) else c.progressGap.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_TOP, if (c.compact) 0f else 6f, dip)
+            rv.setViewLayoutMargin(R.id.w_cover_box, RemoteViews.MARGIN_END, if (c.compact) 8f else 12f, dip)
+            rv.setViewLayoutMargin(R.id.w_cover_end_box, RemoteViews.MARGIN_START, if (c.compact) 6f else 8f, dip)
             rv.setViewLayoutMargin(R.id.w_cover_top, RemoteViews.MARGIN_BOTTOM, if (c.compact) 2f else 8f, dip)
         }
 
-        // Okładka dopasowana do wysokości widżetu i suwaka rozmiaru (Android 12+), na starszych stała.
+        // Okładka we własnym kontenerze: przy 100% ma wysokość całego wiersza – w kolumnowym układzie
+        // przycisków to cały widżet poza taśmą postępu (Android 12+, na starszych stała).
         val barDp = if (!showRow) 0 else (if (c.compact) 0 else 6) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
             (if (c.showTime && !sides) 15 else 0)
-        val reserved = c.padding * 2 + 48 * c.buttonScale / 100 + c.progressGap + barDp
+        val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100 + c.progressGap
+        val free = (h - c.padding * 2 - buttonsDp - barDp).coerceAtLeast(32)
         val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
             // Nad tytułem: zostaje miejsce na tytuł i wykonawcę.
-            ((h - reserved - 52) * c.coverSize / 100).coerceIn(32, 180).coerceAtMost((i.size.wDp * 0.6f).toInt())
+            ((free - 52) * c.coverSize / 100).coerceIn(32, 400).coerceAtMost((i.size.wDp * 0.6f).toInt())
         } else {
-            // Wiersz z tytułem nie rośnie ponad wolne miejsce – większa okładka byłaby przycięta.
-            ((h - reserved) * c.coverSize / 100).coerceIn(32, 180).coerceAtMost((i.size.wDp * 0.5f).toInt()).coerceAtMost((h - reserved - 14).coerceAtLeast(32))
+            (free * c.coverSize / 100).coerceIn(32, free).coerceAtMost((i.size.wDp * 0.55f).toInt())
         }
         placeCover(
             context, rv, i, pal, coverDp, c.coverPos,
             listOf(WidgetCoverPos.LEFT to R.id.w_cover, WidgetCoverPos.RIGHT to R.id.w_cover_end, WidgetCoverPos.TOP to R.id.w_cover_top),
         )
+        val coverShown = c.showCover && !coverAsBackground(i)
+        rv.setViewVisibility(R.id.w_cover_box, vis(coverShown && c.coverPos == WidgetCoverPos.LEFT))
+        rv.setViewVisibility(R.id.w_cover_end_box, vis(coverShown && c.coverPos == WidgetCoverPos.RIGHT))
 
-        val roomy = i.size.wDp >= 230
+        // Przyciski w jednym z dwóch kontenerów: wiersz na całą szerokość albo kolumna obok okładki.
+        val ctl = if (inColumn) ctlColumn else ctlRow
+        rv.setViewVisibility(R.id.w_controls, vis(!inColumn))
+        rv.setViewVisibility(R.id.w_controls_col, vis(inColumn))
+        val sideCover = coverShown && (c.coverPos == WidgetCoverPos.LEFT || c.coverPos == WidgetCoverPos.RIGHT)
+        val columnDp = i.size.wDp - c.padding * 2 - (if (sideCover) coverDp + 12 else 0)
+        val roomy = if (inColumn) columnDp >= 220 * c.buttonScale.coerceIn(60, 150) / 100 else i.size.wDp >= 230
         val showShuffle = c.showShuffle && roomy
         val showRepeat = c.showRepeat && roomy
-        rv.setViewVisibility(R.id.w_shuffle, vis(showShuffle))
-        rv.setViewVisibility(R.id.w_repeat, vis(showRepeat))
-        rv.setViewVisibility(R.id.w_prev, vis(c.showPrevNext))
-        rv.setViewVisibility(R.id.w_next, vis(c.showPrevNext))
+        rv.setViewVisibility(ctl.shuffle, vis(showShuffle))
+        rv.setViewVisibility(ctl.repeat, vis(showRepeat))
+        rv.setViewVisibility(ctl.prev, vis(c.showPrevNext))
+        rv.setViewVisibility(ctl.next, vis(c.showPrevNext))
         if (showShuffle) {
-            icon(rv, R.id.w_shuffle, R.drawable.ic_w_shuffle, if (s.shuffle) pal.accent else pal.fg3)
-            rv.setOnClickPendingIntent(R.id.w_shuffle, action(context, i, WidgetActions.SHUFFLE, 5))
-            rv.setContentDescription(R.id.w_shuffle, tr("Losowo"))
+            icon(rv, ctl.shuffle, R.drawable.ic_w_shuffle, if (s.shuffle) pal.accent else pal.fg3)
+            rv.setOnClickPendingIntent(ctl.shuffle, action(context, i, WidgetActions.SHUFFLE, 5))
+            rv.setContentDescription(ctl.shuffle, tr("Losowo"))
         }
         if (showRepeat) {
             icon(
-                rv, R.id.w_repeat, if (s.repeat == RepeatMode.ONE) R.drawable.ic_w_repeat_one else R.drawable.ic_w_repeat,
+                rv, ctl.repeat, if (s.repeat == RepeatMode.ONE) R.drawable.ic_w_repeat_one else R.drawable.ic_w_repeat,
                 if (s.repeat != RepeatMode.OFF) pal.accent else pal.fg3,
             )
-            rv.setOnClickPendingIntent(R.id.w_repeat, action(context, i, WidgetActions.REPEAT, 6))
-            rv.setContentDescription(R.id.w_repeat, tr("Powtarzanie"))
+            rv.setOnClickPendingIntent(ctl.repeat, action(context, i, WidgetActions.REPEAT, 6))
+            rv.setContentDescription(ctl.repeat, tr("Powtarzanie"))
         }
-        controls(context, rv, i, pal)
-        buttons(rv, i, play = 48, side = 44, sideWidth = null, extra = 40, row = 48)
+        controls(context, rv, i, pal, ctl)
+        if (inColumn) buttons(rv, i, play = 48, side = 44, sideWidth = 44, extra = 40, row = 48, ctl = ctl, extraWidth = 40)
+        else buttons(rv, i, play = 48, side = 44, sideWidth = null, extra = 40, row = 48)
         like(context, rv, i, pal, onArt = coverAsBackground(i))
         rv.setOnClickPendingIntent(R.id.w_info, tapIntent(context, i))
         rv.setOnClickPendingIntent(R.id.w_bg, if (coverAsBackground(i)) tapIntent(context, i) else openApp(context, i.id, null, 20))
@@ -377,26 +396,32 @@ object WidgetRenderer {
         rv.setInt(id, "setColorFilter", color)
     }
 
-    private fun controls(context: Context, rv: RemoteViews, i: Input, pal: Palette) {
+    /** Identyfikatory jednego zestawu przycisków (Odtwarzacz ma dwa: wiersz i kolumnę obok okładki). */
+    private class Ctl(val row: Int, val shuffle: Int, val prev: Int, val playFrame: Int, val playBg: Int, val play: Int, val next: Int, val repeat: Int)
+
+    private val ctlRow = Ctl(R.id.w_controls, R.id.w_shuffle, R.id.w_prev, R.id.w_play_frame, R.id.w_play_bg, R.id.w_play, R.id.w_next, R.id.w_repeat)
+    private val ctlColumn = Ctl(R.id.w_controls_col, R.id.w_shuffle_c, R.id.w_prev_c, R.id.w_play_frame_c, R.id.w_play_bg_c, R.id.w_play_c, R.id.w_next_c, R.id.w_repeat_c)
+
+    private fun controls(context: Context, rv: RemoteViews, i: Input, pal: Palette, ctl: Ctl = ctlRow) {
         val playing = i.state.playing
-        rv.setImageViewResource(R.id.w_play, if (playing) R.drawable.ic_w_pause else R.drawable.ic_w_play)
+        rv.setImageViewResource(ctl.play, if (playing) R.drawable.ic_w_pause else R.drawable.ic_w_play)
         if (i.cfg.filledPlay) {
-            rv.setViewVisibility(R.id.w_play_bg, View.VISIBLE)
-            rv.setInt(R.id.w_play_bg, "setColorFilter", pal.accent)
-            rv.setInt(R.id.w_play, "setColorFilter", pal.onAccent)
+            rv.setViewVisibility(ctl.playBg, View.VISIBLE)
+            rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
+            rv.setInt(ctl.play, "setColorFilter", pal.onAccent)
         } else {
-            rv.setViewVisibility(R.id.w_play_bg, View.GONE)
-            rv.setInt(R.id.w_play, "setColorFilter", pal.fg)
+            rv.setViewVisibility(ctl.playBg, View.GONE)
+            rv.setInt(ctl.play, "setColorFilter", pal.fg)
         }
-        rv.setContentDescription(R.id.w_play, if (playing) tr("Pauza") else tr("Odtwórz"))
-        rv.setOnClickPendingIntent(R.id.w_play, action(context, i, WidgetActions.PLAY_PAUSE, 1))
-        icon(rv, R.id.w_next, R.drawable.ic_w_next, pal.fg)
-        rv.setContentDescription(R.id.w_next, tr("Następny"))
-        rv.setOnClickPendingIntent(R.id.w_next, action(context, i, WidgetActions.NEXT, 2))
+        rv.setContentDescription(ctl.play, if (playing) tr("Pauza") else tr("Odtwórz"))
+        rv.setOnClickPendingIntent(ctl.play, action(context, i, WidgetActions.PLAY_PAUSE, 1))
+        icon(rv, ctl.next, R.drawable.ic_w_next, pal.fg)
+        rv.setContentDescription(ctl.next, tr("Następny"))
+        rv.setOnClickPendingIntent(ctl.next, action(context, i, WidgetActions.NEXT, 2))
         if (i.kind != WidgetKind.SHORTCUTS) {
-            icon(rv, R.id.w_prev, R.drawable.ic_w_prev, pal.fg)
-            rv.setContentDescription(R.id.w_prev, tr("Poprzedni"))
-            rv.setOnClickPendingIntent(R.id.w_prev, action(context, i, WidgetActions.PREV, 3))
+            icon(rv, ctl.prev, R.drawable.ic_w_prev, pal.fg)
+            rv.setContentDescription(ctl.prev, tr("Poprzedni"))
+            rv.setOnClickPendingIntent(ctl.prev, action(context, i, WidgetActions.PREV, 3))
         }
     }
 
@@ -442,18 +467,24 @@ object WidgetRenderer {
      * Wielkość przycisków (Android 12+): [play] – koło odtwarzania, [side] – poprzedni/następny,
      * [extra] – losowanie/powtarzanie, [row] – wysokość wiersza; wartości w dp przy 100%.
      */
-    private fun buttons(rv: RemoteViews, i: Input, play: Int, side: Int, sideWidth: Int?, extra: Int?, row: Int?) {
+    private fun buttons(
+        rv: RemoteViews, i: Input, play: Int, side: Int, sideWidth: Int?, extra: Int?, row: Int?,
+        ctl: Ctl = ctlRow, extraWidth: Int? = null,
+    ) {
         if (Build.VERSION.SDK_INT < 31) return
         val k = i.cfg.buttonScale.coerceIn(60, 150) / 100f
         val unit = TypedValue.COMPLEX_UNIT_DIP
-        rv.setViewLayoutWidth(R.id.w_play_frame, play * k, unit)
-        rv.setViewLayoutHeight(R.id.w_play_frame, play * k, unit)
-        for (id in intArrayOf(R.id.w_prev, R.id.w_next)) {
+        rv.setViewLayoutWidth(ctl.playFrame, play * k, unit)
+        rv.setViewLayoutHeight(ctl.playFrame, play * k, unit)
+        for (id in intArrayOf(ctl.prev, ctl.next)) {
             rv.setViewLayoutHeight(id, side * k, unit)
             if (sideWidth != null) rv.setViewLayoutWidth(id, sideWidth * k, unit)
         }
-        if (extra != null) for (id in intArrayOf(R.id.w_shuffle, R.id.w_repeat)) rv.setViewLayoutHeight(id, extra * k, unit)
-        if (row != null) rv.setViewLayoutHeight(R.id.w_controls, row * k, unit)
+        if (extra != null) for (id in intArrayOf(ctl.shuffle, ctl.repeat)) {
+            rv.setViewLayoutHeight(id, extra * k, unit)
+            if (extraWidth != null) rv.setViewLayoutWidth(id, extraWidth * k, unit)
+        }
+        if (row != null) rv.setViewLayoutHeight(ctl.row, row * k, unit)
     }
 
     private fun cover(context: Context, rv: RemoteViews, i: Input, pal: Palette, dp: Int, id: Int = R.id.w_cover) {
@@ -478,7 +509,9 @@ object WidgetRenderer {
         val hDp = c.progressHeight.coerceIn(2, 48)
         val id = barOf(i).progress
         if (Build.VERSION.SDK_INT >= 31) rv.setViewLayoutHeight(id, hDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
-        rv.setImageViewBitmap(id, progressBitmap(context, i, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
+        val s = i.state
+        val f = if (s.durationMs > 0) (s.position().toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
+        rv.setImageViewBitmap(id, progressBitmap(context, resolveStyle(c.progressStyle, i.appSeek), f, i.wave, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
     }
 
     // ---------------------------------------------------------------- akcje
@@ -636,21 +669,24 @@ object WidgetRenderer {
     }
 
     /** Pasek postępu [wDp]×[hDp] w stylu z ustawień – klasyczne paski albo fala utworu jak na ekranie odtwarzania. */
-    private fun progressBitmap(context: Context, i: Input, pal: Palette, wDp: Int, hDp: Int): Bitmap {
+    /** Podgląd stylu paska do ustawień: ciemne tło, zastępcza fala, postęp [f]. */
+    fun progressPreview(context: Context, style: WidgetProgressStyle, appSeek: SeekStyle, accent: Int, wDp: Int, hDp: Int, f: Float = 0.42f): Bitmap {
+        val pal = Palette(Color.WHITE, 0xB8FFFFFF.toInt(), 0x85FFFFFF.toInt(), accent, Color.BLACK, light = false)
+        return progressBitmap(context, resolveStyle(style, appSeek), f, null, pal, wDp, hDp)
+    }
+
+    private fun progressBitmap(context: Context, style: WidgetProgressStyle, f: Float, wave: FloatArray?, pal: Palette, wDp: Int, hDp: Int): Bitmap {
         val sc = scaleOf(context)
         val w = (wDp * sc).roundToInt().coerceIn(20, 1400)
         val h = (hDp * sc).roundToInt().coerceAtLeast(3)
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        val s = i.state
-        val f = if (s.durationMs > 0) (s.position().toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
         val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ColorUtils.setAlphaComponent(pal.fg, 0x40) }
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = pal.accent }
         val head = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (pal.light) pal.accent else Color.WHITE }
-        val wave = i.wave
         val cy = h / 2f
         val x = w * f
-        when (val style = resolveStyle(i.cfg.progressStyle, i.appSeek)) {
+        when (style) {
             WidgetProgressStyle.THIN, WidgetProgressStyle.LINE, WidgetProgressStyle.BOLD, WidgetProgressStyle.APP -> {
                 val th = when (style) {
                     WidgetProgressStyle.THIN -> h.toFloat()

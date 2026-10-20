@@ -26,8 +26,11 @@ enum class WidgetCoverPos { LEFT, RIGHT, TOP, BACKGROUND }
 /** Czasy utworu: pod paskiem albo po jego bokach. */
 enum class WidgetTimePos { BELOW, SIDES }
 
-/** Przyciski odtwarzania pod taśmą postępu albo nad nią. */
-enum class WidgetControlsPos { BELOW_BAR, ABOVE_BAR }
+/**
+ * Przyciski odtwarzania: pod taśmą postępu, nad nią (osobny wiersz pod okładką i tytułem)
+ * albo w kolumnie obok okładki, wyśrodkowane pod tytułem – wtedy okładka sięga aż do taśmy.
+ */
+enum class WidgetControlsPos { BELOW_BAR, ABOVE_BAR, IN_COLUMN }
 
 /** Co robi dotknięcie okładki / tytułu. */
 enum class WidgetTap { OPEN_PLAYER, PLAY_PAUSE, NEXT, OPEN_QUEUE, OPEN_LIBRARY }
@@ -47,6 +50,8 @@ data class WidgetConfig(
     val showCover: Boolean = true,
     val showArtist: Boolean = true,
     val showAlbum: Boolean = true,
+    /** Wykonawca i album w jednym wierszu: „Wykonawca – Album”. */
+    val artistAlbumLine: Boolean = true,
     val showProgress: Boolean = true,
     val progressStyle: WidgetProgressStyle = WidgetProgressStyle.LINE,
     val showTime: Boolean = true,
@@ -126,6 +131,7 @@ object WidgetConfigStore {
                 showCover = getBoolean(k("showCover"), d.showCover),
                 showArtist = getBoolean(k("showArtist"), d.showArtist),
                 showAlbum = getBoolean(k("showAlbum"), d.showAlbum),
+                artistAlbumLine = getBoolean(k("artistAlbumLine"), d.artistAlbumLine),
                 showProgress = getBoolean(k("showProgress"), d.showProgress),
                 // Starsze wersje zawsze rysowały cienką linię na okładce i pasku – bez nadpisywania jej teraz.
                 progressStyle = if (kind != WidgetKind.PLAYER && !contains(k("progressHeight"))) d.progressStyle else enum(k("progressStyle"), d.progressStyle),
@@ -172,6 +178,7 @@ object WidgetConfigStore {
             .putBoolean(k("showCover"), c.showCover)
             .putBoolean(k("showArtist"), c.showArtist)
             .putBoolean(k("showAlbum"), c.showAlbum)
+            .putBoolean(k("artistAlbumLine"), c.artistAlbumLine)
             .putBoolean(k("showProgress"), c.showProgress)
             .putString(k("progressStyle"), c.progressStyle.name)
             .putBoolean(k("showTime"), c.showTime)

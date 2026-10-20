@@ -48,6 +48,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Compress
 import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.ViewColumn
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FormatBold
@@ -98,6 +100,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -107,7 +110,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.ThemeMode
 import com.blacksingularities.openamp.i18n.tr
-import com.blacksingularities.openamp.ui.ChoiceTiles
 import com.blacksingularities.openamp.ui.ColorPickerDialog
 import com.blacksingularities.openamp.ui.Flat
 import com.blacksingularities.openamp.ui.HintBubble
@@ -117,6 +119,10 @@ import com.blacksingularities.openamp.ui.PillButton
 import com.blacksingularities.openamp.ui.SectionHeader
 import com.blacksingularities.openamp.ui.SetAction
 import com.blacksingularities.openamp.ui.SetCard
+import com.blacksingularities.openamp.ui.SetDropdown
+import com.blacksingularities.openamp.ui.SetSwitch
+import com.blacksingularities.openamp.ui.TabChips
+import com.blacksingularities.openamp.ui.WidgetBarPreview
 import com.blacksingularities.openamp.ui.SetNote
 import com.blacksingularities.openamp.ui.SetSegment
 import com.blacksingularities.openamp.ui.SetSlider
@@ -409,195 +415,194 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
 
+        // Zakładki zamiast jednej długiej listy – podgląd zostaje na górze, ustawienia mieszczą się na ekranie.
+        val tabs = remember(kind) { EditorTab.entries.filter { it.applies(kind) } }
+        var tab by remember { mutableStateOf(tabs.first()) }
+        TabChips(tabs, tab, { it.label() }, { it.icon() }, Modifier.padding(top = 4.dp, bottom = 6.dp)) { tab = it }
+
         LazyColumn(
             contentPadding = PaddingValues(start = 10.dp, end = 10.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.weight(1f).navigationBarsPadding(),
         ) {
-            // ---- Okładka
-            item { SectionHeader(Icons.Rounded.Image, if (kind == WidgetKind.SHORTCUTS) tr("Bieżący utwór") else tr("Okładka")) }
-            item {
-                TileGrid(
-                    listOf(
-                        Tile(
-                            Icons.Rounded.Image,
-                            if (kind == WidgetKind.SHORTCUTS) tr("Pasek utworu") else tr("Okładka"),
-                            when (kind) {
-                                WidgetKind.SHORTCUTS -> tr("Okładka, tytuł i sterowanie nad skrótami (gdy widżet jest wysoki)")
-                                WidgetKind.COVER -> tr("Okładka wypełnia cały widżet; wyłączona – tło z ustawień poniżej")
-                                else -> tr("Pokazuj okładkę bieżącego utworu")
-                            },
-                            cfg.showCover,
-                        ) { v -> set { it.copy(showCover = v) } },
-                    ),
-                )
-            }
-            if (cfg.showCover && (kind == WidgetKind.PLAYER || kind == WidgetKind.BAR)) item {
-                val options = if (player) WidgetCoverPos.entries else WidgetCoverPos.entries - WidgetCoverPos.TOP
-                ChoiceTiles(options, cfg.coverPos, ::posLabel, ::posIcon) { v -> set { it.copy(coverPos = v) } }
-            }
-            if (cfg.showCover) item {
-                SetCard(null) {
-                    if (kind == WidgetKind.COVER) {
-                        SetSlider(Icons.Rounded.ZoomIn, tr("Powiększenie kadru"), "${cfg.coverSize.coerceAtLeast(100)}%", cfg.coverSize.coerceAtLeast(100).toFloat(), 100f..200f, 19) { v ->
-                            set { it.copy(coverSize = (v / 5).roundToInt() * 5) }
-                        }
-                    } else if (!bgCover) {
-                        SetSlider(
-                            Icons.Rounded.ZoomIn, tr("Rozmiar okładki"), "${cfg.coverSize}%", cfg.coverSize.toFloat(), 50f..160f, 21,
-                            subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
-                        ) { v -> set { it.copy(coverSize = (v / 5).roundToInt() * 5) } }
-                    }
-                    SetSlider(Icons.Rounded.Crop, tr("Kadr w pionie"), focusLabel(cfg.coverFocus), cfg.coverFocus.toFloat(), 0f..100f, 9, subtitle = tr("Która część okładki zostaje przy przycięciu")) { v ->
-                        set { it.copy(coverFocus = (v / 10).roundToInt() * 10) }
-                    }
-                    if (kind != WidgetKind.COVER && !bgCover) {
-                        SetSegment(Icons.Rounded.RoundedCorner, tr("Kształt okładki"), WidgetCoverShape.entries, cfg.coverShape, ::shapeLabel, short = {
-                            when (it) { WidgetCoverShape.ROUNDED -> tr("Zaokr."); WidgetCoverShape.SQUARE -> tr("Kwadrat"); WidgetCoverShape.CIRCLE -> tr("Koło") }
-                        }) { v -> set { it.copy(coverShape = v) } }
-                    }
-                }
-            }
-
-            // ---- Pasek postępu
-            if (hasTrack) {
-                item { SectionHeader(Icons.Rounded.LinearScale, tr("Pasek odtwarzania")) }
-                item {
-                    TileGrid(
-                        listOfNotNull(
-                            Tile(Icons.Rounded.LinearScale, tr("Pasek"), tr("Pasek postępu – odświeżany co 2 s podczas grania, gdy ekran jest włączony"), cfg.showProgress) { v -> set { it.copy(showProgress = v) } },
-                            if (player) Tile(Icons.Rounded.Schedule, tr("Czas"), tr("Czas od początku i długość utworu"), cfg.showTime) { v -> set { it.copy(showTime = v) } } else null,
-                            if (player) Tile(Icons.Rounded.AlignHorizontalLeft, tr("Czas po bokach"), tr("Czasy po lewej i prawej stronie paska zamiast pod nim"), cfg.timePos == WidgetTimePos.SIDES) { v ->
-                                set { it.copy(timePos = if (v) WidgetTimePos.SIDES else WidgetTimePos.BELOW) }
-                            } else null,
-                        ),
-                    )
-                }
-                if (cfg.showProgress) {
-                    item { ChoiceTiles(WidgetProgressStyle.entries, cfg.progressStyle, ::progressLabel, ::progressIcon) { v -> set { it.copy(progressStyle = v, progressHeight = suggestedHeight(kind, v, it.progressHeight)) } } }
+            when (tab) {
+                EditorTab.LAYOUT -> {
                     item {
                         SetCard(null) {
-                            SetSlider(
-                                Icons.Rounded.Height, tr("Wysokość paska"), "${cfg.progressHeight} dp", cfg.progressHeight.toFloat(), 2f..40f, 18,
-                                subtitle = if (sizesSupported) tr("Fale wyglądają najlepiej od 16 dp") else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
-                            ) { v -> set { it.copy(progressHeight = ((v / 2).roundToInt() * 2).coerceAtLeast(2)) } }
-                            if (WidgetRenderer.usesWave(WidgetRenderer.resolveStyle(cfg.progressStyle, Graph.settings.value.seekStyle))) {
-                                SetNote(tr("Fala dźwiękowa utworu jest liczona raz, w tle – do tego czasu widać zastępczy kształt."))
+                            if (player || kind == WidgetKind.BAR) {
+                                val options = if (player) WidgetCoverPos.entries else WidgetCoverPos.entries - WidgetCoverPos.TOP
+                                SetDropdown(
+                                    Icons.Rounded.Image, tr("Okładka"), listOf<WidgetCoverPos?>(null) + options, cfg.coverPos.takeIf { cfg.showCover },
+                                    { it?.let(::posLabel) ?: tr("Ukryta") },
+                                ) { v -> set { if (v == null) it.copy(showCover = false) else it.copy(showCover = true, coverPos = v) } }
+                            } else {
+                                SetSwitch(
+                                    Icons.Rounded.Image, if (kind == WidgetKind.SHORTCUTS) tr("Pasek utworu") else tr("Okładka"),
+                                    when (kind) {
+                                        WidgetKind.SHORTCUTS -> tr("Okładka, tytuł i sterowanie nad skrótami (gdy widżet jest wysoki)")
+                                        else -> tr("Okładka wypełnia cały widżet; wyłączona – tło z ustawień")
+                                    },
+                                    cfg.showCover,
+                                ) { v -> set { it.copy(showCover = v) } }
+                            }
+                            if (player) SetSegment(
+                                Icons.Rounded.ViewColumn, tr("Przyciski"), WidgetControlsPos.entries, cfg.controlsPos, ::controlsPosLabel,
+                                optionIcon = ::controlsPosIcon,
+                            ) { v -> set { it.copy(controlsPos = v) } }
+                            if (hasTrack) SetDropdown(Icons.Rounded.TouchApp, tr("Dotknięcie okładki i tytułu"), WidgetTap.entries, cfg.tap, ::tapLabel) { v -> set { it.copy(tap = v) } }
+                        }
+                    }
+                    if (player) item { SetNote(controlsPosHint(cfg.controlsPos)) }
+                    if (hasTrack) item {
+                        SetCard(null) {
+                            SetSwitch(Icons.Rounded.Compress, tr("Zwarty układ"), tr("Bez odstępów między okładką, tekstem, taśmą i przyciskami (Android 12+)"), cfg.compact) { v -> set { it.copy(compact = v) } }
+                            SetSlider(Icons.Rounded.Padding, tr("Margines wewnętrzny"), "${cfg.padding} dp", cfg.padding.toFloat(), 0f..24f, 23) { v -> set { it.copy(padding = v.roundToInt()) } }
+                        }
+                    }
+                }
+
+                EditorTab.COVER -> {
+                    if (!cfg.showCover) item { SetCard(null) { SetNote(tr("Okładka jest ukryta – włącz ją w zakładce „Układ”.")) } }
+                    else item {
+                        SetCard(null) {
+                            if (kind == WidgetKind.COVER) {
+                                SetSlider(Icons.Rounded.ZoomIn, tr("Powiększenie kadru"), "${cfg.coverSize.coerceAtLeast(100)}%", cfg.coverSize.coerceAtLeast(100).toFloat(), 100f..200f, 19) { v ->
+                                    set { it.copy(coverSize = (v / 5).roundToInt() * 5) }
+                                }
+                            } else if (!bgCover) {
+                                SetSlider(
+                                    Icons.Rounded.ZoomIn, tr("Rozmiar okładki"), "${cfg.coverSize.coerceAtMost(100)}%", cfg.coverSize.coerceIn(30, 100).toFloat(), 30f..100f, 13,
+                                    subtitle = if (!sizesSupported) tr("Wymaga Androida 12 lub nowszego") else if (player) tr("100% – cała wysokość wiersza okładki") else null,
+                                    enabled = sizesSupported,
+                                ) { v -> set { it.copy(coverSize = (v / 5).roundToInt() * 5) } }
+                            }
+                            SetSlider(Icons.Rounded.Crop, tr("Kadr w pionie"), focusLabel(cfg.coverFocus), cfg.coverFocus.toFloat(), 0f..100f, 9, subtitle = tr("Która część okładki zostaje przy przycięciu")) { v ->
+                                set { it.copy(coverFocus = (v / 10).roundToInt() * 10) }
+                            }
+                            if (kind != WidgetKind.COVER && !bgCover) {
+                                SetSegment(Icons.Rounded.RoundedCorner, tr("Kształt okładki"), WidgetCoverShape.entries, cfg.coverShape, ::shapeLabel, short = {
+                                    when (it) { WidgetCoverShape.ROUNDED -> tr("Zaokr."); WidgetCoverShape.SQUARE -> tr("Kwadrat"); WidgetCoverShape.CIRCLE -> tr("Koło") }
+                                }) { v -> set { it.copy(coverShape = v) } }
                             }
                         }
                     }
                 }
-                if (player) item {
-                    SetCard(null) {
-                        SetSlider(
-                            Icons.Rounded.SpaceBar, tr("Odstęp od przycisków"), "${cfg.progressGap} dp", cfg.progressGap.toFloat(), 0f..16f, 15,
-                            subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
-                        ) { v -> set { it.copy(progressGap = v.roundToInt()) } }
+
+                EditorTab.BAR -> {
+                    item {
+                        SetCard(null) {
+                            SetSwitch(Icons.Rounded.LinearScale, tr("Pasek postępu"), tr("Odświeżany co 2 s podczas grania, gdy ekran jest włączony"), cfg.showProgress) { v -> set { it.copy(showProgress = v) } }
+                            if (cfg.showProgress) {
+                                val seek = Graph.settings.value.seekStyle
+                                val accent = MaterialTheme.colorScheme.primary.toArgb()
+                                SetDropdown(
+                                    Icons.Rounded.Waves, tr("Styl paska"), WidgetProgressStyle.entries, cfg.progressStyle, ::progressLabel,
+                                    preview = { v, m -> WidgetBarPreview(v, seek, accent, m) },
+                                ) { v -> set { it.copy(progressStyle = v, progressHeight = suggestedHeight(kind, v, it.progressHeight)) } }
+                                SetSlider(
+                                    Icons.Rounded.Height, tr("Wysokość paska"), "${cfg.progressHeight} dp", cfg.progressHeight.toFloat(), 2f..40f, 18,
+                                    subtitle = if (sizesSupported) tr("Fale wyglądają najlepiej od 16 dp") else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                                ) { v -> set { it.copy(progressHeight = ((v / 2).roundToInt() * 2).coerceAtLeast(2)) } }
+                                if (WidgetRenderer.usesWave(WidgetRenderer.resolveStyle(cfg.progressStyle, seek))) {
+                                    SetNote(tr("Fala dźwiękowa utworu jest liczona raz, w tle – do tego czasu widać zastępczy kształt."))
+                                }
+                            }
+                        }
+                    }
+                    if (player) item {
+                        SetCard(null) {
+                            SetSegment(
+                                Icons.Rounded.Schedule, tr("Czas utworu"), listOf<WidgetTimePos?>(null, WidgetTimePos.BELOW, WidgetTimePos.SIDES), cfg.timePos.takeIf { cfg.showTime },
+                                { when (it) { null -> tr("Ukryty"); WidgetTimePos.BELOW -> tr("Pod paskiem"); WidgetTimePos.SIDES -> tr("Po bokach paska") } },
+                                short = { when (it) { null -> tr("Brak"); WidgetTimePos.BELOW -> tr("Pod"); WidgetTimePos.SIDES -> tr("Boki") } },
+                            ) { v -> set { if (v == null) it.copy(showTime = false) else it.copy(showTime = true, timePos = v) } }
+                            if (cfg.controlsPos != WidgetControlsPos.IN_COLUMN) SetSlider(
+                                Icons.Rounded.SpaceBar, tr("Odstęp od przycisków"), "${cfg.progressGap} dp", cfg.progressGap.toFloat(), 0f..16f, 15,
+                                subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                            ) { v -> set { it.copy(progressGap = v.roundToInt()) } }
+                        }
+                    }
+                }
+
+                EditorTab.BUTTONS -> {
+                    item {
+                        SetCard(null) {
+                            CardTiles(
+                                listOfNotNull(
+                                    Tile(Icons.Rounded.SkipNext, tr("Poprz. / nast."), tr("Przyciski poprzedniego i następnego utworu"), cfg.showPrevNext) { v -> set { it.copy(showPrevNext = v) } },
+                                    if (player) Tile(Icons.Rounded.Shuffle, tr("Losowanie"), tr("Przycisk losowej kolejności (gdy widżet jest dość szeroki)"), cfg.showShuffle) { v -> set { it.copy(showShuffle = v) } } else null,
+                                    if (player) Tile(Icons.Rounded.Repeat, tr("Powtarzanie"), tr("Przycisk powtarzania: wszystko / jeden utwór (gdy widżet jest dość szeroki)"), cfg.showRepeat) { v -> set { it.copy(showRepeat = v) } } else null,
+                                    Tile(Icons.Rounded.Favorite, tr("Serduszko"), tr("Dodaje bieżący utwór do ulubionych"), cfg.showLike) { v -> set { it.copy(showLike = v) } },
+                                    Tile(Icons.Rounded.PlayCircle, tr("Pełny ▶"), tr("Koło w kolorze akcentu pod przyciskiem odtwarzania"), cfg.filledPlay) { v -> set { it.copy(filledPlay = v) } },
+                                ),
+                            )
+                            SetSlider(
+                                Icons.Rounded.ZoomIn, tr("Wielkość przycisków"), "${cfg.buttonScale}%", cfg.buttonScale.toFloat(), 60f..140f, 15,
+                                subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                            ) { v -> set { it.copy(buttonScale = (v / 5).roundToInt() * 5) } }
+                        }
+                    }
+                }
+
+                EditorTab.TEXT -> {
+                    item {
+                        SetCard(null) {
+                            if (hasTrack) CardTiles(
+                                listOfNotNull(
+                                    Tile(Icons.Rounded.Person, tr("Wykonawca"), tr("Wykonawca pod tytułem"), cfg.showArtist) { v -> set { it.copy(showArtist = v) } },
+                                    if (player) Tile(Icons.Rounded.Album, tr("Album"), tr("Nazwa albumu"), cfg.showAlbum) { v -> set { it.copy(showAlbum = v) } } else null,
+                                    if (player && cfg.showAlbum) Tile(Icons.Rounded.Notes, tr("Wyk. – album"), tr("Wykonawca i album w jednym wierszu: „Wykonawca – Album”"), cfg.artistAlbumLine) { v -> set { it.copy(artistAlbumLine = v) } } else null,
+                                    if (player) Tile(Icons.Rounded.FormatListNumbered, tr("Kolejka"), tr("Pozycja w kolejce, np. 12 / 240, i znacznik wyłącznika czasowego"), cfg.showQueuePos) { v -> set { it.copy(showQueuePos = v) } } else null,
+                                    Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
+                                ),
+                            ) else CardTiles(
+                                listOf(
+                                    Tile(Icons.Rounded.Label, tr("Podpisy"), tr("Podpisy pod ikonami skrótów"), cfg.shortcutLabels) { v -> set { it.copy(shortcutLabels = v) } },
+                                    Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
+                                ),
+                            )
+                            SetSlider(Icons.Rounded.FormatSize, tr("Rozmiar tekstu"), "${cfg.textScale}%", cfg.textScale.toFloat(), 80f..130f, 9) { v -> set { it.copy(textScale = (v / 5).roundToInt() * 5) } }
+                            if (hasTrack) SetSegment(Icons.Rounded.Notes, tr("Wiersze tytułu"), listOf(1, 2, 3), cfg.titleLines, { tr("Maks. {0}", it) }, short = { "$it" }) { v -> set { it.copy(titleLines = v) } }
+                        }
+                    }
+                }
+
+                EditorTab.SHORTCUTS -> {
+                    item { SectionHeader(Icons.Rounded.Widgets, tr("Skróty ({0}/{1})", cfg.shortcuts.size, WidgetConfig.MAX_SHORTCUTS)) }
+                    item { ShortcutsEditor(cfg) { cfg = it } }
+                }
+
+                EditorTab.LOOK -> {
+                    item {
+                        SetCard(null) {
+                            SetDropdown(Icons.Rounded.Wallpaper, tr("Tło"), WidgetBackground.entries, cfg.background, ::bgLabel) { v -> set { it.copy(background = v) } }
+                            if (cfg.background == WidgetBackground.CUSTOM) Box(Modifier.padding(start = 40.dp)) {
+                                ColorRow(cfg.customColor, AccentChoices + listOf(0xFF1C1C1C.toInt(), 0xFF0D2B45.toInt(), 0xFF3A1030.toInt())) {
+                                    if (it == null) picker = "bg" else set { c -> c.copy(customColor = it) }
+                                }
+                            }
+                            if (bgCover) SetNote(tr("Tło przykrywa okładka – poniższe ustawienia działają, gdy utwór nie ma okładki."))
+                            SetSlider(Icons.Rounded.Opacity, tr("Krycie tła"), "${cfg.opacity}%", cfg.opacity.toFloat(), 0f..100f, 19) { v -> set { it.copy(opacity = (v / 5).roundToInt() * 5) } }
+                            SetSlider(Icons.Rounded.RoundedCorner, tr("Zaokrąglenie rogów"), "${cfg.corner} dp", cfg.corner.toFloat(), 0f..48f, 11) { v -> set { it.copy(corner = (v / 4).roundToInt() * 4) } }
+                        }
+                    }
+                    item {
+                        SetCard(null) {
+                            SetDropdown(Icons.Rounded.Palette, tr("Kolor akcentu"), WidgetAccent.entries, cfg.accent, ::accentLabel) { v -> set { it.copy(accent = v) } }
+                            if (cfg.accent == WidgetAccent.CUSTOM) Box(Modifier.padding(start = 40.dp)) {
+                                ColorRow(cfg.accentColor, AccentChoices + listOf(0xFFFFFFFF.toInt())) {
+                                    if (it == null) picker = "accent" else set { c -> c.copy(accentColor = it) }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // ---- Przyciski
-            if (hasTrack) {
-                item { SectionHeader(Icons.Rounded.PlayCircle, tr("Przyciski")) }
-                item {
-                    TileGrid(
-                        listOfNotNull(
-                            Tile(Icons.Rounded.SkipNext, tr("Poprz. / nast."), tr("Przyciski poprzedniego i następnego utworu"), cfg.showPrevNext) { v -> set { it.copy(showPrevNext = v) } },
-                            if (player) Tile(Icons.Rounded.Shuffle, tr("Losowanie"), tr("Przycisk losowej kolejności (gdy widżet jest dość szeroki)"), cfg.showShuffle) { v -> set { it.copy(showShuffle = v) } } else null,
-                            if (player) Tile(Icons.Rounded.Repeat, tr("Powtarzanie"), tr("Przycisk powtarzania: wszystko / jeden utwór (gdy widżet jest dość szeroki)"), cfg.showRepeat) { v -> set { it.copy(showRepeat = v) } } else null,
-                            Tile(Icons.Rounded.Favorite, tr("Serduszko"), tr("Dodaje bieżący utwór do ulubionych"), cfg.showLike) { v -> set { it.copy(showLike = v) } },
-                            Tile(Icons.Rounded.PlayCircle, tr("Pełny ▶"), tr("Koło w kolorze akcentu pod przyciskiem odtwarzania"), cfg.filledPlay) { v -> set { it.copy(filledPlay = v) } },
-                        ),
-                    )
-                }
-                if (player) item {
-                    ChoiceTiles(WidgetControlsPos.entries, cfg.controlsPos, ::controlsPosLabel, ::controlsPosIcon) { v -> set { it.copy(controlsPos = v) } }
-                }
-                item {
-                    SetCard(null) {
-                        SetSlider(
-                            Icons.Rounded.ZoomIn, tr("Wielkość przycisków"), "${cfg.buttonScale}%", cfg.buttonScale.toFloat(), 60f..140f, 15,
-                            subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
-                        ) { v -> set { it.copy(buttonScale = (v / 5).roundToInt() * 5) } }
-                    }
-                }
-            }
-
-            // ---- Tekst
-            item { SectionHeader(Icons.Rounded.TextFields, tr("Tekst")) }
-            if (hasTrack) item {
-                TileGrid(
-                    listOfNotNull(
-                        Tile(Icons.Rounded.Person, tr("Wykonawca"), tr("Wykonawca pod tytułem"), cfg.showArtist) { v -> set { it.copy(showArtist = v) } },
-                        if (player) Tile(Icons.Rounded.Album, tr("Album"), tr("Nazwa albumu, gdy widżet jest dość wysoki"), cfg.showAlbum) { v -> set { it.copy(showAlbum = v) } } else null,
-                        if (player) Tile(Icons.Rounded.FormatListNumbered, tr("Kolejka"), tr("Pozycja w kolejce, np. 12 / 240, i znacznik wyłącznika czasowego"), cfg.showQueuePos) { v -> set { it.copy(showQueuePos = v) } } else null,
-                        Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
-                    ),
-                )
-            }
-            if (kind == WidgetKind.SHORTCUTS) item {
-                TileGrid(
-                    listOf(
-                        Tile(Icons.Rounded.Label, tr("Podpisy"), tr("Podpisy pod ikonami skrótów"), cfg.shortcutLabels) { v -> set { it.copy(shortcutLabels = v) } },
-                        Tile(Icons.Rounded.FormatBold, tr("Pogrubiony"), tr("Pogrubiony tytuł utworu"), cfg.boldTitle) { v -> set { it.copy(boldTitle = v) } },
-                    ),
-                )
-            }
             item {
-                SetCard(null) {
-                    SetSlider(Icons.Rounded.FormatSize, tr("Rozmiar tekstu"), "${cfg.textScale}%", cfg.textScale.toFloat(), 80f..130f, 9) { v -> set { it.copy(textScale = (v / 5).roundToInt() * 5) } }
-                    if (hasTrack) SetSegment(Icons.Rounded.Notes, tr("Wiersze tytułu"), listOf(1, 2, 3), cfg.titleLines, { tr("Maks. {0}", it) }, short = { "$it" }) { v -> set { it.copy(titleLines = v) } }
-                }
-            }
-
-            if (kind == WidgetKind.SHORTCUTS) {
-                item { SectionHeader(Icons.Rounded.Widgets, tr("Skróty ({0}/{1})", cfg.shortcuts.size, WidgetConfig.MAX_SHORTCUTS)) }
-                item { ShortcutsEditor(cfg) { cfg = it } }
-            }
-
-            // ---- Tło
-            item { SectionHeader(Icons.Rounded.Wallpaper, tr("Tło i kształt")) }
-            if (hasTrack) item {
-                TileGrid(
-                    listOf(
-                        Tile(Icons.Rounded.Compress, tr("Zwarty układ"), tr("Bez odstępów między okładką, tekstem, taśmą i przyciskami (Android 12+)"), cfg.compact) { v -> set { it.copy(compact = v) } },
-                        Tile(Icons.Rounded.Padding, tr("Bez marginesów"), tr("Treść dochodzi do samych krawędzi widżetu"), cfg.padding == 0) { v -> set { it.copy(padding = if (v) 0 else WidgetConfig.defaults(kind).padding) } },
-                    ),
-                )
-            }
-            item { ChoiceTiles(WidgetBackground.entries, cfg.background, ::bgLabel) { v -> set { it.copy(background = v) } } }
-            if (cfg.background == WidgetBackground.CUSTOM) item {
-                ColorRow(cfg.customColor, AccentChoices + listOf(0xFF1C1C1C.toInt(), 0xFF0D2B45.toInt(), 0xFF3A1030.toInt())) {
-                    if (it == null) picker = "bg" else set { c -> c.copy(customColor = it) }
-                }
-            }
-            item {
-                SetCard(null) {
-                    if (bgCover) SetNote(tr("Tło przykrywa okładka – poniższe ustawienia działają, gdy utwór nie ma okładki."))
-                    SetSlider(Icons.Rounded.Opacity, tr("Krycie tła"), "${cfg.opacity}%", cfg.opacity.toFloat(), 0f..100f, 19) { v -> set { it.copy(opacity = (v / 5).roundToInt() * 5) } }
-                    SetSlider(Icons.Rounded.RoundedCorner, tr("Zaokrąglenie rogów"), "${cfg.corner} dp", cfg.corner.toFloat(), 0f..48f, 11) { v -> set { it.copy(corner = (v / 4).roundToInt() * 4) } }
-                    SetSlider(Icons.Rounded.Padding, tr("Margines wewnętrzny"), "${cfg.padding} dp", cfg.padding.toFloat(), 0f..24f, 23) { v -> set { it.copy(padding = v.roundToInt()) } }
-                }
-            }
-
-            // ---- Akcent
-            item { SectionHeader(Icons.Rounded.Palette, tr("Kolor akcentu")) }
-            item { ChoiceTiles(WidgetAccent.entries, cfg.accent, ::accentLabel) { v -> set { it.copy(accent = v) } } }
-            if (cfg.accent == WidgetAccent.CUSTOM) item {
-                ColorRow(cfg.accentColor, AccentChoices + listOf(0xFFFFFFFF.toInt())) {
-                    if (it == null) picker = "accent" else set { c -> c.copy(accentColor = it) }
-                }
-            }
-
-            // ---- Dotyk
-            item { SectionHeader(Icons.Rounded.TouchApp, if (kind == WidgetKind.COVER) tr("Dotknięcie okładki") else tr("Dotknięcie okładki i tytułu")) }
-            item { ChoiceTiles(WidgetTap.entries, cfg.tap, ::tapLabel) { v -> set { it.copy(tap = v) } } }
-
-            item {
-                Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PillButton(tr("Przywróć domyślne"), { cfg = WidgetConfig.defaults(kind) }, icon = Icons.Rounded.Refresh)
-                    PillButton(tr("Zapisz"), { save() }, icon = Icons.Rounded.Check, active = true)
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PillButton(tr("Przywróć domyślne"), { cfg = WidgetConfig.defaults(kind) }, icon = Icons.Rounded.Refresh, compact = true)
+                    PillButton(tr("Zapisz"), { save() }, icon = Icons.Rounded.Check, active = true, compact = true)
                 }
             }
         }
@@ -607,11 +612,57 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
 private fun controlsPosLabel(p: WidgetControlsPos) = when (p) {
     WidgetControlsPos.BELOW_BAR -> tr("Przyciski pod taśmą")
     WidgetControlsPos.ABOVE_BAR -> tr("Przyciski nad taśmą")
+    WidgetControlsPos.IN_COLUMN -> tr("Przyciski obok okładki")
 }
 
 private fun controlsPosIcon(p: WidgetControlsPos): ImageVector = when (p) {
     WidgetControlsPos.BELOW_BAR -> Icons.Rounded.VerticalAlignBottom
     WidgetControlsPos.ABOVE_BAR -> Icons.Rounded.VerticalAlignTop
+    WidgetControlsPos.IN_COLUMN -> Icons.Rounded.ViewColumn
+}
+
+private fun controlsPosHint(p: WidgetControlsPos) = when (p) {
+    WidgetControlsPos.BELOW_BAR -> tr("Okładka i tytuł u góry, pod nimi taśma, na samym dole przyciski.")
+    WidgetControlsPos.ABOVE_BAR -> tr("Przyciski w osobnym wierszu pod okładką i tytułem, taśma na dole.")
+    WidgetControlsPos.IN_COLUMN -> tr("Przyciski wyśrodkowane pod tytułem, obok okładki – okładka może sięgać aż do taśmy na dole.")
+}
+
+/** Zakładki edytora widżetu. */
+private enum class EditorTab {
+    LAYOUT, COVER, BAR, BUTTONS, TEXT, SHORTCUTS, LOOK;
+
+    fun applies(kind: WidgetKind) = when (this) {
+        COVER -> true
+        BAR, BUTTONS -> kind != WidgetKind.SHORTCUTS
+        SHORTCUTS -> kind == WidgetKind.SHORTCUTS
+        else -> true
+    }
+
+    fun label() = when (this) {
+        LAYOUT -> tr("Układ")
+        COVER -> tr("Okładka")
+        BAR -> tr("Pasek")
+        BUTTONS -> tr("Przyciski")
+        TEXT -> tr("Tekst")
+        SHORTCUTS -> tr("Skróty")
+        LOOK -> tr("Wygląd")
+    }
+
+    fun icon(): ImageVector = when (this) {
+        LAYOUT -> Icons.Rounded.Dashboard
+        COVER -> Icons.Rounded.Image
+        BAR -> Icons.Rounded.LinearScale
+        BUTTONS -> Icons.Rounded.PlayCircle
+        TEXT -> Icons.Rounded.TextFields
+        SHORTCUTS -> Icons.Rounded.Widgets
+        LOOK -> Icons.Rounded.Palette
+    }
+}
+
+/** Kafelki wewnątrz karty – z marginesem, żeby nie dotykały jej krawędzi. */
+@Composable
+private fun CardTiles(tiles: List<Tile>) {
+    Box(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) { TileGrid(tiles) }
 }
 
 private fun focusLabel(v: Int) = when {

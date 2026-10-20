@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Wiersz postępu jest dwa razy: nad przyciskami (w_progress_row) i pod nimi (…_b); widoczny jeden.
      Widżet „Odtwarzacz” (4×2 i większy): pełne sterowanie, postęp, czasy, losowanie i powtarzanie.
-     Okładka może stać po lewej (w_cover), po prawej (w_cover_end), u góry (w_cover_top) albo być tłem. -->
+     Okładka może stać po lewej (w_cover_box), po prawej (w_cover_end_box), u góry (w_cover_top) albo być tłem.
+     Przyciski: pod taśmą, nad nią (osobny wiersz) albo w kolumnie obok okładki (w_controls_col). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -32,84 +33,181 @@
             android:visibility="gone"
             android:src="@drawable/ic_w_note" />
 
+        <!-- Główny wiersz: okładka we własnym kontenerze (może mieć wysokość całego wiersza),
+             obok kolumna z tytułem, wykonawcą – albumem i opcjonalnie przyciskami. -->
         <LinearLayout
+            android:id="@+id/w_main"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <ImageView
-                android:id="@+id/w_cover"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:layout_marginEnd="12dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_w_note" />
+            <FrameLayout
+                android:id="@+id/w_cover_box"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="12dp">
+
+                <ImageView
+                    android:id="@+id/w_cover"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_w_note" />
+            </FrameLayout>
 
             <LinearLayout
-                android:id="@+id/w_info"
+                android:id="@+id/w_side"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:gravity="center_vertical"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/w_title"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:text="@string/app_name"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="17sp" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/w_artist"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="13sp" />
+                    <LinearLayout
+                        android:id="@+id/w_info"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/w_album"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="#80FFFFFF"
-                    android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/w_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="2"
+                            android:text="@string/app_name"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="17sp" />
 
-                <TextView
-                    android:id="@+id/w_meta"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:textColor="#80FFFFFF"
-                    android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/w_artist"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="#B3FFFFFF"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/w_album"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/w_meta"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:maxLines="1"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/w_like"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="top"
+                        android:padding="8dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_w_heart_outline" />
+                </LinearLayout>
+
+                <!-- Przyciski w kolumnie obok okładki, wyśrodkowane pod tytułem. -->
+                <LinearLayout
+                    android:id="@+id/w_controls_col"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/w_shuffle_c"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="9dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_w_shuffle" />
+
+                    <ImageView
+                        android:id="@+id/w_prev_c"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:padding="8dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_w_prev" />
+
+                    <FrameLayout
+                        android:id="@+id/w_play_frame_c"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp">
+
+                        <ImageView
+                            android:id="@+id/w_play_bg_c"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/widget_circle"
+                            android:importantForAccessibility="no" />
+
+                        <ImageView
+                            android:id="@+id/w_play_c"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="12dp"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_w_play" />
+                    </FrameLayout>
+
+                    <ImageView
+                        android:id="@+id/w_next_c"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:padding="8dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_w_next" />
+
+                    <ImageView
+                        android:id="@+id/w_repeat_c"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="9dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_w_repeat" />
+                </LinearLayout>
             </LinearLayout>
 
-            <ImageView
-                android:id="@+id/w_like"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_gravity="top"
-                android:padding="8dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_w_heart_outline" />
-
-            <ImageView
-                android:id="@+id/w_cover_end"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+            <FrameLayout
+                android:id="@+id/w_cover_end_box"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_marginStart="8dp"
-                android:scaleType="fitCenter"
-                android:visibility="gone"
-                android:src="@drawable/ic_w_note" />
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/w_cover_end"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_w_note" />
+            </FrameLayout>
         </LinearLayout>
 
         <LinearLayout

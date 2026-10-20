@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.blacksingularities.openamp.i18n.tr
 import kotlinx.coroutines.delay
 
 /**
@@ -234,9 +237,30 @@ fun TileGrid(tiles: List<Tile>, columns: Int = 4) {
     }
 }
 
-/** Kafelki wyboru jednej opcji (segment): aktywny – blok akcentu. */
+/**
+ * Wybór jednej opcji: do trzech – kafelki (aktywny to blok akcentu), więcej – kompaktowa
+ * lista rozwijana z [title] (i ewentualnym podglądem [preview]), żeby nie zajmować pół ekranu.
+ */
 @Composable
-fun <T> ChoiceTiles(options: List<T>, selected: T, label: (T) -> String, icon: ((T) -> ImageVector)? = null, onPick: (T) -> Unit) {
+fun <T> ChoiceTiles(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    icon: ((T) -> ImageVector)? = null,
+    title: String? = null,
+    titleIcon: ImageVector? = null,
+    preview: (@Composable (T, Modifier) -> Unit)? = null,
+    onPick: (T) -> Unit,
+) {
+    if (options.size > 3) {
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flat.Faint).padding(vertical = 2.dp)) {
+            SetDropdown(
+                titleIcon ?: icon?.invoke(selected) ?: Icons.Rounded.Tune, title ?: tr("Wybór"), options, selected, label,
+                preview = preview, onSelect = onPick,
+            )
+        }
+        return
+    }
     TileGridChoice(options, selected, label, icon, onPick)
 }
 

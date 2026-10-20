@@ -1,5 +1,14 @@
 # Historia zmian
 
+## 1.6.9
+
+- Widżet **Odtwarzacz**: okładka we własnym kontenerze – przy 100% ma wysokość całego wiersza, a z przyciskami w kolumnie sięga aż do taśmy postępu na dole.
+- Obok okładki tytuł i „Wykonawca – Album” w jednym wierszu (do wyłączenia).
+- Trzy położenia przycisków: w kolumnie obok okładki (wyśrodkowane pod tytułem), w osobnym wierszu nad taśmą albo pod taśmą.
+- Zwarty edytor widżetu: zakładki (Układ, Okładka, Pasek, Przyciski, Tekst, Wygląd), karty z listami rozwijanymi zamiast dużych siatek kafelków.
+- W całej aplikacji wybór spośród więcej niż trzech opcji to lista rozwijana (także w korektorze: liczba pasm, profil wyjścia, typ filtra).
+- Podglądy na listach: style paska widżetu, wizualizacje i taśmy utworu widać przed wybraniem – w menu i pod wybraną opcją.
+
 ## 1.6.8
 
 - **AI: wielu dostawców** – Anthropic, OpenAI, Google Gemini, OpenRouter, Mistral, xAI, DeepSeek, Groq, Cerebras, Together, Fireworks, DeepInfra, Perplexity, Cohere, NVIDIA, Hugging Face, Moonshot, Qwen, Z.ai, a także Ollama, LM Studio i dowolny serwer zgodny z OpenAI. Każdy ma własny klucz, adres i model; lista modeli jest pobierana z API dostawcy.

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -108,6 +109,11 @@ fun <T> SetSegment(
     enabled: Boolean = true,
     onSelect: (T) -> Unit,
 ) {
+    // Więcej niż trzy opcje nie mieszczą się czytelnie w segmencie – lista rozwijana.
+    if (options.size > 3) {
+        SetDropdown(icon, title, options, selected, label, enabled = enabled, onSelect = onSelect)
+        return
+    }
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).heightIn(min = 42.dp), verticalAlignment = Alignment.CenterVertically) {
         RowIcon(icon, enabled = enabled)
         RowTexts(title, label(selected), enabled, Modifier.weight(1f).padding(horizontal = 10.dp))
@@ -136,7 +142,11 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, icon: ((T
     }
 }
 
-/** Wybór z dłuższej listy: wartość po prawej, dotknięcie otwiera kompaktowe menu. */
+/**
+ * Wybór z dłuższej listy: wartość po prawej, dotknięcie otwiera kompaktowe menu.
+ * [preview] – mały podgląd opcji (np. styl paska, wizualizacja): pod tytułem dla wybranej
+ * i obok nazwy każdej pozycji w menu.
+ */
 @Composable
 fun <T> SetDropdown(
     icon: ImageVector,
@@ -146,29 +156,58 @@ fun <T> SetDropdown(
     label: (T) -> String,
     subtitle: String? = null,
     enabled: Boolean = true,
+    preview: (@Composable (T, Modifier) -> Unit)? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled) { open = true }.padding(horizontal = 8.dp, vertical = 4.dp).heightIn(min = 42.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RowIcon(icon, enabled = enabled)
-            RowTexts(title, subtitle, enabled, Modifier.weight(1f).padding(horizontal = 10.dp))
-            Row(
-                Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp).widthIn(max = 170.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(label(selected), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.primary else Compact.TextFaint, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                Icon(Icons.Rounded.UnfoldMore, null, tint = Compact.TextDim, modifier = Modifier.size(14.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled) { open = true }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Row(Modifier.heightIn(min = 42.dp), verticalAlignment = Alignment.CenterVertically) {
+                RowIcon(icon, enabled = enabled)
+                RowTexts(title, subtitle, enabled, Modifier.weight(1f).padding(horizontal = 10.dp))
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp).widthIn(max = 170.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label(selected), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.primary else Compact.TextFaint, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Icon(Icons.Rounded.UnfoldMore, null, tint = Compact.TextDim, modifier = Modifier.size(14.dp))
+                }
+            }
+            if (preview != null) {
+                Box(
+                    Modifier.padding(start = 40.dp, top = 2.dp, bottom = 4.dp).fillMaxWidth().height(40.dp)
+                        .clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 10.dp, vertical = 6.dp)
+                        .alpha(if (enabled) 1f else 0.4f),
+                ) { preview(selected, Modifier.fillMaxSize()) }
             }
         }
         Box(Modifier.align(Alignment.TopEnd)) {
-            CompactMenu(open, { open = false }) {
-                options.forEach { o -> CMenuItem(label(o), checked = o == selected) { onSelect(o); open = false } }
+            CompactMenu(open, { open = false }, wide = preview != null) {
+                options.forEach { o ->
+                    if (preview == null) CMenuItem(label(o), checked = o == selected) { onSelect(o); open = false }
+                    else PreviewMenuItem(label(o), o == selected, { preview(o, it) }) { onSelect(o); open = false }
+                }
             }
         }
+    }
+}
+
+/** Pozycja menu z podglądem: miniatura po lewej, nazwa, znacznik wyboru. */
+@Composable
+private fun PreviewMenuItem(text: String, checked: Boolean, preview: @Composable (Modifier) -> Unit, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp).clip(RoundedCornerShape(10.dp))
+            .background(if (checked) accent.copy(alpha = 0.12f) else Color.Transparent)
+            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(width = 92.dp, height = 34.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black).padding(horizontal = 5.dp, vertical = 4.dp)) {
+            preview(Modifier.fillMaxSize())
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(text, fontSize = 13.sp, color = if (checked) accent else Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal)
+        if (checked) Icon(Icons.Rounded.Check, null, tint = accent, modifier = Modifier.size(15.dp))
     }
 }
 
@@ -253,10 +292,10 @@ fun SetNote(text: String) {
 
 /** Kompaktowe menu rozwijane: ciemna płyta, wiersze 36 dp, tekst 13 sp. */
 @Composable
-fun CompactMenu(expanded: Boolean, onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun CompactMenu(expanded: Boolean, onDismiss: () -> Unit, modifier: Modifier = Modifier, wide: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     DropdownMenu(
         expanded = expanded, onDismissRequest = onDismiss,
-        modifier = modifier.widthIn(min = 168.dp, max = 260.dp),
+        modifier = modifier.widthIn(min = if (wide) 260.dp else 168.dp, max = if (wide) 300.dp else 260.dp),
         shape = RoundedCornerShape(16.dp), containerColor = Compact.Menu, tonalElevation = 0.dp, shadowElevation = 10.dp,
     ) { content() }
 }
