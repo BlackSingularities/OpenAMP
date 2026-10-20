@@ -21,7 +21,9 @@ import com.blacksingularities.openamp.data.NotifStyle
 import com.blacksingularities.openamp.ui.ArtworkLoader
 import com.blacksingularities.openamp.ui.theme.vibrantColor
 import com.google.common.collect.ImmutableList
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Powiadomienie w dwóch stylach: systemowy odtwarzacz (MediaStyle – panel w szybkich ustawieniach)
@@ -76,11 +78,15 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
                 // Okładka wczytuje się w tle – potem podmieniamy powiadomienie.
                 Graph.scope.launch {
                     val bmp = ArtworkLoader.load(context, track, 1024) ?: return@launch
-                    if (artFor != id) return@launch
-                    setArt(bmp)
-                    artColor = runCatching { vibrantColor(bmp) }.getOrNull()
-                    val n = build(mediaSession, mediaButtonPreferences, actionFactory)
-                    onNotificationChangedCallback.onNotificationChanged(n)
+                    val color = runCatching { vibrantColor(bmp) }.getOrNull()
+                    // Player i sesja wolno dotykać tylko z głównego wątku.
+                    withContext(Dispatchers.Main) {
+                        if (artFor != id) return@withContext
+                        setArt(bmp)
+                        artColor = color
+                        val n = build(mediaSession, mediaButtonPreferences, actionFactory)
+                        onNotificationChangedCallback.onNotificationChanged(n)
+                    }
                 }
             }
         }
