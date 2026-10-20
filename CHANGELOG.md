@@ -1,5 +1,13 @@
 # Historia zmian
 
+## 1.5.0
+
+- Nowe powiadomienie odtwarzacza: duża okładka w pełnej jakości (obraz osadzony w pliku zamiast przestarzałych miniatur), dwa konfigurowalne przyciski obok poprzedni / odtwórz / następny – lubię, losowo, powtarzanie lub **zamknij odtwarzacz** (domyślnie: lubię i zamknij). Ikony przycisków odzwierciedlają bieżący stan.
+- Samoczynne zamykanie: po pauzie odtwarzacz i powiadomienie znikają same (od razu, po 1, 5, 15, 30, 60 min albo nigdy – domyślnie 5 min). Kolejka i pozycja zostają zapamiętane.
+- Odtwarzacz na ekranie blokady (opcja): po wygaszeniu ekranu podczas grania nad blokadą pojawia się pełny odtwarzacz – zegar i data, duża okładka, rozmyte tło lub kolor okładki, przewijanie, sterowanie, serduszko, losowanie/powtarzanie, „Następnie: …”; przesunięcie w górę wraca do blokady systemu, odblokowanie odciskiem zamyka go samo.
+- Uproszczony tryb AOD: po chwili bez dotyku czarny, przygaszony ekran z zegarem, tytułem, małą okładką i cienkim paskiem postępu, przesuwany przeciw wypaleniu; podczas ładowania lub zawsze podczas grania, z ustawianym czasem i przyciemnieniem.
+- Nowe sekcje ustawień „Powiadomienie” i „Ekran blokady i AOD” z podglądem.
+
 ## 1.4.0
 
 - Widżety na pulpicie – cztery rodzaje: **Okładka** (2×2, okładka na całą powierzchnię), **Pasek** (4×1), **Odtwarzacz** (4×2 i większy: postęp, czasy, losowanie, powtarzanie, serduszko, pozycja w kolejce) i **Skróty** (do sześciu: graj/pauza, losuj wszystko, Mix dnia, ulubione, nowe, najczęstsze, odkrywaj, perełki, niegrane, wyłącznik czasowy, szukaj, korektor – z opcjonalnym paskiem bieżącego utworu).

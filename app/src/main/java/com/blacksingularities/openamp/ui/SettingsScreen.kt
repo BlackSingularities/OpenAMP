@@ -65,7 +65,12 @@ import androidx.compose.ui.unit.dp
 import com.blacksingularities.openamp.BuildConfig
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.R
+import com.blacksingularities.openamp.data.AodMode
 import com.blacksingularities.openamp.data.CoverShape
+import com.blacksingularities.openamp.data.LockBackground
+import com.blacksingularities.openamp.data.NotifButton
+import com.blacksingularities.openamp.lock.LockscreenActivity
+import com.blacksingularities.openamp.lock.LockscreenLauncher
 import com.blacksingularities.openamp.data.NpBackground
 import com.blacksingularities.openamp.data.SeekStyle
 import com.blacksingularities.openamp.data.ThemeMode
@@ -208,6 +213,66 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
             }
 
             item {
+                Section(tr("Powiadomienie")) {
+                    ChoiceRow(tr("Przycisk 1"), notifLabel(s.notifButton1)) {
+                        choice = { ChoiceDialog(tr("Przycisk 1"), NotifButton.entries, s.notifButton1, ::notifLabel, { choice = null }) { v -> vm.updateSettings { it.copy(notifButton1 = v) } } }
+                    }
+                    ChoiceRow(tr("Przycisk 2"), notifLabel(s.notifButton2)) {
+                        choice = { ChoiceDialog(tr("Przycisk 2"), NotifButton.entries, s.notifButton2, ::notifLabel, { choice = null }) { v -> vm.updateSettings { it.copy(notifButton2 = v) } } }
+                    }
+                    ChoiceRow(tr("Zamykaj po pauzie"), autoCloseLabel(s.autoCloseMin)) {
+                        choice = { ChoiceDialog(tr("Zamykaj po pauzie"), AutoCloseOptions, s.autoCloseMin, ::autoCloseLabel, { choice = null }) { v -> vm.updateSettings { it.copy(autoCloseMin = v) } } }
+                    }
+                    Text(
+                        tr("Duża okładka w jakości z pliku, przyciski obok poprzedni / odtwórz / następny. Zamknięcie zapamiętuje kolejkę – ▶ w aplikacji lub widżecie wznawia od tego samego miejsca. Ikonę i nazwę aplikacji w nagłówku powiadomienia dodaje system i nie da się ich ukryć."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+
+            item {
+                val context = LocalContext.current
+                Section(tr("Ekran blokady i AOD")) {
+                    SwitchRow(tr("Odtwarzacz na ekranie blokady"), tr("Pełny odtwarzacz OpenAMP nad blokadą po wygaszeniu ekranu podczas grania; przesunięcie w górę wraca do blokady"), s.lockScreen) { v ->
+                        vm.updateSettings { it.copy(lockScreen = v) }
+                    }
+                    if (s.lockScreen && !LockscreenLauncher.canShow(context)) {
+                        Text(tr("Android wymaga zgody na wyświetlanie na pełnym ekranie."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedButton(onClick = { LockscreenLauncher.permissionIntent(context)?.let { runCatching { context.startActivity(it) } } }, modifier = Modifier.padding(top = 6.dp)) {
+                            Text(tr("Zezwól"))
+                        }
+                    }
+                    if (s.lockScreen) {
+                        ChoiceRow(tr("Tło"), lockBgLabel(s.lockBackground)) {
+                            choice = { ChoiceDialog(tr("Tło"), LockBackground.entries, s.lockBackground, ::lockBgLabel, { choice = null }) { v -> vm.updateSettings { it.copy(lockBackground = v) } } }
+                        }
+                        SwitchRow(tr("Zegar i data"), null, s.lockClock) { v -> vm.updateSettings { it.copy(lockClock = v) } }
+                        SwitchRow(tr("Pasek przewijania"), null, s.lockSeek) { v -> vm.updateSettings { it.copy(lockSeek = v) } }
+                        SwitchRow(tr("Następny utwór"), tr("Podpis „Następnie: …” pod przyciskami"), s.lockNext) { v -> vm.updateSettings { it.copy(lockNext = v) } }
+                        SwitchRow(tr("Serduszko „lubię”"), null, s.lockLike) { v -> vm.updateSettings { it.copy(lockLike = v) } }
+                        SwitchRow(tr("Losowanie i powtarzanie"), null, s.lockShuffleRepeat) { v -> vm.updateSettings { it.copy(lockShuffleRepeat = v) } }
+                        ChoiceRow(tr("Tryb AOD"), aodLabel(s.aodMode)) {
+                            choice = { ChoiceDialog(tr("Tryb AOD"), AodMode.entries, s.aodMode, ::aodLabel, { choice = null }) { v -> vm.updateSettings { it.copy(aodMode = v) } } }
+                        }
+                        if (s.aodMode != AodMode.OFF) {
+                            SliderRow(tr("AOD po"), tr("{0} s", s.aodTimeoutSec), s.aodTimeoutSec.toFloat(), 5f..60f, 10, tr("Czas bez dotyku do przejścia w uproszczony, czarny ekran")) { v ->
+                                vm.updateSettings { it.copy(aodTimeoutSec = (v / 5).roundToInt() * 5) }
+                            }
+                            SwitchRow(tr("Przyciemnij ekran w AOD"), tr("Minimalna jasność – mniejsze zużycie baterii"), s.aodDim) { v -> vm.updateSettings { it.copy(aodDim = v) } }
+                            SwitchRow(tr("Okładka w AOD"), null, s.aodArt) { v -> vm.updateSettings { it.copy(aodArt = v) } }
+                        }
+                        OutlinedButton(onClick = { context.startActivity(Intent(context, LockscreenActivity::class.java)) }, modifier = Modifier.padding(top = 8.dp)) {
+                            Text(tr("Podgląd"))
+                        }
+                    }
+                    Text(
+                        tr("Prawdziwego wyświetlacza „always on” systemu nie da się zmienić z aplikacji – tryb AOD OpenAMP to przygaszony, czarny ekran nad blokadą, który nie gaśnie podczas grania."),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+
+            item {
                 val context = LocalContext.current
                 Section(tr("Widżety na pulpicie")) {
                     Text(
@@ -232,6 +297,15 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
         dismissButton = { TextButton(onClick = { clearConfirm = false }) { Text(tr("Anuluj")) } },
     )
 }
+
+private val AutoCloseOptions = listOf(0, 1, 5, 15, 30, 60, -1)
+fun autoCloseLabel(m: Int) = when (m) { -1 -> tr("Nigdy"); 0 -> tr("Od razu (10 s)"); else -> tr("Po {0} min", m) }
+fun notifLabel(b: NotifButton) = when (b) {
+    NotifButton.NONE -> tr("Brak"); NotifButton.LIKE -> tr("Lubię"); NotifButton.SHUFFLE -> tr("Losowo")
+    NotifButton.REPEAT -> tr("Powtarzanie"); NotifButton.CLOSE -> tr("Zamknij odtwarzacz")
+}
+fun lockBgLabel(b: LockBackground) = when (b) { LockBackground.BLUR -> tr("Rozmyta okładka"); LockBackground.ART_COLOR -> tr("Kolor okładki"); LockBackground.BLACK -> tr("Czysta czerń") }
+fun aodLabel(m: AodMode) = when (m) { AodMode.OFF -> tr("Wyłączony"); AodMode.CHARGING -> tr("Podczas ładowania"); AodMode.ALWAYS -> tr("Zawsze podczas grania") }
 
 fun languageLabel(l: AppLanguage) = when (l) { AppLanguage.SYSTEM -> tr("Systemowy"); AppLanguage.PL -> "Polski"; AppLanguage.EN -> "English" }
 fun themeLabel(t: ThemeMode) = when (t) { ThemeMode.SYSTEM -> tr("Systemowy"); ThemeMode.DARK -> tr("Ciemny"); ThemeMode.LIGHT -> tr("Jasny"); ThemeMode.BLACK -> tr("Czarny (AMOLED)") }
