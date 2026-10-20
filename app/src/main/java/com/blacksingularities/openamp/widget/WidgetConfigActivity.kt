@@ -45,6 +45,8 @@ import androidx.compose.material.icons.rounded.AlignHorizontalLeft
 import androidx.compose.material.icons.rounded.AlignHorizontalRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Compress
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
@@ -509,10 +511,13 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                         ),
                     )
                 }
+                if (player) item {
+                    ChoiceTiles(WidgetControlsPos.entries, cfg.controlsPos, ::controlsPosLabel, ::controlsPosIcon) { v -> set { it.copy(controlsPos = v) } }
+                }
                 item {
                     SetCard(null) {
                         SetSlider(
-                            Icons.Rounded.ZoomIn, tr("Wielkość przycisków"), "${cfg.buttonScale}%", cfg.buttonScale.toFloat(), 70f..140f, 13,
+                            Icons.Rounded.ZoomIn, tr("Wielkość przycisków"), "${cfg.buttonScale}%", cfg.buttonScale.toFloat(), 60f..140f, 15,
                             subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
                         ) { v -> set { it.copy(buttonScale = (v / 5).roundToInt() * 5) } }
                     }
@@ -553,6 +558,14 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
 
             // ---- Tło
             item { SectionHeader(Icons.Rounded.Wallpaper, tr("Tło i kształt")) }
+            if (hasTrack) item {
+                TileGrid(
+                    listOf(
+                        Tile(Icons.Rounded.Compress, tr("Zwarty układ"), tr("Bez odstępów między okładką, tekstem, taśmą i przyciskami (Android 12+)"), cfg.compact) { v -> set { it.copy(compact = v) } },
+                        Tile(Icons.Rounded.Padding, tr("Bez marginesów"), tr("Treść dochodzi do samych krawędzi widżetu"), cfg.padding == 0) { v -> set { it.copy(padding = if (v) 0 else WidgetConfig.defaults(kind).padding) } },
+                    ),
+                )
+            }
             item { ChoiceTiles(WidgetBackground.entries, cfg.background, ::bgLabel) { v -> set { it.copy(background = v) } } }
             if (cfg.background == WidgetBackground.CUSTOM) item {
                 ColorRow(cfg.customColor, AccentChoices + listOf(0xFF1C1C1C.toInt(), 0xFF0D2B45.toInt(), 0xFF3A1030.toInt())) {
@@ -564,7 +577,7 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                     if (bgCover) SetNote(tr("Tło przykrywa okładka – poniższe ustawienia działają, gdy utwór nie ma okładki."))
                     SetSlider(Icons.Rounded.Opacity, tr("Krycie tła"), "${cfg.opacity}%", cfg.opacity.toFloat(), 0f..100f, 19) { v -> set { it.copy(opacity = (v / 5).roundToInt() * 5) } }
                     SetSlider(Icons.Rounded.RoundedCorner, tr("Zaokrąglenie rogów"), "${cfg.corner} dp", cfg.corner.toFloat(), 0f..48f, 11) { v -> set { it.copy(corner = (v / 4).roundToInt() * 4) } }
-                    SetSlider(Icons.Rounded.Padding, tr("Margines wewnętrzny"), "${cfg.padding} dp", cfg.padding.toFloat(), 4f..24f, 19) { v -> set { it.copy(padding = v.roundToInt()) } }
+                    SetSlider(Icons.Rounded.Padding, tr("Margines wewnętrzny"), "${cfg.padding} dp", cfg.padding.toFloat(), 0f..24f, 23) { v -> set { it.copy(padding = v.roundToInt()) } }
                 }
             }
 
@@ -589,6 +602,16 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
             }
         }
     }
+}
+
+private fun controlsPosLabel(p: WidgetControlsPos) = when (p) {
+    WidgetControlsPos.BELOW_BAR -> tr("Przyciski pod taśmą")
+    WidgetControlsPos.ABOVE_BAR -> tr("Przyciski nad taśmą")
+}
+
+private fun controlsPosIcon(p: WidgetControlsPos): ImageVector = when (p) {
+    WidgetControlsPos.BELOW_BAR -> Icons.Rounded.VerticalAlignBottom
+    WidgetControlsPos.ABOVE_BAR -> Icons.Rounded.VerticalAlignTop
 }
 
 private fun focusLabel(v: Int) = when {

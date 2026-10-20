@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
             "library" -> vm.goTab(Route.Library)
             "search" -> vm.goTab(Route.Search)
             "equalizer" -> vm.goTab(Route.Equalizer)
+            "settings" -> vm.goTab(Route.Settings)
         }
         if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE, false)) {
             vm.updateDialog = true

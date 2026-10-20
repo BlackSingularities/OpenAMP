@@ -117,7 +117,7 @@ class PlaybackService : MediaSessionService() {
         // Przyciski powiadomienia zależą od ulubionych i od ustawień.
         scope.launch { Graph.userData.state.map { it.favorites }.distinctUntilChanged().collect { refreshButtons() } }
         scope.launch {
-            Graph.settings.state.map { listOf(it.notifButton1, it.notifButton2, it.autoCloseMin, it.notifStyle) }.distinctUntilChanged().collect {
+            Graph.settings.state.map { listOf(it.notifButton1, it.notifButton2, it.autoCloseMin, it.notifStyle, it.notifCompact, it.notifClose) }.distinctUntilChanged().collect {
                 refreshButtons()
                 scheduleIdleClose()
             }
