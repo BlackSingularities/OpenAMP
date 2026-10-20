@@ -1,5 +1,11 @@
 # Historia zmian
 
+## 2.2.0
+
+- Widżet: **style przycisków** – koło, zaokrąglony kwadrat albo obwódka pod ▶, same ikony, lub wszystkie przyciski w delikatnych kołach.
+- Widżet: regulowane **odstępy nad i pod przyciskami** oraz **nad paskiem postępu** (Android 12+); okładka dopasowuje się do wolnego miejsca.
+- Widżet: **wyśrodkowanie tekstu** (tytuł, wykonawca, album) i suwak **zaokrąglenia okładki** (0% – ostre rogi, 50% – koło).
+
 ## 2.1.0
 
 - **Nowe statystyki**: łączny czas z przeliczeniem na doby muzyki, dziś, ten tydzień z trendem, średnia dzienna, seria dni i rekord; wykres aktywności (14 dni / 30 dni / rok) z linią średniej i podglądem wartości po dotknięciu; rytm tygodnia i pora dnia; rankingi utworów (odtworzenia albo czas), wykonawców, albumów i gatunków z odtwarzaniem po dotknięciu; dekady, formaty plików, pokrycie biblioteki, ostatnio słuchane i zapomniane perełki.
