@@ -151,7 +151,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                     Box(Modifier.weight(1f)) { controls() }
                 }
             } else {
-                Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 2.dp)) {
+                Column(Modifier.fillMaxSize().padding(horizontal = 3.dp)) {
                     cover(Modifier.fillMaxWidth().weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).align(Alignment.CenterHorizontally))
                     Gap(12.dp)
                     controls()
@@ -202,7 +202,7 @@ private fun CoverBlock(
     val prevTrack = frozenPrev ?: livePrev
     val hasNext by rememberUpdatedState(ps.nextId != null)
     val hasPrev by rememberUpdatedState(ps.prevId != null)
-    val scale by animateFloatAsState(if (playing) 1f else 0.94f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
+    val scale by animateFloatAsState(if (playing) 1f else 0.97f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
     val ringVis = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || vis == VisualizerStyle.PULSE
     val round = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
     val shape = when {
@@ -269,7 +269,7 @@ private fun CoverBlock(
                     if (vis == VisualizerStyle.RING_WAVE) RingWave(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
                     if (vis == VisualizerStyle.PULSE) PulseGlow(live, accent, Modifier.fillMaxSize())
                     val frac = { (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) }
-                    val fill = if (ringVis) 0.76f else 1f
+                    val fill = if (ringVis) 0.88f else 1f
                     // Okładki sąsiadów (podgląd podczas przesuwania)
                     if (offset.value < 0f && nextTrack != null) Artwork(
                         nextTrack,
@@ -451,9 +451,9 @@ private fun SeekArea(
 @Composable
 private fun PlayerTopBar(vm: MainViewModel, ps: com.blacksingularities.openamp.playback.PlayerUiState, onMenu: () -> Unit) {
     val dim = Color.White.copy(alpha = 0.62f)
-    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 6.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
-            Modifier.reactive(tr("Lista")) { vm.goTab(Route.Queue) }.clip(RoundedCornerShape(50)).padding(start = 4.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+            Modifier.reactive(tr("Lista")) { vm.goTab(Route.Queue) }.clip(RoundedCornerShape(50)).padding(start = 4.dp, end = 10.dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Rounded.ChevronLeft, null, tint = dim, modifier = Modifier.size(20.dp))
@@ -461,7 +461,7 @@ private fun PlayerTopBar(vm: MainViewModel, ps: com.blacksingularities.openamp.p
             if (ps.queue.isNotEmpty()) Text("  ${ps.index + 1}/${ps.queue.size}", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, maxLines = 1)
         }
         Spacer(Modifier.weight(1f))
-        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Color.Transparent, tint = dim, size = 34.dp, iconSize = 18.dp)
+        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Color.Transparent, tint = dim, size = 28.dp, iconSize = 18.dp)
     }
 }
 
