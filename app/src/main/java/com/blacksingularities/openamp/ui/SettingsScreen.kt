@@ -126,6 +126,10 @@ import com.blacksingularities.openamp.data.CoverShape
 import com.blacksingularities.openamp.data.LockBackground
 import com.blacksingularities.openamp.data.NotifButton
 import com.blacksingularities.openamp.data.NotifStyle
+import com.blacksingularities.openamp.data.LiveColors
+import com.blacksingularities.openamp.data.AppSettings
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.BrightnessMedium
 import com.blacksingularities.openamp.data.NpBackground
 import com.blacksingularities.openamp.data.SeekStyle
 import com.blacksingularities.openamp.data.ThemeMode
@@ -168,7 +172,7 @@ fun SettingsScreen(vm: MainViewModel, bottomPadding: Dp) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             RoundButton(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), { vm.back() }, background = Color.Transparent, size = 40.dp)
-            Text(tr("Ustawienia"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 4.dp))
+            Text(tr("Ustawienia"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, modifier = Modifier.padding(start = 4.dp))
         }
         TabChips(SetSection.entries, current, { it.label() }, { it.icon() }, Modifier.padding(bottom = 2.dp)) { s ->
             scope.launch { list.animateScrollToItem(s.ordinal) }
@@ -240,7 +244,7 @@ private fun LookSection(vm: MainViewModel) {
             items(all) { c ->
                 val sel = c == s.accent
                 Box(
-                    Modifier.size(32.dp).clip(CircleShape).background(if (sel) Color.White else Color.White.copy(alpha = 0.1f))
+                    Modifier.size(32.dp).clip(CircleShape).background(if (sel) Flat.Fg else Flat.Fg.copy(alpha = 0.1f))
                         .clickable(enabled = !locked) { vm.updateSettings { it.copy(accent = c) } }.padding(if (sel) 3.dp else 2.dp)
                         .clip(CircleShape).background(Color(c)),
                     contentAlignment = Alignment.Center,
@@ -255,6 +259,7 @@ private fun PlayerSection(vm: MainViewModel) {
     val s by vm.settings.collectAsState()
     SetCard(tr("Okładka i tło")) {
         SetDropdown(Icons.Rounded.Image, tr("Tło"), NpBackground.entries, s.npBackground, ::bgLabel) { v -> vm.updateSettings { it.copy(npBackground = v) } }
+        if (s.npBackground == NpBackground.LIVE) LiveBackgroundSettings(s, vm)
         SetDropdown(Icons.Rounded.Crop, tr("Kształt okładki"), CoverShape.entries, s.coverShape, ::shapeLabel) { v -> vm.updateSettings { it.copy(coverShape = v) } }
         val demo = rememberDemoSpectrum()
         val accent = MaterialTheme.colorScheme.primary
@@ -561,7 +566,7 @@ private fun GeneralSection(vm: MainViewModel) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             RowIcon(Icons.Rounded.SystemUpdate)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("OpenAMP ${BuildConfig.VERSION_NAME}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text("OpenAMP ${BuildConfig.VERSION_NAME}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Flat.Fg)
                 if (s.lastUpdateCheck > 0) Text(tr("Ostatnio sprawdzono: {0}", formatDate(s.lastUpdateCheck)), fontSize = 10.sp, color = Compact.TextDim)
             }
         }
@@ -585,16 +590,16 @@ private fun About() {
             androidx.compose.ui.res.painterResource(R.drawable.ic_launcher_foreground), null,
             Modifier.size(44.dp),
         )
-        Text(tr("OpenAMP – odtwarzacz muzyki"), fontSize = 13.sp, color = Color.White, modifier = Modifier.padding(top = 6.dp))
+        Text(tr("OpenAMP – odtwarzacz muzyki"), fontSize = 13.sp, color = Flat.Fg, modifier = Modifier.padding(top = 6.dp))
         Text(tr("Wersja {0}", BuildConfig.VERSION_NAME), fontSize = 11.sp, color = Compact.TextDim)
         Text(
-            "github.com/${BuildConfig.UPDATE_REPO}", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(8.dp)).clickable { open("https://github.com/${BuildConfig.UPDATE_REPO}") }
+            "github.com/${BuildConfig.UPDATE_REPO}", fontSize = 12.sp, color = Flat.Fg, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 6.dp).clip(Shapes.Small).clickable { open("https://github.com/${BuildConfig.UPDATE_REPO}") }
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Text(
             tr("Pomysł i wykonanie: redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.clip(Shapes.Small).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
         )
     }
 }
@@ -627,7 +632,7 @@ private fun visGroup(v: VisualizerStyle) = when (v) {
 }
 
 fun visLabel(v: VisualizerStyle) = when (v) { VisualizerStyle.BARS -> tr("Słupki widma"); VisualizerStyle.WAVE -> tr("Fala"); VisualizerStyle.CIRCLE -> tr("Okrąg"); VisualizerStyle.PULSE -> tr("Puls"); VisualizerStyle.MIRROR -> tr("Lustrzane słupki"); VisualizerStyle.RING_WAVE -> tr("Fala w okręgu"); VisualizerStyle.LINE -> tr("Krzywa widma"); VisualizerStyle.NONE -> tr("Brak") }
-fun bgLabel(v: NpBackground) = when (v) { NpBackground.BLUR -> tr("Rozmyta okładka"); NpBackground.GRADIENT -> tr("Gradient akcentu"); NpBackground.AURORA -> tr("Zorza (reaguje na muzykę)"); NpBackground.BLACK -> tr("Czysta czerń") }
+fun bgLabel(v: NpBackground) = when (v) { NpBackground.BLUR -> tr("Rozmyta okładka"); NpBackground.GRADIENT -> tr("Gradient akcentu"); NpBackground.AURORA -> tr("Zorza (reaguje na muzykę)"); NpBackground.LIVE -> tr("Żywe kolory (animowane)"); NpBackground.BLACK -> tr("Czysta czerń") }
 fun shapeLabel(v: CoverShape) = when (v) { CoverShape.ROUNDED -> tr("Zaokrąglona"); CoverShape.SQUARE -> tr("Kwadratowa"); CoverShape.CIRCLE -> tr("Okrągła"); CoverShape.VINYL -> tr("Płyta winylowa") }
 fun seekLabel(v: SeekStyle) = when (v) {
     SeekStyle.WAVEFORM -> tr("Fala dźwiękowa")
@@ -671,4 +676,23 @@ fun UpdateStatus(vm: MainViewModel, st: UpdateState) {
             PillButton(tr("Sprawdź teraz"), { vm.checkUpdate() }, Modifier.padding(top = 6.dp))
         }
     }
+}
+
+/** Ustawienia tła „Żywe kolory”: paleta (z animowanym podglądem), własny kolor, ruch, reakcja i jasność. */
+@Composable
+private fun LiveBackgroundSettings(s: AppSettings, vm: MainViewModel) {
+    val demo = rememberDemoSpectrum()
+    val accent = MaterialTheme.colorScheme.primary
+    var picker by remember { mutableStateOf(false) }
+    if (picker) ColorPickerDialog(s.liveCustom, { picker = false }) { c -> vm.updateSettings { it.copy(liveCustom = c, liveColors = LiveColors.CUSTOM) } }
+    SetDropdown(
+        Icons.Rounded.Palette, tr("Kolory tła"), LiveColors.entries, s.liveColors, ::liveColorsLabel,
+        preview = { v, m -> Box(m.clip(Shapes.Small)) { LiveBackground(null, v, s.liveCustom, accent, demo, s.liveMotion, s.liveReact, s.liveIntensity, Modifier.fillMaxSize()) } },
+    ) { v -> if (v == LiveColors.CUSTOM) picker = true else vm.updateSettings { it.copy(liveColors = v) } }
+    if (s.liveColors == LiveColors.CUSTOM) SetAction(Icons.Rounded.Colorize, tr("Własny kolor"), tr("Tło buduje harmonię barw wokół tego koloru"), trailing = {
+        Box(Modifier.size(22.dp).clip(CircleShape).background(Color(s.liveCustom)))
+    }) { picker = true }
+    SetSlider(Icons.Rounded.Speed, tr("Ruch"), "${s.liveMotion}%", s.liveMotion.toFloat(), 0f..100f, 19, subtitle = tr("Jak szybko płyną plamy koloru")) { v -> vm.updateSettings { it.copy(liveMotion = (v / 5).roundToInt() * 5) } }
+    SetSlider(Icons.Rounded.GraphicEq, tr("Reakcja na muzykę"), "${s.liveReact}%", s.liveReact.toFloat(), 0f..100f, 19, subtitle = tr("Bas powiększa plamy, uderzenia dają błysk; 0% – tylko spokojny ruch")) { v -> vm.updateSettings { it.copy(liveReact = (v / 5).roundToInt() * 5) } }
+    SetSlider(Icons.Rounded.BrightnessMedium, tr("Intensywność"), "${s.liveIntensity}%", s.liveIntensity.toFloat(), 0f..100f, 19, subtitle = tr("Niżej – spokojniejsze, ciemniejsze tło")) { v -> vm.updateSettings { it.copy(liveIntensity = (v / 5).roundToInt() * 5) } }
 }

@@ -242,7 +242,7 @@ private fun StickyLabel(label: String, count: Int, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            Modifier.reactive(tr("Przejdź do sekcji"), onClick = onClick).clip(RoundedCornerShape(50)).background(Flat.Block).padding(horizontal = 10.dp, vertical = 4.dp),
+            Modifier.reactive(tr("Przejdź do sekcji"), onClick = onClick).clip(Shapes.Pill).background(Flat.Block).padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -256,16 +256,16 @@ private fun StickyLabel(label: String, count: Int, onClick: () -> Unit) {
 @Composable
 private fun SectionJump(sections: List<Pair<String, Int>>, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        Column(Modifier.clip(RoundedCornerShape(22.dp)).background(Compact.Menu).padding(14.dp)) {
-            Text(tr("Przejdź do"), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp, start = 4.dp))
+        Column(Modifier.clip(Shapes.XLarge).background(Compact.Menu).padding(14.dp)) {
+            Text(tr("Przejdź do"), color = Flat.Fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp, start = 4.dp))
             FlowRow(
                 Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 sections.forEach { (label, row) ->
                     Text(
-                        label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.reactive(null) { onPick(row) }.clip(RoundedCornerShape(12.dp)).background(Flat.Block)
+                        label, color = Flat.Fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.reactive(null) { onPick(row) }.clip(Shapes.Medium).background(Flat.Block)
                             .padding(horizontal = 12.dp, vertical = 8.dp).heightIn(min = 18.dp),
                     )
                 }
@@ -359,7 +359,7 @@ private fun SearchField(vm: MainViewModel, modifier: Modifier) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(Flat.Block).padding(start = 14.dp, end = 4.dp),
+        modifier.clip(Shapes.Pill).background(Flat.Block).padding(start = 14.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Rounded.Search, null, tint = Flat.Dim, modifier = Modifier.size(18.dp))
@@ -368,7 +368,7 @@ private fun SearchField(vm: MainViewModel, modifier: Modifier) {
             if (vm.query.isEmpty()) Text(tr("Szukaj w bibliotece"), color = Flat.Faded, fontSize = 14.sp)
             BasicTextField(
                 vm.query, { vm.query = it }, singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 14.sp), cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                textStyle = TextStyle(color = Flat.Fg, fontSize = 14.sp), cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
@@ -385,7 +385,7 @@ fun CategoryHeader(title: String, icon: ImageVector, count: String?, trailing: @
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
+            Text(title, color = Flat.Fg, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
             if (count != null) Text(count, color = Flat.Dim, fontSize = 11.sp, lineHeight = 13.sp)
         }
         trailing()
@@ -404,7 +404,7 @@ fun AiProposal(vm: MainViewModel, modifier: Modifier = Modifier) {
     AnimatedVisibility(show || running, modifier, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
         val change = remember(all, cur) { Graph.curator.changeCount(all) }
         Column(
-            Modifier.padding(horizontal = 10.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp))
+            Modifier.padding(horizontal = 10.dp, vertical = 4.dp).fillMaxWidth().clip(Shapes.Large)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)).padding(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -414,7 +414,7 @@ fun AiProposal(vm: MainViewModel, modifier: Modifier = Modifier) {
                     if (running) (status as CuratorStatus.Running).stage
                     else if (cur.analyzedAt == 0L) tr("Uporządkować bibliotekę z AI?")
                     else tr("Biblioteka zmieniła się o {0} utworów", change),
-                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+                    color = Flat.Fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
                 )
             }
             if (running) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
@@ -451,7 +451,7 @@ private fun CategoryList(vm: MainViewModel, all: List<Track>, data: UserData, pa
     }
     LazyColumn(contentPadding = pad) {
         item {
-            Text(tr("Biblioteka"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 10.dp, bottom = 4.dp))
+            Text(tr("Biblioteka"), color = Flat.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 10.dp, bottom = 4.dp))
         }
         item { AiProposal(vm) }
         item {
@@ -475,9 +475,9 @@ private fun CategoryRow(icon: ImageVector, label: String, count: Int?, highlight
         Box(
             Modifier.size(36.dp).clip(CircleShape).background(if (highlight) MaterialTheme.colorScheme.primary else Flat.Block),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = if (highlight) MaterialTheme.colorScheme.onPrimary else Color.White, modifier = Modifier.size(19.dp)) }
+        ) { Icon(icon, null, tint = if (highlight) MaterialTheme.colorScheme.onPrimary else Flat.Fg, modifier = Modifier.size(19.dp)) }
         Spacer(Modifier.width(12.dp))
-        Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(label, color = Flat.Fg, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         if (count != null) Text(count.toString(), color = Flat.Dim, fontSize = 12.sp)
     }
 }
@@ -565,11 +565,11 @@ fun TrackListPage(
                                 Box(Modifier.animateItem()) {
                                     Column(Modifier.padding(4.dp).combinedClickable(onClick = { onTap(i, t) }, onLongClick = { onLong(i, t) })) {
                                         Box {
-                                            Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 360, shape = RoundedCornerShape(14.dp))
+                                            Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 360, shape = Shapes.Medium)
                                             if (selecting) SelectMark(t.id in selected, Modifier.align(Alignment.TopEnd).padding(6.dp))
-                                            if (ps.trackId == t.id) Box(Modifier.align(Alignment.BottomStart).padding(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)).padding(6.dp)) { PlayingIndicator(ps.isPlaying, color = Color.White) }
+                                            if (ps.trackId == t.id) Box(Modifier.align(Alignment.BottomStart).padding(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)).padding(6.dp)) { PlayingIndicator(ps.isPlaying, color = Flat.Fg) }
                                         }
-                                        Text(t.title, color = if (ps.trackId == t.id) MaterialTheme.colorScheme.primary else Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                                        Text(t.title, color = if (ps.trackId == t.id) MaterialTheme.colorScheme.primary else Flat.Fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                                         Text(t.artist, color = Flat.Dim, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                     if (menuFor?.first == i) TrackMenu(vm, t, { menuFor = null })
@@ -612,7 +612,7 @@ fun TrackListPage(
 private fun SelectMark(on: Boolean, modifier: Modifier = Modifier) {
     Icon(
         if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null,
-        tint = if (on) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.6f),
+        tint = if (on) MaterialTheme.colorScheme.primary else Flat.Fg.copy(alpha = 0.6f),
         modifier = modifier.size(22.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.5f)),
     )
 }
@@ -621,7 +621,7 @@ private fun SelectMark(on: Boolean, modifier: Modifier = Modifier) {
 @Composable
 private fun DenseRow(t: Track, density: Int, current: Boolean, playing: Boolean, selecting: Boolean, selected: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val titleColor = if (current) accent else Color.White
+    val titleColor = if (current) accent else Flat.Fg
     val meta = "${formatTime(t.durationMs)} · ${t.format.lowercase()}"
     Row(
         Modifier.fillMaxWidth()
@@ -643,14 +643,14 @@ private fun DenseRow(t: Track, density: Int, current: Boolean, playing: Boolean,
         val art = when (density) { 1 -> 40.dp; 2 -> 58.dp; else -> 88.dp }
         Box {
             Artwork(t, Modifier.size(art), size = if (density >= 3) 360 else 200, shape = RoundedCornerShape(if (density == 1) 9.dp else 13.dp))
-            if (current) Box(Modifier.size(art).clip(RoundedCornerShape(13.dp)).background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
-                PlayingIndicator(playing, color = Color.White)
+            if (current) Box(Modifier.size(art).clip(Shapes.Medium).background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
+                PlayingIndicator(playing, color = Flat.Fg)
             }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(t.title, color = titleColor, fontSize = if (density >= 2) 15.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
-            Text(if (density == 1) t.artist else "${t.artist} · ${t.album}", color = Color.White.copy(alpha = 0.78f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
+            Text(if (density == 1) t.artist else "${t.artist} · ${t.album}", color = Flat.Fg.copy(alpha = 0.78f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
             if (density >= 2) Text(meta, color = Flat.Faded, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
         }
         if (density == 1) Text(formatTime(t.durationMs), color = Flat.Faded, fontSize = 11.sp)
@@ -718,7 +718,7 @@ private fun CategoriesTab(vm: MainViewModel, tracks: List<Track>, pad: PaddingVa
             Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Rounded.Category, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
                 Gap(10.dp)
-                Text(tr("Brak kategorii"), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Brak kategorii"), color = Flat.Fg, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(tr("Analiza podzieli utwory na nastroje, style, epoki i okazje."), color = Flat.Dim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
                 PillButton(tr("Analizuj"), { vm.runAnalysis() }, icon = Icons.Rounded.AutoAwesome, active = true)
             }

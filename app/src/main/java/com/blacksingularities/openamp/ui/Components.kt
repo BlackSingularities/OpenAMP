@@ -135,9 +135,9 @@ fun TrackRow(
                 Artwork(track, Modifier.size(if (compact) 36.dp else 46.dp), size = 160, shape = RoundedCornerShape(if (compact) 8.dp else 11.dp))
                 if (current) {
                     Box(
-                        Modifier.matchParentSizeCompat(if (compact) 36 else 46).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp)),
+                        Modifier.matchParentSizeCompat(if (compact) 36 else 46).background(Color.Black.copy(alpha = 0.45f), Shapes.Medium),
                         contentAlignment = Alignment.Center,
-                    ) { PlayingIndicator(playing, color = Color.White) }
+                    ) { PlayingIndicator(playing, color = Flat.Fg) }
                 }
             }
         }
@@ -185,7 +185,7 @@ fun GridTile(
             .padding(6.dp),
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
-            Artwork(cover, Modifier.fillMaxSize(), size = 360, shape = if (circle) CircleShape else RoundedCornerShape(18.dp))
+            Artwork(cover, Modifier.fillMaxSize(), size = 360, shape = if (circle) CircleShape else Shapes.Large)
             if (onPlay != null) {
                 Surface(
                     onClick = onPlay,
@@ -229,7 +229,7 @@ fun TrackMenu(vm: MainViewModel, track: Track?, onDismiss: () -> Unit, extra: (@
     val context = LocalContext.current
     CompactMenu(!addTo && !details, onDismiss) {
         Text(
-            track.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1,
+            track.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, maxLines = 1,
             modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 4.dp).width(200.dp).basicMarquee(),
         )
         CMenuItem(tr("Odtwórz następny"), Icons.Rounded.SkipNext) { vm.player.playNext(listOf(track)); vm.message(tr("Zagra jako następny")); onDismiss() }

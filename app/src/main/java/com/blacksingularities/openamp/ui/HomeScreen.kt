@@ -110,7 +110,7 @@ fun HomeScreen(vm: MainViewModel, padding: PaddingValues) {
 @Composable
 private fun HomeTitle(text: String, count: String? = null) {
     Row(Modifier.padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.Bottom) {
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Flat.Fg)
         if (count != null) Text(count, fontSize = 11.sp, color = Flat.Faded, modifier = Modifier.padding(start = 8.dp, bottom = 1.dp))
     }
 }
@@ -135,12 +135,12 @@ private fun Collage(tracks: List<Track>, modifier: Modifier) {
 private fun MixCard(vm: MainViewModel, m: MixUi) {
     val accent = MaterialTheme.colorScheme.primary
     Column(Modifier.width(142.dp).reactive(null) { vm.open(Route.Detail(DetailKind.MIX, m.key)) }) {
-        Box(Modifier.size(142.dp).clip(RoundedCornerShape(18.dp))) {
+        Box(Modifier.size(142.dp).clip(Shapes.Large)) {
             Collage(m.tracks, Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.82f)))))
-            if (m.ai) Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.align(Alignment.TopStart).padding(9.dp).size(14.dp))
+            if (m.ai) Icon(Icons.Rounded.AutoAwesome, null, tint = Flat.Fg.copy(alpha = 0.85f), modifier = Modifier.align(Alignment.TopStart).padding(9.dp).size(14.dp))
             Text(
-                m.title, fontSize = 15.sp, lineHeight = 17.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                m.title, fontSize = 15.sp, lineHeight = 17.sp, fontWeight = FontWeight.ExtraBold, color = Flat.Fg, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.BottomStart).padding(10.dp),
             )
             RoundButton(Icons.Rounded.PlayArrow, tr("Odtwórz"), { vm.player.play(m.tracks) }, Modifier.align(Alignment.TopEnd).padding(7.dp), active = true, size = 30.dp, iconSize = 18.dp)
@@ -155,12 +155,12 @@ private fun MixRow(vm: MainViewModel, m: MixUi) {
         Modifier.fillMaxWidth().reactive(null) { vm.open(Route.Detail(DetailKind.MIX, m.key)) }.padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Collage(m.tracks, Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)))
+        Collage(m.tracks, Modifier.size(50.dp).clip(Shapes.Medium))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (m.ai) { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(4.dp)) }
-                Text(m.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(m.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(m.subtitle + " • " + plural(m.tracks.size, "{0} utwór", "{0} utwory", "{0} utworów"), fontSize = 11.sp, color = Flat.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -175,12 +175,12 @@ private fun TrackStrip(vm: MainViewModel, tracks: List<Track>) {
         itemsIndexed(tracks, key = { i, t -> "${t.id}_$i" }) { i, t ->
             Column(Modifier.width(108.dp).reactive(t.title) { vm.player.play(tracks, i) }) {
                 Box {
-                    Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 300, shape = RoundedCornerShape(14.dp))
+                    Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 300, shape = Shapes.Medium)
                     if (ps.trackId == t.id) Box(Modifier.align(Alignment.BottomStart).padding(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)).padding(5.dp)) {
-                        PlayingIndicator(ps.isPlaying, color = Color.White)
+                        PlayingIndicator(ps.isPlaying, color = Flat.Fg)
                     }
                 }
-                Text(t.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
+                Text(t.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flat.Fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
                 Text(t.artist, fontSize = 10.sp, color = Flat.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

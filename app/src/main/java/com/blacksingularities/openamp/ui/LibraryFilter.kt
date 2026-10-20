@@ -59,7 +59,7 @@ fun LibraryFilterSheet(vm: MainViewModel, onClose: () -> Unit) {
     var minSec by remember { mutableStateOf(s.minDurationSec.toFloat()) }
     val shown = folders.filter { (f, _) -> excluded.none { f.contains(it, ignoreCase = true) } }.sumOf { it.second }
 
-    ModalBottomSheet(onDismissRequest = onClose, containerColor = Color.Black) {
+    ModalBottomSheet(onDismissRequest = onClose, containerColor = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             SectionHeader(Icons.Rounded.FilterList, tr("Co pokazywać w bibliotece"))
             Text(tr("Widocznych utworów: {0}", shown), color = Flat.Dim, fontSize = 13.sp)
@@ -76,7 +76,7 @@ fun LibraryFilterSheet(vm: MainViewModel, onClose: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Slider(minSec, { minSec = ((it / 10).roundToInt() * 10).toFloat() }, valueRange = 0f..180f, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
-                Text(tr("{0} s", minSec.roundToInt()), color = Color.White, fontFamily = MonoNumbers)
+                Text(tr("{0} s", minSec.roundToInt()), color = Flat.Fg, fontFamily = MonoNumbers)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -100,11 +100,11 @@ fun LibraryFilterSheet(vm: MainViewModel, onClose: () -> Unit) {
                         )
                         Spacer(Modifier.width(10.dp))
                         Box(Modifier.size(34.dp).clip(CircleShape).background(Flat.Block), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Folder, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Folder, null, tint = Flat.Fg, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(path.substringAfterLast('/').ifEmpty { "/" }, color = if (on) Color.White else Flat.Faded, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(path.substringAfterLast('/').ifEmpty { "/" }, color = if (on) Flat.Fg else Flat.Faded, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(path, color = Flat.Faded, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Text(n.toString(), color = Flat.Dim, fontSize = 12.sp)

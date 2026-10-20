@@ -65,7 +65,7 @@ fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Nasycenie (poziomo) × jasność (pionowo)
                 Canvas(
-                    Modifier.fillMaxWidth().aspectRatio(1.4f).clip(RoundedCornerShape(16.dp))
+                    Modifier.fillMaxWidth().aspectRatio(1.4f).clip(Shapes.Large)
                         .pointerInput(Unit) {
                             fun set(o: Offset) { sat = (o.x / size.width).coerceIn(0f, 1f); v = 1f - (o.y / size.height).coerceIn(0f, 1f) }
                             detectDragGestures(onDragStart = { set(it) }) { ch, _ -> ch.consume(); set(ch.position) }
@@ -81,7 +81,7 @@ fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit
                 }
                 // Odcień
                 Canvas(
-                    Modifier.fillMaxWidth().height(28.dp).clip(RoundedCornerShape(14.dp))
+                    Modifier.fillMaxWidth().height(28.dp).clip(Shapes.Medium)
                         .pointerInput(Unit) {
                             detectDragGestures(onDragStart = { h = (it.x / size.width * 360f).coerceIn(0f, 359.9f) }) { ch, _ ->
                                 ch.consume(); h = (ch.position.x / size.width * 360f).coerceIn(0f, 359.9f)
@@ -94,7 +94,7 @@ fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit
                     drawRoundRect(Color.White, Offset(x - 4.dp.toPx(), 2.dp.toPx()), androidx.compose.ui.geometry.Size(8.dp.toPx(), size.height - 4.dp.toPx()), CornerRadius(4.dp.toPx()), style = Stroke(3.dp.toPx()))
                 }
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(color))
+                    Box(Modifier.size(52.dp).clip(Shapes.Medium).background(color))
                     Spacer(Modifier.width(12.dp))
                     OutlinedTextField(
                         hex, { t ->

@@ -29,6 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -64,11 +66,35 @@ import kotlinx.coroutines.delay
  * i obwódek; reakcja na dotyk – sprężyste wciśnięcie i haptyka, a po przytrzymaniu dymek z nazwą.
  */
 object Flat {
-    val Block = Color(0xFF1C1C1C)
-    val Faint = Color(0x0FFFFFFF)
-    val Dim = Color(0xB3FFFFFF)
-    val Faded = Color(0x66FFFFFF)
-    val Hair = Color(0x1FFFFFFF)
+    /** Czy bieżący motyw jest jasny – wtedy „białe” elementy stają się ciemne i odwrotnie. */
+    val light: Boolean @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background.luminance() > 0.5f
+
+    /** Kolor tekstu i ikon na tle aplikacji (biały w ciemnych motywach, prawie czarny w jasnym). */
+    val Fg: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onBackground
+    val Bg: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
+    val Block: Color @Composable @ReadOnlyComposable get() = if (light) Color(0xFFE9E6EE) else Color(0xFF1C1C1C)
+    val Faint: Color @Composable @ReadOnlyComposable get() = Fg.copy(alpha = if (light) 0.06f else 0.059f)
+    val Dim: Color @Composable @ReadOnlyComposable get() = Fg.copy(alpha = 0.7f)
+    val Faded: Color @Composable @ReadOnlyComposable get() = Fg.copy(alpha = 0.42f)
+    val Hair: Color @Composable @ReadOnlyComposable get() = Fg.copy(alpha = 0.12f)
+}
+
+/**
+ * Wspólne zasady kształtu w całej aplikacji: promienie dla małych elementów, wierszy i kafelków,
+ * kart i okien oraz pigułka; pigułki, zakładki i segmenty mają te same, niskie odstępy w pionie.
+ */
+object Shapes {
+    val Small = RoundedCornerShape(10.dp)
+    val Medium = RoundedCornerShape(14.dp)
+    val Large = RoundedCornerShape(18.dp)
+    val XLarge = RoundedCornerShape(24.dp)
+    val Pill = RoundedCornerShape(50)
+
+    /** Odstępy w pigułkach: poziomo / pionowo (zwykła i zwarta). */
+    val PillH = 12.dp
+    val PillV = 6.dp
+    val PillHCompact = 10.dp
+    val PillVCompact = 4.dp
 }
 
 @Stable
@@ -95,8 +121,8 @@ fun HintBubble(state: HintState, modifier: Modifier = Modifier) {
     state.text?.let { last = it }
     AnimatedVisibility(state.text != null, modifier, enter = fadeIn(tween(120)), exit = fadeOut(tween(160))) {
         Text(
-            last, color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 14.dp, vertical = 7.dp),
+            last, color = Flat.Bg, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            modifier = Modifier.clip(Shapes.Pill).background(Flat.Fg).padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }
 }
@@ -147,7 +173,7 @@ fun RoundButton(
     size: Dp = 44.dp,
     iconSize: Dp = 22.dp,
     background: Color = Flat.Block,
-    tint: Color = Color.White,
+    tint: Color = Flat.Fg,
     enabled: Boolean = true,
     onLongPress: (() -> Unit)? = null,
 ) {
@@ -176,10 +202,10 @@ fun PillButton(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val bg by animateColorAsState(if (active) accent else background, tween(160), label = "pb")
-    val fg = if (active) MaterialTheme.colorScheme.onPrimary else Color.White
+    val fg = if (active) MaterialTheme.colorScheme.onPrimary else Flat.Fg
     Row(
-        modifier.reactive(label, onLongPress = onLongPress, onClick = onClick).clip(RoundedCornerShape(50)).background(bg)
-            .padding(horizontal = if (text == null) (if (compact) 10.dp else 11.dp) else (if (compact) 11.dp else 13.dp), vertical = if (compact) 7.dp else 8.dp),
+        modifier.reactive(label, onLongPress = onLongPress, onClick = onClick).clip(Shapes.Pill).background(bg)
+            .padding(horizontal = if (compact) Shapes.PillHCompact else Shapes.PillH, vertical = if (compact) Shapes.PillVCompact else Shapes.PillV),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, null, tint = fg, modifier = Modifier.size(if (compact) 16.dp else 18.dp))
@@ -193,10 +219,10 @@ fun PillButton(
 fun SectionHeader(icon: ImageVector?, title: String, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = Flat.Fg, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = Flat.Fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f).height(1.dp).background(Flat.Hair))
     }
@@ -229,7 +255,7 @@ fun TileGrid(tiles: List<Tile>, columns: Int = if (tiles.size <= 6) tiles.size.c
                     Column(
                         Modifier.weight(1f).fillMaxHeight()
                             .reactive(t.full) { t.onChange(!t.value) }
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(Shapes.Medium)
                             .background(if (t.value) accent else Flat.Faint)
                             .padding(vertical = 9.dp, horizontal = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -266,7 +292,7 @@ fun <T> ChoiceTiles(
     onPick: (T) -> Unit,
 ) {
     if (options.size > 3) {
-        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flat.Faint).padding(vertical = 2.dp)) {
+        Box(Modifier.fillMaxWidth().clip(Shapes.Medium).background(Flat.Faint).padding(vertical = 2.dp)) {
             SetDropdown(
                 titleIcon ?: icon?.invoke(selected) ?: Icons.Rounded.Tune, title ?: tr("Wybór"), options, selected, label,
                 preview = preview, onSelect = onPick,
@@ -287,7 +313,7 @@ private fun <T> TileGridChoice(options: List<T>, selected: T, label: (T) -> Stri
                 row.forEach { o ->
                     val sel = o == selected
                     Column(
-                        Modifier.weight(1f).reactive(label(o)) { onPick(o) }.clip(RoundedCornerShape(14.dp))
+                        Modifier.weight(1f).reactive(label(o)) { onPick(o) }.clip(Shapes.Medium)
                             .background(if (sel) accent else Flat.Faint).padding(vertical = 9.dp, horizontal = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

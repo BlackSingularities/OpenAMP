@@ -118,18 +118,18 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
                     ),
                 )
                 Row(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.Bottom) {
-                    Artwork(cover, Modifier.size(112.dp), size = 500, shape = RoundedCornerShape(16.dp))
+                    Artwork(cover, Modifier.size(112.dp), size = 500, shape = Shapes.Large)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(subtitle, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(title, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(title, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, color = Flat.Fg, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Row(Modifier.statusBarsPadding().padding(4.dp).fillMaxWidth()) {
-                    IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), tint = Color.White) }
+                    IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), tint = Flat.Fg) }
                     Spacer(Modifier.weight(1f))
                     if (route.kind == DetailKind.PLAYLIST) Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, tr("Więcej"), tint = Color.White) }
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, tr("Więcej"), tint = Flat.Fg) }
                         CompactMenu(menu, { menu = false }) {
                             CMenuItem(tr("Zmień nazwę"), Icons.Rounded.Edit) { menu = false; renaming = true }
                             CMenuItem(tr("Usuń playlistę"), Icons.Rounded.Delete, danger = true) {

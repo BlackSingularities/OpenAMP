@@ -53,7 +53,7 @@ import kotlin.math.sin
 /** Panel: płaska, lekko rozjaśniona płyta na czarnym tle (jak w OpenPDF). */
 @Composable
 fun Panel(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable () -> Unit) {
-    Box(modifier.clip(RoundedCornerShape(18.dp)).background(Color(0x0FFFFFFF)).padding(padding)) { Column { content() } }
+    Box(modifier.clip(Shapes.Large).background(Flat.Faint).padding(padding)) { Column { content() } }
 }
 
 /** Nagłówek sekcji w panelu: pogrubiony tytuł, cienka linia i opcjonalny element po prawej. */
@@ -62,7 +62,7 @@ fun Overline(text: String, modifier: Modifier = Modifier, trailing: (@Composable
     Row(modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.width(10.dp))
-        Box(Modifier.weight(1f).height(1.dp).background(Color(0x1FFFFFFF)))
+        Box(Modifier.weight(1f).height(1.dp).background(Flat.Hair))
         if (trailing != null) { Spacer(Modifier.width(10.dp)); trailing() }
     }
 }
@@ -207,8 +207,8 @@ fun PillToggle(text: String, on: Boolean, onToggle: () -> Unit, modifier: Modifi
     val bg by animateColorAsState(if (on) accent.copy(alpha = 0.2f) else Color.Transparent, label = "pt")
     val fg by animateColorAsState(if (on) accent else MaterialTheme.colorScheme.onSurfaceVariant, label = "pf")
     Row(
-        modifier.clip(RoundedCornerShape(50)).background(bg)
-            .border(1.dp, fg.copy(alpha = 0.6f), RoundedCornerShape(50))
+        modifier.clip(Shapes.Pill).background(bg)
+            .border(1.dp, fg.copy(alpha = 0.6f), Shapes.Pill)
             .clickable(onClick = onToggle).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
