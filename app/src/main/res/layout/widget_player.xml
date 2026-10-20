@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widżet „Odtwarzacz” (4×2 i większy): pełne sterowanie, postęp, czasy, losowanie i powtarzanie. -->
+<!-- Widżet „Odtwarzacz” (4×2 i większy): pełne sterowanie, postęp, czasy, losowanie i powtarzanie.
+     Okładka może stać po lewej (w_cover), po prawej (w_cover_end), u góry (w_cover_top) albo być tłem. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -14,10 +15,21 @@
         android:importantForAccessibility="no" />
 
     <LinearLayout
+        android:id="@+id/w_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:padding="14dp">
+
+        <ImageView
+            android:id="@+id/w_cover_top"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            android:src="@drawable/ic_w_note" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -49,8 +61,7 @@
                     android:maxLines="2"
                     android:text="@string/app_name"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:textSize="17sp" />
 
                 <TextView
                     android:id="@+id/w_artist"
@@ -89,21 +100,58 @@
                 android:padding="8dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_w_heart_outline" />
+
+            <ImageView
+                android:id="@+id/w_cover_end"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_marginStart="8dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                android:src="@drawable/ic_w_note" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/w_progress_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/w_progress"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="12dp"
-                android:scaleType="fitXY"
-                android:importantForAccessibility="no" />
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/w_time_side_pos"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:fontFamily="monospace"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/w_progress"
+                    android:layout_width="0dp"
+                    android:layout_height="14dp"
+                    android:layout_weight="1"
+                    android:scaleType="fitXY"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/w_time_side_dur"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:fontFamily="monospace"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/w_times"
@@ -133,8 +181,7 @@
         <LinearLayout
             android:id="@+id/w_controls"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="4dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -157,8 +204,9 @@
                 android:src="@drawable/ic_w_prev" />
 
             <FrameLayout
-                android:layout_width="52dp"
-                android:layout_height="52dp">
+                android:id="@+id/w_play_frame"
+                android:layout_width="48dp"
+                android:layout_height="48dp">
 
                 <ImageView
                     android:id="@+id/w_play_bg"
@@ -171,7 +219,7 @@
                     android:id="@+id/w_play"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:padding="13dp"
+                    android:padding="12dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_w_play" />
             </FrameLayout>

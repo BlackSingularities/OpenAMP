@@ -1,5 +1,13 @@
 # Historia zmian
 
+## 1.6.6
+
+- Widżet **Odtwarzacz**: okładka po lewej, po prawej, u góry albo jako tło, z suwakiem rozmiaru i kadrowaniem w pionie (widżet **Okładka** – powiększenie kadru).
+- Pasek odtwarzania w widżetach w stylach jak w aplikacji: **Jak w aplikacji**, fala dźwiękowa, lustrzana fala, linia konturu, matryca kropek, segmenty LED, a także cienka linia, linia z uchwytem i gruby pasek; regulowana wysokość paska.
+- Mniejszy odstęp między paskiem a przyciskami (do ustawienia suwakiem), czasy pod paskiem albo po jego bokach.
+- Osobne przełączniki losowania i powtarzania, do tego poprzedni/następny, wielkość przycisków, margines wewnętrzny, liczba wierszy i pogrubienie tytułu.
+- Ustawienia aplikacji i konfiguracja widżetów w układzie jak w OpenPDF: jedna lista sekcji z nagłówkami, kafelki-przełączniki (przytrzymanie pokazuje opis) i zwarte karty z wyborami i suwakami.
+
 ## 1.6.5
 
 - Wizualizacje na okładce: cztery nowe style – **Puls** (poświata i okładka pulsujące z basem), **Lustrzane słupki**, **Fala w okręgu** i **Krzywa widma**.
