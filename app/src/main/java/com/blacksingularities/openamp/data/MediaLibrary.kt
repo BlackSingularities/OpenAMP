@@ -26,12 +26,19 @@ class MediaLibrary(private val context: Context) {
     @Volatile
     private var byId: Map<Long, Track> = emptyMap()
 
+    /** Identyfikatory wszystkich plików na urządzeniu z ostatniego udanego skanu (przed filtrem). */
+    @Volatile
+    var deviceIds: Set<Long>? = null
+        private set
+
     fun get(id: Long): Track? = byId[id]
 
     suspend fun scan(minDurationSec: Int, excluded: String, hiddenFormats: String = "") = withContext(Dispatchers.IO) {
         _scanning.value = true
         try {
             val everything = query(minDurationSec, emptyList())
+            // Krótkie pliki też istnieją – do sprawdzania usuniętych liczy się wszystko, co jest w MediaStore.
+            deviceIds = allIds()
             _allFolders.value = everything.groupingBy { it.folder }.eachCount().toList().sortedBy { it.first.lowercase() }
             _allFormats.value = everything.groupingBy { it.format.lowercase() }.eachCount().toList().sortedByDescending { it.second }
             val ex = excluded.split(',').map { it.trim() }.filter { it.isNotEmpty() }
@@ -44,6 +51,14 @@ class MediaLibrary(private val context: Context) {
         } finally {
             _scanning.value = false
         }
+    }
+
+    private fun allIds(): Set<Long> {
+        val out = HashSet<Long>()
+        context.contentResolver.query(M.EXTERNAL_CONTENT_URI, arrayOf(M._ID), null, null, null)?.use { c ->
+            while (c.moveToNext()) out += c.getLong(0)
+        }
+        return out
     }
 
     private fun query(minSec: Int, excluded: List<String>): List<Track> {

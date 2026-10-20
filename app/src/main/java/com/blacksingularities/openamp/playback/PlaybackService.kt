@@ -107,12 +107,7 @@ class PlaybackService : MediaSessionService() {
             .setMediaButtonPreferences(SessionCommands.buttons(player))
             .build()
 
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .setChannelName(R.string.app_name)
-                .build()
-                .apply { setSmallIcon(R.drawable.ic_notification) },
-        )
+        setMediaNotificationProvider(OpenAmpNotificationProvider(this))
 
         scope.launch { Dsp.state.collect { AudioFx.refresh() } }
         observeSettings()
@@ -122,7 +117,7 @@ class PlaybackService : MediaSessionService() {
         // Przyciski powiadomienia zależą od ulubionych i od ustawień.
         scope.launch { Graph.userData.state.map { it.favorites }.distinctUntilChanged().collect { refreshButtons() } }
         scope.launch {
-            Graph.settings.state.map { Triple(it.notifButton1, it.notifButton2, it.autoCloseMin) }.distinctUntilChanged().collect {
+            Graph.settings.state.map { listOf(it.notifButton1, it.notifButton2, it.autoCloseMin, it.notifStyle) }.distinctUntilChanged().collect {
                 refreshButtons()
                 scheduleIdleClose()
             }

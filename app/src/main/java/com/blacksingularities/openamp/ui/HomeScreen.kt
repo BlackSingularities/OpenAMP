@@ -1,8 +1,6 @@
 package com.blacksingularities.openamp.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,24 +10,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,158 +36,152 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.LibraryOps
-import com.blacksingularities.openamp.data.Mix
 import com.blacksingularities.openamp.data.SmartList
 import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
+import com.blacksingularities.openamp.data.ViewMode
+import com.blacksingularities.openamp.i18n.plural
 import com.blacksingularities.openamp.i18n.tr
-import java.util.Calendar
 
-private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-    in 5..11 -> tr("Dzień dobry")
-    in 12..17 -> tr("Miłego popołudnia")
-    in 18..22 -> tr("Dobry wieczór")
-    else -> tr("Nocne granie")
+/** Miks gotowy do pokazania: lista utworów i opis. [key] – klucz trasy szczegółów. */
+data class MixUi(val key: String, val title: String, val subtitle: String, val tracks: List<Track>, val ai: Boolean)
+
+/** Miksy z analizy AI (najpierw) i miksy liczone z nawyków słuchania – wszystkie złożone z utworów. */
+@Composable
+fun rememberMixes(vm: MainViewModel): List<MixUi> {
+    val all by vm.tracks.collectAsState()
+    val data by vm.userData.collectAsState()
+    val cur by Graph.curator.state.collectAsState()
+    return remember(all, data.stats.size, data.favorites, cur) {
+        val byId = all.associateBy { it.id }
+        val ai = cur.mixes.map { m -> MixUi("ai:" + m.id, m.title, m.subtitle, m.trackIds.mapNotNull { byId[it] }, true) }.filter { it.tracks.size >= 3 }
+        val local = Smart.mixes(all, data).map { MixUi(it.id, tr(it.title), tr(it.subtitle), it.tracks, false) }
+        ai + local
+    }
 }
 
 @Composable
 fun HomeScreen(vm: MainViewModel, padding: PaddingValues) {
     val all by vm.tracks.collectAsState()
     val data by vm.userData.collectAsState()
-    val mixes = remember(all, data.stats.size, data.favorites) { Smart.mixes(all, data) }
-    val recent = remember(all, data) { LibraryOps.smart(all, SmartList.RECENTLY_PLAYED, data).take(20) }
-    val top = remember(all, data) { LibraryOps.smart(all, SmartList.MOST_PLAYED, data).take(20) }
-    val newAlbums = remember(all) { LibraryOps.albums(all).sortedByDescending { a -> a.tracks.maxOf { it.dateAdded } }.take(16) }
-    val randomAlbums = remember(all) { LibraryOps.albums(all).shuffled().take(16) }
-    val totalMs = remember(data.stats) { data.stats.values.sumOf { it.listenMs } }
+    val s by vm.settings.collectAsState()
+    val mixes = rememberMixes(vm)
+    val recent = remember(all, data) { LibraryOps.smart(all, SmartList.RECENTLY_PLAYED, data).take(24) }
+    val top = remember(all, data) { LibraryOps.smart(all, SmartList.MOST_PLAYED, data).take(24) }
+    val newest = remember(all) { LibraryOps.smart(all, SmartList.RECENTLY_ADDED, com.blacksingularities.openamp.data.UserData()).take(24) }
+    val random = remember(all) { all.shuffled().take(24) }
+    val asList = s.homeView == ViewMode.LIST
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+        item { AiProposal(vm) }
         item {
-            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text(greeting(), style = MaterialTheme.typography.displaySmall)
-                Text(
-                    tracksSummary(all) + if (totalMs > 0) " • " + tr("słuchane {0}", formatTime(totalMs)) else "",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                item { QuickAction(Icons.Rounded.Shuffle, tr("Wymieszaj wszystko")) { vm.player.play(all, shuffle = true) } }
-                item {
-                    QuickAction(Icons.Rounded.Favorite, tr("Ulubione")) { vm.open(Route.Detail(DetailKind.SMART, SmartList.FAVORITES.name)) }
-                }
-                item { QuickAction(Icons.Rounded.BarChart, tr("Statystyki")) { vm.open(Route.Stats) } }
+            LazyRow(contentPadding = PaddingValues(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item { PillButton(tr("Wymieszaj wszystko"), { vm.player.play(all, shuffle = true) }, icon = Icons.Rounded.Shuffle, compact = true) }
+                item { PillButton(tr("Ulubione"), { vm.open(Route.Detail(DetailKind.SMART, SmartList.FAVORITES.name)) }, icon = Icons.Rounded.Favorite, compact = true) }
+                item { PillButton(tr("Kategorie AI"), { vm.updateSettings { it.copy(tab = com.blacksingularities.openamp.data.LibraryTab.CATEGORIES) } }, icon = Icons.Rounded.AutoAwesome, compact = true) }
             }
         }
         if (mixes.isNotEmpty()) {
-            item { HomeTitle(tr("Miksy dla Ciebie"), Icons.Rounded.AutoAwesome) }
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(mixes, key = { it.id }) { m -> MixCard(vm, m) }
+            item { HomeTitle(tr("Miksy"), plural(mixes.size, "{0} miks", "{0} miksy", "{0} miksów")) }
+            if (asList) {
+                items(mixes, key = { it.key }) { m -> MixRow(vm, m) }
+            } else {
+                item {
+                    LazyRow(contentPadding = PaddingValues(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(mixes, key = { it.key }) { m -> MixCard(vm, m) }
+                    }
                 }
             }
         }
-        if (recent.isNotEmpty()) {
-            item { HomeTitle(tr("Ostatnio odtwarzane")) }
-            item { TrackRowStrip(vm, recent) }
-        }
-        if (top.isNotEmpty()) {
-            item { HomeTitle(tr("Najczęściej odtwarzane")) }
-            item { TrackRowStrip(vm, top) }
-        }
-        if (newAlbums.isNotEmpty()) {
-            item { HomeTitle(tr("Ostatnio dodane")) }
-            item { AlbumStrip(vm, newAlbums) }
-        }
-        if (randomAlbums.size > 4) {
-            item { HomeTitle(tr("Może coś z tego?")) }
-            item { AlbumStrip(vm, randomAlbums) }
-        }
+        if (recent.isNotEmpty()) { item { HomeTitle(tr("Ostatnio odtwarzane")) }; item { TrackStrip(vm, recent) } }
+        if (top.isNotEmpty()) { item { HomeTitle(tr("Najczęściej odtwarzane")) }; item { TrackStrip(vm, top) } }
+        if (newest.isNotEmpty()) { item { HomeTitle(tr("Ostatnio dodane")) }; item { TrackStrip(vm, newest) } }
+        if (random.size > 6) { item { HomeTitle(tr("Może coś z tego?")) }; item { TrackStrip(vm, random) } }
         if (all.isEmpty()) item { Empty(tr("Brak utworów")) }
     }
 }
 
 @Composable
-private fun HomeTitle(text: String, icon: ImageVector? = null) {
-    Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
-        Text(text, style = MaterialTheme.typography.titleLarge)
+private fun HomeTitle(text: String, count: String? = null) {
+    Row(Modifier.padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.Bottom) {
+        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        if (count != null) Text(count, fontSize = 11.sp, color = Flat.Faded, modifier = Modifier.padding(start = 8.dp, bottom = 1.dp))
+    }
+}
+
+/** Kolaż czterech okładek utworów miksu. */
+@Composable
+private fun Collage(tracks: List<Track>, modifier: Modifier) {
+    val covers = remember(tracks) { tracks.distinctBy { it.albumId }.take(4).ifEmpty { tracks.take(1) } }
+    Column(modifier) {
+        Row(Modifier.weight(1f)) {
+            Artwork(covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
+            Artwork(covers.getOrNull(1) ?: covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
+        }
+        Row(Modifier.weight(1f)) {
+            Artwork(covers.getOrNull(2) ?: covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
+            Artwork(covers.getOrNull(3) ?: covers.getOrNull(1), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
+        }
     }
 }
 
 @Composable
-private fun QuickAction(icon: ImageVector, text: String, onClick: () -> Unit) {
+private fun MixCard(vm: MainViewModel, m: MixUi) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(Modifier.width(142.dp).reactive(null) { vm.open(Route.Detail(DetailKind.MIX, m.key)) }) {
+        Box(Modifier.size(142.dp).clip(RoundedCornerShape(18.dp))) {
+            Collage(m.tracks, Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.82f)))))
+            if (m.ai) Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.align(Alignment.TopStart).padding(9.dp).size(14.dp))
+            Text(
+                m.title, fontSize = 15.sp, lineHeight = 17.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.BottomStart).padding(10.dp),
+            )
+            RoundButton(Icons.Rounded.PlayArrow, tr("Odtwórz"), { vm.player.play(m.tracks) }, Modifier.align(Alignment.TopEnd).padding(7.dp), active = true, size = 30.dp, iconSize = 18.dp)
+        }
+        Text(m.subtitle, fontSize = 11.sp, lineHeight = 13.sp, color = Flat.Dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
+    }
+}
+
+@Composable
+private fun MixRow(vm: MainViewModel, m: MixUi) {
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(50))
-            .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().reactive(null) { vm.open(Route.Detail(DetailKind.MIX, m.key)) }.padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-/** Karta miksu: kolaż czterech okładek z gradientem i tytułem. */
-@Composable
-private fun MixCard(vm: MainViewModel, m: Mix) {
-    val covers = remember(m) { m.tracks.distinctBy { it.albumId }.take(4) }
-    val accent = MaterialTheme.colorScheme.primary
-    Column(Modifier.width(170.dp).clickable { vm.open(Route.Detail(DetailKind.MIX, m.id)) }) {
-        Box(Modifier.size(170.dp).clip(RoundedCornerShape(22.dp))) {
-            Column {
-                Row(Modifier.weight(1f)) {
-                    Artwork(covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
-                    Artwork(covers.getOrNull(1) ?: covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
-                }
-                Row(Modifier.weight(1f)) {
-                    Artwork(covers.getOrNull(2) ?: covers.getOrNull(0), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
-                    Artwork(covers.getOrNull(3) ?: covers.getOrNull(1), Modifier.weight(1f).fillMaxSize(), size = 200, shape = RoundedCornerShape(0.dp))
-                }
+        Collage(m.tracks, Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (m.ai) { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(4.dp)) }
+                Text(m.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.85f)))))
-            Text(
-                tr(m.title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color.White,
-                modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
-            )
-            Surface(
-                onClick = { vm.player.play(m.tracks) }, shape = CircleShape, color = accent,
-                modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp),
-            ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PlayArrow, tr("Odtwórz"), tint = MaterialTheme.colorScheme.onPrimary) } }
+            Text(m.subtitle + " • " + plural(m.tracks.size, "{0} utwór", "{0} utwory", "{0} utworów"), fontSize = 11.sp, color = Flat.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(tr(m.subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        RoundButton(Icons.Rounded.PlayArrow, tr("Odtwórz"), { vm.player.play(m.tracks) }, size = 34.dp, iconSize = 19.dp)
     }
 }
 
 @Composable
-private fun TrackRowStrip(vm: MainViewModel, tracks: List<Track>) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(tracks.size) { i ->
-            val t = tracks[i]
-            Column(Modifier.width(132.dp).clickable { vm.player.play(tracks, i) }) {
-                Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 300, shape = RoundedCornerShape(16.dp))
-                Spacer(Modifier.height(6.dp))
-                Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(t.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlbumStrip(vm: MainViewModel, albums: List<com.blacksingularities.openamp.data.Album>) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 10.dp)) {
-        items(albums, key = { it.id }) { a ->
-            Box(Modifier.width(150.dp)) {
-                GridTile(a.title, a.artist, a.cover, onClick = { vm.open(Route.Detail(DetailKind.ALBUM, a.id.toString())) }, onPlay = { vm.player.play(a.tracks) })
+private fun TrackStrip(vm: MainViewModel, tracks: List<Track>) {
+    val ps by vm.player.state.collectAsState()
+    LazyRow(contentPadding = PaddingValues(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        itemsIndexed(tracks, key = { i, t -> "${t.id}_$i" }) { i, t ->
+            Column(Modifier.width(108.dp).reactive(t.title) { vm.player.play(tracks, i) }) {
+                Box {
+                    Artwork(t, Modifier.fillMaxWidth().aspectRatio(1f), size = 300, shape = RoundedCornerShape(14.dp))
+                    if (ps.trackId == t.id) Box(Modifier.align(Alignment.BottomStart).padding(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)).padding(5.dp)) {
+                        PlayingIndicator(ps.isPlaying, color = Color.White)
+                    }
+                }
+                Text(t.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
+                Text(t.artist, fontSize = 10.sp, color = Flat.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

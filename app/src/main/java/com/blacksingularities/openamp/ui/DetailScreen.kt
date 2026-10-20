@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.LibraryOps
 import com.blacksingularities.openamp.data.SmartList
@@ -54,7 +56,8 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
     val data by vm.userData.collectAsState()
     val s by vm.settings.collectAsState()
 
-    val (title, subtitle, tracks) = remember(route, all, data) {
+    val cur by Graph.curator.state.collectAsState()
+    val (title, subtitle, tracks) = remember(route, all, data, cur) {
         when (route.kind) {
             DetailKind.ALBUM -> {
                 val a = LibraryOps.albums(all.filter { it.albumId.toString() == route.key }).firstOrNull()
@@ -78,8 +81,19 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
                 Triple(p?.name ?: "", tr("Playlisty"), p?.trackIds?.mapNotNull { byId[it] } ?: emptyList())
             }
             DetailKind.MIX -> {
-                val m = com.blacksingularities.openamp.data.Smart.mixes(all, data).firstOrNull { it.id == route.key }
-                Triple(m?.let { tr(it.title) } ?: "", m?.let { tr(it.subtitle) } ?: "", m?.tracks ?: emptyList())
+                val byId = all.associateBy { it.id }
+                if (route.key.startsWith("ai:")) {
+                    val m = cur.mixes.firstOrNull { it.id == route.key.removePrefix("ai:") }
+                    Triple(m?.title ?: "", m?.subtitle ?: "", m?.trackIds?.mapNotNull { byId[it] } ?: emptyList())
+                } else {
+                    val m = com.blacksingularities.openamp.data.Smart.mixes(all, data).firstOrNull { it.id == route.key }
+                    Triple(m?.let { tr(it.title) } ?: "", m?.let { tr(it.subtitle) } ?: "", m?.tracks ?: emptyList())
+                }
+            }
+            DetailKind.CATEGORY -> {
+                val byId = all.associateBy { it.id }
+                val c = cur.categories.firstOrNull { it.id == route.key }
+                Triple(c?.name ?: "", c?.description?.ifBlank { null } ?: tr("Kategorie AI"), c?.trackIds?.mapNotNull { byId[it] } ?: emptyList())
             }
             DetailKind.SMART -> {
                 val k = SmartList.valueOf(route.key)
@@ -95,7 +109,7 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
 
     val header: @Composable () -> Unit = {
         Column {
-            Box(Modifier.fillMaxWidth().height(320.dp)) {
+            Box(Modifier.fillMaxWidth().height(230.dp)) {
                 val cover = tracks.firstOrNull()
                 Artwork(cover, Modifier.fillMaxSize().blur(40.dp), size = 360, shape = RoundedCornerShape(0.dp))
                 Box(
@@ -103,12 +117,12 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
                         Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.25f), MaterialTheme.colorScheme.background)),
                     ),
                 )
-                Row(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalAlignment = Alignment.Bottom) {
-                    Artwork(cover, Modifier.size(150.dp), size = 500, shape = RoundedCornerShape(20.dp))
-                    Spacer(Modifier.width(16.dp))
+                Row(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.Bottom) {
+                    Artwork(cover, Modifier.size(112.dp), size = 500, shape = RoundedCornerShape(16.dp))
+                    Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(subtitle, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(subtitle, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(title, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Row(Modifier.statusBarsPadding().padding(4.dp).fillMaxWidth()) {
@@ -116,25 +130,10 @@ fun DetailScreen(vm: MainViewModel, route: Route.Detail, bottomPadding: Dp) {
                     Spacer(Modifier.weight(1f))
                     if (route.kind == DetailKind.PLAYLIST) Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, tr("Więcej"), tint = Color.White) }
-                        DropdownMenu(menu, { menu = false }) {
-                            MenuItem(tr("Zmień nazwę"), Icons.Rounded.Edit) { menu = false; renaming = true }
-                            MenuItem(tr("Usuń playlistę"), Icons.Rounded.Delete) {
+                        CompactMenu(menu, { menu = false }) {
+                            CMenuItem(tr("Zmień nazwę"), Icons.Rounded.Edit) { menu = false; renaming = true }
+                            CMenuItem(tr("Usuń playlistę"), Icons.Rounded.Delete, danger = true) {
                                 menu = false; Graph.userData.deletePlaylist(route.key); vm.back()
-                            }
-                        }
-                    }
-                }
-            }
-            if (route.kind == DetailKind.ARTIST) {
-                val albums = remember(tracks) { LibraryOps.albums(tracks).sortedByDescending { it.year } }
-                if (albums.size > 1) {
-                    SectionTitle(plural(albums.size, "{0} album", "{0} albumy", "{0} albumów"))
-                    LazyRow(contentPadding = PaddingValues(horizontal = 10.dp)) {
-                        items(albums) { a ->
-                            Box(Modifier.width(150.dp)) {
-                                GridTile(a.title, a.year.takeIf { it > 0 }?.toString() ?: "", a.cover, onClick = {
-                                    vm.open(Route.Detail(DetailKind.ALBUM, a.id.toString()))
-                                })
                             }
                         }
                     }

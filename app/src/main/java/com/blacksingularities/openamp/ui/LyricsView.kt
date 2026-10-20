@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -96,19 +97,18 @@ fun LyricsPanel(vm: MainViewModel, modifier: Modifier = Modifier) {
                 Column(Modifier.fillMaxSize()) {
                     if (l.synced) SyncedLyrics(l, pos + offset, ps.durationMs, s.lyricsSize, s.lyricsCenter, Modifier.weight(1f)) { vm.player.seekTo((it - offset).coerceAtLeast(0)) }
                     else PlainLyrics(l, pos, ps.durationMs, s.lyricsSize, s.lyricsCenter, Modifier.weight(1f))
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 10.dp, bottom = 10.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            (if (l.synced) tr("Tekst zsynchronizowany") else tr("Tekst statyczny")) + " • " + tr("Źródło: {0}", l.source.label()),
-                            style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), modifier = Modifier.weight(1f),
+                            l.source.label(), fontSize = 10.sp, color = Color.White.copy(alpha = 0.55f), maxLines = 1, modifier = Modifier.weight(1f),
                         )
                         if (l.synced) {
-                            TextButton(onClick = { vm.shiftLyrics(-500) }) { Text("−0.5s", color = Color.White) }
-                            TextButton(onClick = { vm.shiftLyrics(0) }) {
-                                Text(String.format(java.util.Locale.ROOT, "%+.1fs", offset / 1000f), color = MaterialTheme.colorScheme.primary)
-                            }
-                            TextButton(onClick = { vm.shiftLyrics(500) }) { Text("+0.5s", color = Color.White) }
+                            PillButton("−0,5 s", { vm.shiftLyrics(-500) }, background = Color.Black.copy(alpha = 0.35f), compact = true)
+                            Spacer(Modifier.width(4.dp))
+                            PillButton(String.format(java.util.Locale.ROOT, "%+.1f s", offset / 1000f), { vm.shiftLyrics(0) }, active = offset != 0L, background = Color.Black.copy(alpha = 0.35f), compact = true, label = tr("Przesunięcie tekstu"))
+                            Spacer(Modifier.width(4.dp))
+                            PillButton("+0,5 s", { vm.shiftLyrics(500) }, background = Color.Black.copy(alpha = 0.35f), compact = true)
                         } else {
-                            TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text(".lrc", color = Color.White) }
+                            PillButton(".lrc", { picker.launch(arrayOf("*/*")) }, background = Color.Black.copy(alpha = 0.35f), compact = true, label = tr("Wczytaj plik .lrc"))
                         }
                     }
                 }
@@ -130,7 +130,7 @@ private fun SyncedLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, center
     LazyColumn(
         state = list,
         modifier = modifier.fillMaxWidth().fadingEdges(),
-        contentPadding = PaddingValues(vertical = 160.dp, horizontal = 24.dp),
+        contentPadding = PaddingValues(vertical = 90.dp, horizontal = 20.dp),
     ) {
         item { Spacer(Modifier.height(1.dp)) }
         itemsIndexed(l.lines) { i, line ->
@@ -190,6 +190,6 @@ private fun PlainLyrics(l: Lyrics, pos: Long, duration: Long, size: Int, center:
         lineHeight = (size * 1.45f).sp,
         fontWeight = FontWeight.SemiBold,
         textAlign = if (center) TextAlign.Center else TextAlign.Start,
-        modifier = modifier.fillMaxWidth().fadingEdges().verticalScroll(scroll).padding(horizontal = 24.dp, vertical = 120.dp),
+        modifier = modifier.fillMaxWidth().fadingEdges().verticalScroll(scroll).padding(horizontal = 20.dp, vertical = 70.dp),
     )
 }

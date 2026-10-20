@@ -55,6 +55,22 @@ class UserDataStore(context: Context) {
         }
     }
 
+    /** Usuwa z playlist i ulubionych utwory, których pliku już nie ma na urządzeniu. Zwraca liczbę usuniętych pozycji. */
+    fun pruneMissing(existing: Set<Long>): Int {
+        val d = value
+        val removed = d.playlists.sumOf { p -> p.trackIds.count { it !in existing } } +
+            d.favorites.count { it !in existing } + d.disliked.count { it !in existing }
+        if (removed == 0) return 0
+        update { u ->
+            u.copy(
+                playlists = u.playlists.map { p -> p.copy(trackIds = p.trackIds.filter { it in existing }) },
+                favorites = u.favorites.filterTo(HashSet()) { it in existing },
+                disliked = u.disliked.filterTo(HashSet()) { it in existing },
+            )
+        }
+        return removed
+    }
+
     fun clearStats() = update { it.copy(stats = emptyMap(), daily = emptyMap()) }
 
     fun toggleFavorite(trackId: Long) = update { d ->

@@ -1,5 +1,22 @@
 # Historia zmian
 
+## 1.6.0
+
+- **Analiza AI biblioteki**: nowa grupa **Kategorie AI** (nastroje, style, epoki, okazje) i miksy AI w „Miksach dla Ciebie”. Z własnym kluczem API Anthropic analizę robi Claude (Opus 5.5, Sonnet 5.5 lub Haiku 5.5 – do modelu trafia tylko lista utworów z metadanymi, nie pliki); bez klucza działa analiza lokalna na telefonie. Propozycja analizy pojawia się, gdy biblioteka zmieni się o co najmniej 5 utworów.
+- Pliki usunięte z urządzenia znikają same z playlist, ulubionych, kategorii i miksów; nowa opcja **Usuń z urządzenia** w menu utworu i przy zaznaczaniu wielu utworów.
+- Miksy dla Ciebie i ekran startowy biblioteki opierają się wyłącznie na utworach (bez pasków albumów); widok miksów: karty albo lista.
+- Listy z **przyklejonymi nagłówkami sekcji** (litery, wykonawcy, lata, daty, długość…) – dotknięcie nagłówka otwiera szybki skok do dowolnej sekcji.
+- Sortowanie tylko tam, gdzie ma sens; w miksach, ostatnio dodanych, kolejce itp. zostaje sam wybór widoku. Kompaktowe menu rozwijane, mniejsze nagłówki list i zwartszy cały interfejs.
+- **Ustawienia od nowa**: zakładki (Wygląd, Odtwarzacz, Dźwięk, Biblioteka, AI, Blokada, Inne) i zwarte wiersze w stylu OpenPDF; gdy włączone są kolory z okładki, wybór akcentu jest zablokowany.
+- Ekran odtwarzania: przycisk **Lista** w prawym górnym rogu (pierwsze dotknięcie – bieżąca lista odtwarzania, drugie w tym samym miejscu – biblioteka), dotknięcie okładki niczego już nie robi, dolny pasek chowa się po chwili bez dotyku.
+- **Taśmy utworu** przerobione i nowe: fala, lustrzana fala, linia konturu, matryca kropek, segmenty LED, taśma przesuwana z podziałką, spektrogram w kolorze, kaseta ze szpulami (zniknął prosty pasek). Przewijanie przeciągnięciem w całym polu wokół przycisków.
+- Tekst utworu na rozmytej okładce z miniaturą i tytułem; pasek przesunięcia tekstu już nie nachodzi na okładkę ani przyciski.
+- Ładniejszy tryb AMOLED: oddychająca poświata w kolorze okładki, pierścień postępu, data, następny utwór, płynne przejścia tekstu i wędrowanie treści w granicach ekranu.
+- **Nowe powiadomienie** (domyślnie): duża okładka na całą wysokość po lewej, „wykonawca – tytuł” nad wyśrodkowanymi przyciskami, tło w kolorze okładki; do wyboru także systemowy odtwarzacz.
+- Ekran blokady mocniej przesiąka kolorem okładki; AOD rozbudowany (poświata, pierścień postępu, następny utwór) i przesuwany w granicach liczonych z rozmiaru treści.
+- Korektor dopracowany i bez zbędnych podpisów; rozbudowane **Właściwości pliku** (dźwięk, plik, historia słuchania, kopiowanie ścieżki, udostępnianie, usuwanie).
+- Menu dolnego paska bez dublujących się pozycji.
+
 ## 1.5.0
 
 - Nowe powiadomienie odtwarzacza: duża okładka w pełnej jakości (obraz osadzony w pliku zamiast przestarzałych miniatur), dwa konfigurowalne przyciski obok poprzedni / odtwórz / następny – lubię, losowo, powtarzanie lub **zamknij odtwarzacz** (domyślnie: lubię i zamknij). Ikony przycisków odzwierciedlają bieżący stan.

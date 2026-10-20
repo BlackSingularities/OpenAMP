@@ -43,7 +43,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class DetailKind { ALBUM, ARTIST, GENRE, FOLDER, PLAYLIST, SMART, MIX }
+enum class DetailKind { ALBUM, ARTIST, GENRE, FOLDER, PLAYLIST, SMART, MIX, CATEGORY }
 
 sealed interface Route {
     data object Player : Route
@@ -99,6 +99,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (r != Route.Player) stack.add(r)
     }
     var queueOpen by mutableStateOf(false)
+    /** Pliki do usunięcia z urządzenia (potwierdzenie i zgoda systemu w [DeleteHost]). */
+    var deleteRequest by mutableStateOf<List<Track>?>(null)
     var showLyrics by mutableStateOf(Graph.settings.value.lyricsByDefault)
     var query by mutableStateOf("")
 
@@ -248,6 +250,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (after.autoUpdate) UpdateWorker.schedule(getApplication()) else UpdateWorker.cancel(getApplication())
         }
         if (before.minDurationSec != after.minDurationSec || before.excludedFolders != after.excludedFolders || before.hiddenFormats != after.hiddenFormats) rescan()
+    }
+
+    // ---------- AI ----------
+
+    fun runAnalysis() {
+        viewModelScope.launch {
+            val err = Graph.curator.analyze(Graph.library.tracks.value, userData.value, settings.value.aiModel, I18n.english)
+            message(if (err != null) tr("Analiza nie powiodła się: {0}", err) else tr("Gotowe – nowe kategorie i miksy"))
+        }
+    }
+
+    // ---------- Pliki ----------
+
+    /** Parametry techniczne dowolnego pliku (do okna właściwości). */
+    suspend fun fileInfoFor(t: Track): FileInfo = withContext(Dispatchers.IO) { readFileInfo(t) }
+
+    /** Po usunięciu pliku: znika z kolejki, a skan czyści playlisty i miksy. */
+    fun onDeleted(ids: Collection<Long>) {
+        val q = player.state.value.queue
+        q.indices.reversed().filter { q[it] in ids }.forEach { player.removeAt(it) }
+        message(tr("Usunięto z urządzenia"))
+        rescan()
     }
 
     fun rescan() {

@@ -3,7 +3,10 @@ package com.blacksingularities.openamp.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.DevicesOther
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Compress
 import androidx.compose.material.icons.rounded.Headphones
@@ -106,34 +109,32 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
     if (saving) NameDialog(tr("Zapisz preset"), tr("Nazwa presetu"), "", { saving = false }) { Dsp.savePreset(it); saving = false }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz")) }
-            Column(Modifier.weight(1f)) {
-                Text(tr("Korektor"), style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    if (s.enabled) tr(s.preset) + (if (settings.smartEq) "  •  " + tr("Inteligentny") else "") else tr("Wyłączone"),
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
-                )
+        Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            RoundButton(Icons.AutoMirrored.Rounded.ArrowBack, tr("Wstecz"), { vm.back() }, background = Color.Transparent, size = 40.dp)
+            Column(Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(tr("Korektor"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, lineHeight = 22.sp)
+                Text(if (s.enabled) tr(s.preset) else tr("Wyłączone"), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, tr("Więcej")) }
-                DropdownMenu(menu, { menu = false }) {
-                    MenuItem(tr("Zapisz preset"), Icons.Rounded.Save) { menu = false; saving = true }
-                    MenuItem(tr("Automatyczny przedwzmacniacz"), Icons.Rounded.VolumeDown) { menu = false; Dsp.autoPreamp() }
-                    MenuItem(tr("Resetuj"), Icons.Rounded.RestartAlt) { menu = false; selected = -1; Dsp.reset() }
+                RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), { menu = true }, background = Color.Transparent, size = 40.dp)
+                CompactMenu(menu, { menu = false }) {
+                    CMenuItem(tr("Zapisz preset"), Icons.Rounded.Save) { menu = false; saving = true }
+                    CMenuItem(tr("Automatyczny przedwzmacniacz"), Icons.Rounded.VolumeDown) { menu = false; Dsp.autoPreamp() }
+                    CMenuItem(tr("Resetuj"), Icons.Rounded.RestartAlt) { menu = false; selected = -1; Dsp.reset() }
                 }
             }
+            Spacer(Modifier.width(4.dp))
             PowerButton(s.enabled, { Dsp.update { it.copy(enabled = !it.enabled) } })
         }
 
         LazyColumn(
-            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = bottomPadding + 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 4.dp, bottom = bottomPadding + 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Wykres charakterystyki na tle widma na żywo
             item {
                 Panel(padding = 10.dp) {
-                    ResponseGraph(s, live, selected, { selected = it }, Modifier.fillMaxWidth().height(250.dp))
+                    ResponseGraph(s, live, selected, { selected = it }, Modifier.fillMaxWidth().height(210.dp))
                     if (selected in s.bands.indices) BandEditor(s.bands[selected], selected, s.bands.size) { selected = -1 }
                 }
             }
@@ -153,7 +154,7 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                                 )
                                 Fader(
                                     b.gain, -Dsp.MAX_GAIN..Dsp.MAX_GAIN, { Dsp.setBand(i, b.copy(gain = (it * 2).roundToInt() / 2f)) },
-                                    Modifier.fillMaxWidth().height(200.dp), selected = i == selected, enabled = s.enabled,
+                                    Modifier.fillMaxWidth().height(170.dp), selected = i == selected, enabled = s.enabled,
                                     onSelect = { selected = i },
                                 )
                                 Text(freqLabel(b.freq), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -188,8 +189,8 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                             }
                         }
                     }
-                    VSpace(12.dp)
-                    PillToggle(tr("Inteligentny korektor: preset według gatunku utworu"), settings.smartEq, { vm.updateSettings { it.copy(smartEq = !it.smartEq) } })
+                    VSpace(6.dp)
+                    SetSwitch(Icons.Rounded.Style, tr("Preset według gatunku"), null, settings.smartEq) { v -> vm.updateSettings { it.copy(smartEq = v) } }
                 }
             }
             // Pasma, profile wyjścia, dynamika
@@ -202,7 +203,7 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                     ChoiceTiles(OUTPUTS, s.profile, { outputLabel(it) }, { outputIcon(it) }) { Dsp.switchProfile(it) }
                     Gap(8.dp)
                     TileGrid(listOf(
-                        Tile(Icons.Rounded.AutoAwesome, tr("Auto profil"), tr("Osobne ustawienia korektora dla słuchawek, Bluetooth, USB i głośnika – przełączane samoczynnie"), s.autoProfiles) { v -> Dsp.update { it.copy(autoProfiles = v) } },
+                        Tile(Icons.Rounded.DevicesOther, tr("Auto profil"), tr("Osobne ustawienia korektora dla słuchawek, Bluetooth, USB i głośnika – przełączane samoczynnie"), s.autoProfiles) { v -> Dsp.update { it.copy(autoProfiles = v) } },
                         Tile(Icons.Rounded.Compress, tr("Kompresor"), tr("Kompresor dynamiki – wyrównuje głośne i ciche fragmenty"), s.compressor) { v -> Dsp.update { it.copy(compressor = v) } },
                         Tile(Icons.Rounded.Headphones, tr("Crossfeed"), tr("Przesłuch słuchawkowy – mniej męczące stereo"), s.crossfeed > 0f) { v -> Dsp.update { it.copy(crossfeed = if (v) 0.5f else 0f) } },
                         Tile(Icons.Rounded.Shield, tr("Limiter"), tr("Limiter chroni przed przesterowaniem"), s.limiter) { v -> Dsp.update { it.copy(limiter = v) } },
@@ -243,11 +244,6 @@ fun EqualizerScreen(vm: MainViewModel, bottomPadding: Dp) {
                         PillToggle(tr("Mono"), s.mono, { Dsp.update { it.copy(mono = !it.mono) } })
                         PillToggle(tr("Zamiana kanałów"), s.swap, { Dsp.update { it.copy(swap = !it.swap) } })
                     }
-                    VSpace(8.dp)
-                    Text(
-                        tr("Dotknij dwukrotnie pokrętła lub suwaka, aby przywrócić wartość domyślną. Limiter chroni przed przesterowaniem przy dużych podbiciach."),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
@@ -387,12 +383,11 @@ private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onCl
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(18.dp)
     Column(
-        Modifier.width(112.dp).clip(shape)
-            .background(if (selected) accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, if (selected) accent else Color.Transparent, shape)
-            .clickable(onClick = onClick).padding(10.dp),
+        Modifier.width(96.dp).clip(shape)
+            .background(if (selected) accent.copy(alpha = 0.22f) else Flat.Block)
+            .clickable(onClick = onClick).padding(8.dp),
     ) {
-        Canvas(Modifier.fillMaxWidth().height(40.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(32.dp)) {
             val st = DspState(bands = gains.mapIndexed { i, g -> EqBand(Dsp.ISO.getOrElse(i) { 1000f }, g) })
             val p = Path()
             var x = 0f
@@ -406,7 +401,7 @@ private fun PresetCard(name: String, gains: List<Float>, selected: Boolean, onCl
             drawPath(p, if (selected) accent else Color.White.copy(alpha = 0.75f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         }
         VSpace(6.dp)
-        Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, color = if (selected) accent else MaterialTheme.colorScheme.onSurface)
+        Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, color = if (selected) accent else Color.White)
     }
 }
 

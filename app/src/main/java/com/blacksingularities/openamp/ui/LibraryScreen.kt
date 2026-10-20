@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -71,6 +72,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.SkipNext
 import com.blacksingularities.openamp.data.GroupSort
 import com.blacksingularities.openamp.data.LibraryOps
 import com.blacksingularities.openamp.data.LibraryTab
@@ -89,6 +95,7 @@ fun LibraryTab.label() = when (this) {
     LibraryTab.RECENT_PLAYED -> tr("Ostatnio odtwarzane")
     LibraryTab.FAVORITES -> tr("Ulubione")
     LibraryTab.HOME -> tr("Miksy dla Ciebie")
+    LibraryTab.CATEGORIES -> tr("Kategorie AI")
     LibraryTab.ALBUMS -> tr("Albumy")
     LibraryTab.ARTISTS -> tr("Wykonawcy")
     LibraryTab.GENRES -> tr("Gatunki")
@@ -141,63 +148,68 @@ fun SmartList.icon(): ImageVector = when (this) {
     SmartList.NEVER_PLAYED -> Icons.Rounded.VisibilityOff
 }
 
+/** Co pokazuje przycisk opcji listy: sortowanie utworów, grup, albo tylko widok. */
+enum class ListSort { TRACKS, GROUPS, NONE }
+enum class ListView { DENSITY, GROUPS, HOME, NONE }
+
+private val densityLabels = listOf("Sam tekst", "Małe okładki", "Średnie okładki", "Duże okładki", "Siatka – 3 kolumny", "Siatka – 2 kolumny")
+
+/**
+ * Przycisk opcji listy: kompaktowe menu z sortowaniem (tylko tam, gdzie ma sens) i widokiem.
+ * W miejscach z własną kolejnością (miksy, ostatnio dodane, kolejka…) zostaje tylko widok.
+ */
 @Composable
-fun SortMenu(vm: MainViewModel) {
+fun ListOptions(vm: MainViewModel, sort: ListSort, view: ListView) {
+    if (sort == ListSort.NONE && view == ListView.NONE) return
     val s by vm.settings.collectAsState()
     var open by remember { mutableStateOf(false) }
-    val tracksTab = s.tab.isTrackList
     Box {
-        RoundButton(Icons.AutoMirrored.Rounded.Sort, tr("Sortuj"), { open = true })
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            Text(tr("Sortowanie"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-            if (tracksTab) {
-                TrackSort.entries.forEach { o ->
-                    CheckItem(o.label(), s.trackSort == o) { vm.updateSettings { it.copy(trackSort = o) } }
+        RoundButton(
+            if (sort != ListSort.NONE) Icons.AutoMirrored.Rounded.Sort else Icons.AutoMirrored.Rounded.ViewList,
+            if (sort != ListSort.NONE) tr("Sortuj") else tr("Widok"), { open = true }, size = 38.dp, iconSize = 19.dp,
+        )
+        CompactMenu(open, { open = false }) {
+            when (sort) {
+                ListSort.TRACKS -> {
+                    CMenuLabel(tr("Sortowanie"))
+                    TrackSort.entries.forEach { o -> CMenuItem(o.label(), checked = s.trackSort == o) { vm.updateSettings { it.copy(trackSort = o) } } }
+                    CMenuItem(tr("Malejąco"), Icons.Rounded.SwapVert, checked = s.trackSortDesc) { vm.updateSettings { it.copy(trackSortDesc = !it.trackSortDesc) } }
                 }
-                CheckItem(tr("Malejąco"), s.trackSortDesc) { vm.updateSettings { it.copy(trackSortDesc = !it.trackSortDesc) } }
-            } else {
-                GroupSort.entries.forEach { o ->
-                    CheckItem(o.label(), s.groupSort == o) { vm.updateSettings { it.copy(groupSort = o) } }
+                ListSort.GROUPS -> {
+                    CMenuLabel(tr("Sortowanie"))
+                    GroupSort.entries.forEach { o -> CMenuItem(o.label(), checked = s.groupSort == o) { vm.updateSettings { it.copy(groupSort = o) } } }
+                    CMenuItem(tr("Malejąco"), Icons.Rounded.SwapVert, checked = s.groupSortDesc) { vm.updateSettings { it.copy(groupSortDesc = !it.groupSortDesc) } }
                 }
-                CheckItem(tr("Malejąco"), s.groupSortDesc) { vm.updateSettings { it.copy(groupSortDesc = !it.groupSortDesc) } }
+                ListSort.NONE -> Unit
             }
-            HorizontalDivider()
-            Text(tr("Widok"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-            ViewMode.entries.forEach { m ->
-                val cur = if (tracksTab) s.trackView else s.groupView
-                DropdownMenuItem(
-                    text = { Text(m.label()) },
-                    leadingIcon = { Icon(if (m == ViewMode.LIST || m == ViewMode.COMPACT) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView, null) },
-                    trailingIcon = { if (cur == m) Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                    onClick = { vm.updateSettings { if (tracksTab) it.copy(trackView = m) else it.copy(groupView = m) } },
-                )
+            if (sort != ListSort.NONE && view != ListView.NONE) CMenuDivider()
+            when (view) {
+                ListView.DENSITY -> {
+                    CMenuLabel(tr("Widok"))
+                    densityLabels.forEachIndexed { i, l -> CMenuItem(tr(l), checked = s.trackDensity == i) { vm.updateSettings { it.copy(trackDensity = i) } } }
+                }
+                ListView.GROUPS -> {
+                    CMenuLabel(tr("Widok"))
+                    ViewMode.entries.forEach { m -> CMenuItem(m.label(), if (m == ViewMode.LIST || m == ViewMode.COMPACT) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView, checked = s.groupView == m) { vm.updateSettings { it.copy(groupView = m) } } }
+                }
+                ListView.HOME -> {
+                    CMenuLabel(tr("Widok"))
+                    CMenuItem(tr("Karty"), Icons.Rounded.GridView, checked = s.homeView != ViewMode.LIST) { vm.updateSettings { it.copy(homeView = ViewMode.GRID) } }
+                    CMenuItem(tr("Lista"), Icons.AutoMirrored.Rounded.ViewList, checked = s.homeView == ViewMode.LIST) { vm.updateSettings { it.copy(homeView = ViewMode.LIST) } }
+                }
+                ListView.NONE -> Unit
             }
-            HorizontalDivider()
-            DropdownMenuItem(text = { Text(tr("Odśwież bibliotekę")) }, leadingIcon = { Icon(Icons.Rounded.Refresh, null) }, onClick = { open = false; vm.rescan() })
         }
     }
 }
 
 @Composable
-private fun CheckItem(text: String, checked: Boolean, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(text, color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-        trailingIcon = { if (checked) Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary) },
-        onClick = onClick,
-    )
-}
-
-@Composable
 fun PlayHeader(vm: MainViewModel, tracks: List<Track>) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(tracksSummary(tracks), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        FilledTonalButton(onClick = { vm.player.play(tracks, 0, shuffle = true) }, enabled = tracks.isNotEmpty()) {
-            Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(tr("Wymieszaj"))
-        }
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = { vm.player.play(tracks, 0, shuffle = false) }, enabled = tracks.isNotEmpty()) {
-            Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(tr("Odtwórz"))
-        }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(tracksSummary(tracks), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        PillButton(tr("Wymieszaj"), { if (tracks.isNotEmpty()) vm.player.play(tracks, 0, shuffle = true) }, icon = Icons.Rounded.Shuffle, compact = true)
+        Spacer(Modifier.width(6.dp))
+        PillButton(tr("Odtwórz"), { if (tracks.isNotEmpty()) vm.player.play(tracks, 0, shuffle = false) }, icon = Icons.AutoMirrored.Rounded.PlaylistPlay, active = true, compact = true)
     }
 }
 
@@ -288,18 +300,18 @@ fun <T> GroupCollection(
     var addTo by remember { mutableStateOf<List<Track>?>(null) }
     addTo?.let { AddToPlaylistDialog(vm, it) { addTo = null } }
     val menu: @Composable (Int, T) -> Unit = { i, g ->
-        DropdownMenu(expanded = menuFor == i, onDismissRequest = { menuFor = null }) {
-            MenuItem(tr("Odtwórz"), Icons.AutoMirrored.Rounded.PlaylistPlay) { vm.player.play(tracksOf(g)); menuFor = null }
-            MenuItem(tr("Wymieszaj"), Icons.Rounded.Shuffle) { vm.player.play(tracksOf(g), shuffle = true); menuFor = null }
-            MenuItem(tr("Odtwórz następny"), Icons.Rounded.Add) { vm.player.playNext(tracksOf(g)); vm.message(tr("Zagra jako następny")); menuFor = null }
-            MenuItem(tr("Dodaj do kolejki"), Icons.Rounded.Add) { vm.player.enqueue(tracksOf(g)); vm.message(tr("Dodano do kolejki")); menuFor = null }
-            MenuItem(tr("Dodaj do playlisty"), Icons.Rounded.Add) { addTo = tracksOf(g); menuFor = null }
+        CompactMenu(menuFor == i, { menuFor = null }) {
+            CMenuItem(tr("Odtwórz"), Icons.AutoMirrored.Rounded.PlaylistPlay) { vm.player.play(tracksOf(g)); menuFor = null }
+            CMenuItem(tr("Wymieszaj"), Icons.Rounded.Shuffle) { vm.player.play(tracksOf(g), shuffle = true); menuFor = null }
+            CMenuItem(tr("Odtwórz następny"), Icons.Rounded.SkipNext) { vm.player.playNext(tracksOf(g)); vm.message(tr("Zagra jako następny")); menuFor = null }
+            CMenuItem(tr("Dodaj do kolejki"), Icons.AutoMirrored.Rounded.QueueMusic) { vm.player.enqueue(tracksOf(g)); vm.message(tr("Dodano do kolejki")); menuFor = null }
+            CMenuItem(tr("Dodaj do playlisty"), Icons.AutoMirrored.Rounded.PlaylistAdd) { addTo = tracksOf(g); menuFor = null }
         }
     }
     if (mode == ViewMode.GRID || mode == ViewMode.GRID_LARGE) {
         LazyVerticalGrid(
-            GridCells.Adaptive(if (mode == ViewMode.GRID) 150.dp else 220.dp),
-            contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 4.dp, bottom = padding.calculateBottomPadding()),
+            GridCells.Adaptive(if (mode == ViewMode.GRID) 120.dp else 180.dp),
+            contentPadding = PaddingValues(start = 6.dp, end = 6.dp, top = 2.dp, bottom = padding.calculateBottomPadding()),
         ) {
             itemsIndexed(groups) { i, g ->
                 Box {
@@ -316,20 +328,20 @@ fun <T> GroupCollection(
                     Row(
                         Modifier.fillMaxWidth()
                             .combinedClickable(onClick = { open(g) }, onLongClick = { menuFor = i })
-                            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 8.dp),
+                            .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (folderIcon) {
-                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(if (compact) 40.dp else 56.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Folder, null, tint = MaterialTheme.colorScheme.primary) }
+                            Box(Modifier.size(if (compact) 36.dp else 48.dp).clip(RoundedCornerShape(11.dp)).background(Flat.Block), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.Folder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             }
                         } else {
-                            Artwork(cover(g), Modifier.size(if (compact) 40.dp else 56.dp), size = 160, shape = if (circle) CircleShape else RoundedCornerShape(12.dp))
+                            Artwork(cover(g), Modifier.size(if (compact) 36.dp else 48.dp), size = 160, shape = if (circle) CircleShape else RoundedCornerShape(11.dp))
                         }
-                        Spacer(Modifier.width(14.dp))
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(title(g), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(subtitle(g), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(title(g), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(subtitle(g), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     menu(i, g)
@@ -379,15 +391,15 @@ fun PlaylistsTab(vm: MainViewModel, tracks: List<Track>, padding: PaddingValues)
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
-        text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
+        text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
     )
 }
 
 @Composable
 private fun PlaylistRow(title: String, subtitle: String, icon: ImageVector, cover: Track?, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(56.dp)) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(46.dp)) {
             if (cover != null) Artwork(cover, Modifier.fillMaxSize(), size = 160, shape = RoundedCornerShape(12.dp))
             Box(
                 Modifier.fillMaxSize().background(
@@ -397,10 +409,10 @@ private fun PlaylistRow(title: String, subtitle: String, icon: ImageVector, cove
                 contentAlignment = Alignment.Center,
             ) { Icon(icon, null, tint = if (cover != null) Color.White else MaterialTheme.colorScheme.primary) }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

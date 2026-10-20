@@ -53,14 +53,14 @@ import kotlin.math.sin
 /** Panel: płaska, lekko rozjaśniona płyta na czarnym tle (jak w OpenPDF). */
 @Composable
 fun Panel(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable () -> Unit) {
-    Box(modifier.clip(RoundedCornerShape(22.dp)).background(Color(0x12FFFFFF)).padding(padding)) { Column { content() } }
+    Box(modifier.clip(RoundedCornerShape(18.dp)).background(Color(0x0FFFFFFF)).padding(padding)) { Column { content() } }
 }
 
 /** Nagłówek sekcji w panelu: pogrubiony tytuł, cienka linia i opcjonalny element po prawej. */
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    Row(modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f).height(1.dp).background(Color(0x1FFFFFFF)))
         if (trailing != null) { Spacer(Modifier.width(10.dp)); trailing() }

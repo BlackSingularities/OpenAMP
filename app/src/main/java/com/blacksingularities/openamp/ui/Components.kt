@@ -30,6 +30,8 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -124,42 +126,42 @@ fun TrackRow(
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onMenu)
             .background(if (current) accent.copy(alpha = 0.10f) else Color.Transparent)
-            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 8.dp),
+            .padding(start = 12.dp, end = 2.dp, top = if (compact) 3.dp else 4.dp, bottom = if (compact) 3.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) leading()
         else if (showArt) {
             Box {
-                Artwork(track, Modifier.size(if (compact) 40.dp else 52.dp), size = 160, shape = RoundedCornerShape(if (compact) 8.dp else 12.dp))
+                Artwork(track, Modifier.size(if (compact) 36.dp else 46.dp), size = 160, shape = RoundedCornerShape(if (compact) 8.dp else 11.dp))
                 if (current) {
                     Box(
-                        Modifier.matchParentSizeCompat(if (compact) 40 else 52).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp)),
+                        Modifier.matchParentSizeCompat(if (compact) 36 else 46).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center,
                     ) { PlayingIndicator(playing, color = Color.White) }
                 }
             }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 track.title,
-                style = if (compact) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                 color = if (current) accent else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
                 if (compact) track.artist else "${track.artist} • ${track.album}",
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text(formatTime(track.durationMs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (trailingInfo != null) Text(trailingInfo, style = MaterialTheme.typography.labelSmall, color = accent)
+            Text(formatTime(track.durationMs), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (trailingInfo != null) Text(trailingInfo, fontSize = 10.sp, color = accent)
         }
-        IconButton(onClick = onMenu) { Icon(Icons.Rounded.MoreVert, tr("Więcej"), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Color.Transparent, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 36.dp, iconSize = 18.dp)
     }
 }
 
@@ -217,7 +219,7 @@ fun MenuItem(text: String, icon: ImageVector, onClick: () -> Unit) {
     DropdownMenuItem(text = { Text(text) }, leadingIcon = { Icon(icon, null) }, onClick = onClick)
 }
 
-/** Menu utworu (długie przytrzymanie lub ⋮): kolejka, playlisty, ulubione, nawigacja, szczegóły. */
+/** Menu utworu (długie przytrzymanie lub ⋮): kolejka, playlisty, ulubione, nawigacja, właściwości, usuwanie. */
 @Composable
 fun TrackMenu(vm: MainViewModel, track: Track?, onDismiss: () -> Unit, extra: (@Composable (close: () -> Unit) -> Unit)? = null) {
     if (track == null) return
@@ -225,39 +227,31 @@ fun TrackMenu(vm: MainViewModel, track: Track?, onDismiss: () -> Unit, extra: (@
     var addTo by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    DropdownMenu(expanded = !addTo && !details, onDismissRequest = onDismiss) {
+    CompactMenu(!addTo && !details, onDismiss) {
         Text(
-            track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).width(220.dp).basicMarquee(),
+            track.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1,
+            modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 4.dp).width(200.dp).basicMarquee(),
         )
-        HorizontalDivider()
-        MenuItem(tr("Odtwórz następny"), Icons.Rounded.SkipNext) { vm.player.playNext(listOf(track)); vm.message(tr("Zagra jako następny")); onDismiss() }
-        MenuItem(tr("Dodaj do kolejki"), Icons.AutoMirrored.Rounded.QueueMusic) { vm.player.enqueue(listOf(track)); vm.message(tr("Dodano do kolejki")); onDismiss() }
-        MenuItem(tr("Dodaj do playlisty"), Icons.AutoMirrored.Rounded.PlaylistAdd) { addTo = true }
+        CMenuItem(tr("Odtwórz następny"), Icons.Rounded.SkipNext) { vm.player.playNext(listOf(track)); vm.message(tr("Zagra jako następny")); onDismiss() }
+        CMenuItem(tr("Dodaj do kolejki"), Icons.AutoMirrored.Rounded.QueueMusic) { vm.player.enqueue(listOf(track)); vm.message(tr("Dodano do kolejki")); onDismiss() }
+        CMenuItem(tr("Dodaj do playlisty"), Icons.AutoMirrored.Rounded.PlaylistAdd) { addTo = true }
         val fav = track.id in data.favorites
-        MenuItem(
-            if (fav) tr("Usuń z ulubionych") else tr("Dodaj do ulubionych"),
-            if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-        ) { Graph.userData.toggleFavorite(track.id); onDismiss() }
-        MenuItem(tr("Przejdź do albumu"), Icons.Rounded.Album) {
+        CMenuItem(if (fav) tr("Usuń z ulubionych") else tr("Dodaj do ulubionych"), if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder) { Graph.userData.toggleFavorite(track.id); onDismiss() }
+        CMenuDivider()
+        CMenuItem(tr("Przejdź do albumu"), Icons.Rounded.Album) {
             vm.nowPlayingOpen = false; vm.open(Route.Detail(DetailKind.ALBUM, track.albumId.toString())); onDismiss()
         }
-        MenuItem(tr("Przejdź do wykonawcy"), Icons.Rounded.Person) {
+        CMenuItem(tr("Przejdź do wykonawcy"), Icons.Rounded.Person) {
             vm.nowPlayingOpen = false; vm.open(Route.Detail(DetailKind.ARTIST, track.artist.lowercase())); onDismiss()
         }
-        MenuItem(tr("Udostępnij"), Icons.Rounded.Share) {
-            val send = android.content.Intent(android.content.Intent.ACTION_SEND)
-                .setType(track.mime.ifEmpty { "audio/*" })
-                .putExtra(android.content.Intent.EXTRA_STREAM, track.uri)
-                .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            runCatching { context.startActivity(android.content.Intent.createChooser(send, track.title)) }
-            onDismiss()
-        }
-        MenuItem(tr("Szczegóły"), Icons.Rounded.Info) { details = true }
+        CMenuItem(tr("Udostępnij"), Icons.Rounded.Share) { shareTrack(context, track); onDismiss() }
+        CMenuItem(tr("Właściwości pliku"), Icons.Rounded.Info) { details = true }
         extra?.invoke(onDismiss)
+        CMenuDivider()
+        CMenuItem(tr("Usuń z urządzenia"), Icons.Rounded.Delete, danger = true) { vm.deleteRequest = listOf(track); onDismiss() }
     }
     if (addTo) AddToPlaylistDialog(vm, listOf(track)) { addTo = false; onDismiss() }
-    if (details) TrackDetailsDialog(track) { details = false; onDismiss() }
+    if (details) TrackDetailsDialog(vm, track) { details = false; onDismiss() }
 }
 
 @Composable
@@ -304,39 +298,4 @@ fun NameDialog(title: String, label: String, initial: String, onDismiss: () -> U
         confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) { Text(tr("Zapisz")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Anuluj")) } },
     )
-}
-
-@Composable
-fun TrackDetailsDialog(track: Track, onDismiss: () -> Unit) {
-    val stat = Graph.userData.value.stats[track.id]
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(track.title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                DetailLine(tr("Wykonawca"), track.artist)
-                DetailLine(tr("Album"), track.album)
-                if (track.genre.isNotBlank()) DetailLine(tr("Gatunek"), track.genre)
-                if (track.composer.isNotBlank()) DetailLine(tr("Kompozytor"), track.composer)
-                if (track.year > 0) DetailLine(tr("Rok"), track.year.toString())
-                if (track.trackNumber > 0) DetailLine(tr("Numer utworu"), track.trackNumber.toString())
-                DetailLine(tr("Czas trwania"), formatTime(track.durationMs))
-                DetailLine(tr("Format"), track.format)
-                DetailLine(tr("Rozmiar"), formatSize(track.size))
-                DetailLine(tr("Data dodania"), formatDate(track.dateAdded))
-                DetailLine(tr("Odtworzenia"), (stat?.count ?: 0).toString())
-                DetailLine(tr("Ostatnio"), formatDate(stat?.lastPlayed ?: 0))
-                DetailLine(tr("Ścieżka"), track.path)
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Zamknij")) } },
-    )
-}
-
-@Composable
-fun DetailLine(label: String, value: String) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text(value, style = MaterialTheme.typography.bodyMedium)
-    }
 }
