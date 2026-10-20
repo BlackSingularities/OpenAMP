@@ -1,7 +1,11 @@
 # Historia zmian
 
-## 1.6.9
+## 2.0
 
+- **Modele AI jak w OpenDesktop**: okno wyboru z wyszukiwarką, filtrem „Darmowe” i sortowaniem po nazwie, cenie i kontekście; przy modelu cena (USD za 1 mln tokenów) i długość kontekstu, gdy dostawca je podaje. Modele niebędące czatem są odfiltrowane.
+- Ustawienia: sekcja **Ogólne** na początku; wizualizacje pogrupowane według typów (słupki, fale i linie, wokół okładki).
+- Przełączniki w ustawieniach wyśrodkowane, w jednym wierszu i równej wysokości.
+- Podpowiedź po przytrzymaniu przycisku znika płynnie – bez pustej pigułki.
 - Widżet **Odtwarzacz**: okładka we własnym kontenerze – przy 100% ma wysokość całego wiersza, a z przyciskami w kolumnie sięga aż do taśmy postępu na dole.
 - Obok okładki tytuł i „Wykonawca – Album” w jednym wierszu (do wyłączenia).
 - Trzy położenia przycisków: w kolumnie obok okładki (wyśrodkowane pod tytułem), w osobnym wierszu nad taśmą albo pod taśmą.

@@ -145,7 +145,7 @@ import kotlin.math.roundToInt
  * Sekcje ustawień – wszystkie na jednej liście (jak w OpenPDF); chipy u góry przewijają do sekcji.
  * Każda sekcja to karty z podtytułem: najpierw wybory i suwaki, pod nimi kafelki-przełączniki.
  */
-private enum class SetSection { LOOK, PLAYER, SOUND, LIBRARY, NOTIFY, AI, GENERAL }
+private enum class SetSection { GENERAL, LOOK, PLAYER, SOUND, LIBRARY, NOTIFY, AI }
 
 private fun SetSection.label() = when (this) {
     SetSection.LOOK -> tr("Wygląd"); SetSection.PLAYER -> tr("Odtwarzacz"); SetSection.SOUND -> tr("Dźwięk")
@@ -373,6 +373,7 @@ private fun AiSection(vm: MainViewModel) {
     var editKey by remember { mutableStateOf(false) }
     var editUrl by remember { mutableStateOf(false) }
     var editModel by remember { mutableStateOf(false) }
+    var pickModel by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var listError by remember(provider) { mutableStateOf<String?>(null) }
     if (editKey) TextDialog(tr("Klucz API – {0}", provider.label), cfg.key, "sk-…", secret = true, onDismiss = { editKey = false }) { v ->
@@ -391,6 +392,12 @@ private fun AiSection(vm: MainViewModel) {
             loading = false
         }
     }
+    if (pickModel) ModelPickerDialog(
+        providerLabel(provider), cfg.models, cfg.model, loading, listError,
+        onRefresh = { refresh() },
+        onPick = { m -> Graph.curator.updateConfig(provider) { it.copy(model = m.id) }; pickModel = false },
+        onDismiss = { pickModel = false },
+    )
 
     SetCard(tr("Dostawca")) {
         SetDropdown(Icons.Rounded.Hub, tr("Dostawca AI"), AiProvider.entries, provider, { providerLabel(it) }) { v -> Graph.curator.setProvider(v) }
@@ -407,11 +414,13 @@ private fun AiSection(vm: MainViewModel) {
         SetAction(Icons.Rounded.Link, tr("Adres serwera"), cfg.baseUrl.ifBlank { tr("Nie ustawiono") }) { editUrl = true }
     }
     SetCard(tr("Model")) {
-        if (cfg.models.isNotEmpty()) {
-            SetDropdown(Icons.Rounded.Psychology, tr("Model"), cfg.models, cfg.model.ifBlank { cfg.models.first() }, { it }, subtitle = plural(cfg.models.size, "{0} model", "{0} modele", "{0} modeli")) { v ->
-                Graph.curator.updateConfig(provider) { it.copy(model = v) }
-            }
-        }
+        val chosen = cfg.models.firstOrNull { it.id == cfg.model }
+        SetAction(
+            Icons.Rounded.Psychology, tr("Model"),
+            (chosen?.title ?: cfg.model.ifBlank { tr("Nie wybrano") }) +
+                if (cfg.models.isNotEmpty()) " · " + plural(cfg.models.size, "{0} model", "{0} modele", "{0} modeli") else "",
+            enabled = cfg.models.isNotEmpty() || !provider.needsKey || cfg.key.isNotBlank(),
+        ) { pickModel = true }
         SetAction(Icons.Rounded.Edit, tr("Wpisz nazwę modelu"), cfg.model.ifBlank { tr("Nie wybrano") }) { editModel = true }
         SetAction(
             Icons.Rounded.Refresh, tr("Pobierz listę modeli"),
