@@ -91,5 +91,12 @@ object SessionCommands {
         return b.build()
     }
 
+    /** Stały przycisk X w powiadomieniu – zamyka cały odtwarzacz. */
+    fun closeButton(): CommandButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+        .setDisplayName(tr("Zamknij odtwarzacz"))
+        .setSessionCommand(SessionCommand(CLOSE, Bundle.EMPTY))
+        .setCustomIconResId(R.drawable.ic_w_close)
+        .build()
+
     private data class Quad(val icon: Int, val custom: Int, val name: String, val action: String)
 }

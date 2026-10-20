@@ -26,6 +26,9 @@ enum class WidgetCoverPos { LEFT, RIGHT, TOP, BACKGROUND }
 /** Czasy utworu: pod paskiem albo po jego bokach. */
 enum class WidgetTimePos { BELOW, SIDES }
 
+/** Przyciski odtwarzania pod taśmą postępu albo nad nią. */
+enum class WidgetControlsPos { BELOW_BAR, ABOVE_BAR }
+
 /** Co robi dotknięcie okładki / tytułu. */
 enum class WidgetTap { OPEN_PLAYER, PLAY_PAUSE, NEXT, OPEN_QUEUE, OPEN_LIBRARY }
 
@@ -63,9 +66,12 @@ data class WidgetConfig(
     /** Wielkość przycisków w % (Android 12+). */
     val buttonScale: Int = 100,
     /** Margines wewnętrzny widżetu w dp. */
-    val padding: Int = 14,
+    val padding: Int = 10,
     val titleLines: Int = 2,
     val boldTitle: Boolean = true,
+    val controlsPos: WidgetControlsPos = WidgetControlsPos.BELOW_BAR,
+    /** Zwarty układ: bez odstępów między okładką, tekstem, taśmą i przyciskami. */
+    val compact: Boolean = false,
     val showLike: Boolean = true,
     val showQueuePos: Boolean = true,
     val filledPlay: Boolean = true,
@@ -138,6 +144,8 @@ object WidgetConfigStore {
                 padding = getInt(k("padding"), d.padding),
                 titleLines = getInt(k("titleLines"), d.titleLines),
                 boldTitle = getBoolean(k("boldTitle"), d.boldTitle),
+                controlsPos = enum(k("controlsPos"), d.controlsPos),
+                compact = getBoolean(k("compact"), d.compact),
                 showLike = getBoolean(k("showLike"), d.showLike),
                 showQueuePos = getBoolean(k("showQueuePos"), d.showQueuePos),
                 filledPlay = getBoolean(k("filledPlay"), d.filledPlay),
@@ -180,6 +188,8 @@ object WidgetConfigStore {
             .putInt(k("padding"), c.padding)
             .putInt(k("titleLines"), c.titleLines)
             .putBoolean(k("boldTitle"), c.boldTitle)
+            .putString(k("controlsPos"), c.controlsPos.name)
+            .putBoolean(k("compact"), c.compact)
             .putBoolean(k("showLike"), c.showLike)
             .putBoolean(k("showQueuePos"), c.showQueuePos)
             .putBoolean(k("filledPlay"), c.filledPlay)

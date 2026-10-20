@@ -119,6 +119,15 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
             bind(R.id.n_prev, R.drawable.ic_w_prev, factory.createMediaActionPendingIntent(session, Player.COMMAND_SEEK_TO_PREVIOUS.toLong()))
             bind(R.id.n_play, if (player.playWhenReady) R.drawable.ic_w_pause else R.drawable.ic_w_play, factory.createMediaActionPendingIntent(session, Player.COMMAND_PLAY_PAUSE.toLong()))
             bind(R.id.n_next, R.drawable.ic_w_next, factory.createMediaActionPendingIntent(session, Player.COMMAND_SEEK_TO_NEXT.toLong()))
+            // X zamykający odtwarzacz – chyba że ten sam przycisk jest już wybrany jako dodatkowy.
+            val s = Graph.settings.value
+            val closeChosen = big && buttons.any { it.sessionCommand?.customAction == SessionCommands.CLOSE }
+            if (s.notifClose && !closeChosen) {
+                setViewVisibility(R.id.n_close, android.view.View.VISIBLE)
+                bind(R.id.n_close, R.drawable.ic_w_close, factory.createCustomActionFromCustomCommandButton(session, SessionCommands.closeButton()).actionIntent)
+            } else {
+                setViewVisibility(R.id.n_close, android.view.View.GONE)
+            }
             if (big) {
                 val custom = buttons.filter { it.sessionCommand != null }
                 listOf(R.id.n_b1, R.id.n_b2).forEachIndexed { i, view ->
@@ -138,7 +147,8 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
             .setContentTitle(title)
             .setContentText(artist)
             .setCustomContentView(views(R.layout.notif_player_small, false))
-            .setCustomBigContentView(views(R.layout.notif_player_big, true))
+            // Zwarte powiadomienie: po rozwinięciu ten sam niski układ.
+            .setCustomBigContentView(if (Graph.settings.value.notifCompact) views(R.layout.notif_player_small, false) else views(R.layout.notif_player_big, true))
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setContentIntent(session.sessionActivity)
             .setDeleteIntent(factory.createMediaActionPendingIntent(session, Player.COMMAND_STOP.toLong()))

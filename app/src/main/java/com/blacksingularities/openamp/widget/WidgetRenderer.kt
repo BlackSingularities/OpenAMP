@@ -112,8 +112,9 @@ object WidgetRenderer {
         progress(context, rv, i, pal)
         if (i.kind == WidgetKind.PLAYER && i.cfg.showTime) {
             val sides = i.cfg.timePos == WidgetTimePos.SIDES
-            rv.setTextViewText(if (sides) R.id.w_time_side_pos else R.id.w_time_pos, formatTime(i.state.position()))
-            rv.setTextViewText(if (sides) R.id.w_time_side_dur else R.id.w_time_dur, formatTime(i.state.durationMs))
+            val b = barOf(i)
+            rv.setTextViewText(if (sides) b.sidePos else b.pos, formatTime(i.state.position()))
+            rv.setTextViewText(if (sides) b.sideDur else b.dur, formatTime(i.state.durationMs))
         }
         return rv
     }
@@ -180,30 +181,39 @@ object WidgetRenderer {
         rv.setViewPadding(R.id.w_content, pad, pad, pad, pad)
 
         // Wiersz postępu i czasy – gdy jest miejsce.
-        val showRow = (c.showProgress || c.showTime) && h >= 140
+        val showRow = (c.showProgress || c.showTime) && h >= 110
         val sides = c.timePos == WidgetTimePos.SIDES
-        rv.setViewVisibility(R.id.w_progress_row, vis(showRow))
-        rv.setViewVisibility(R.id.w_progress, vis(c.showProgress))
-        rv.setViewVisibility(R.id.w_times, vis(c.showTime && !sides))
-        rv.setViewVisibility(R.id.w_time_side_pos, vis(c.showTime && sides))
-        rv.setViewVisibility(R.id.w_time_side_dur, vis(c.showTime && sides))
+        val bar = barOf(i)
+        rv.setViewVisibility(if (bar === barTop) R.id.w_progress_row_b else R.id.w_progress_row, View.GONE)
+        rv.setViewVisibility(bar.row, vis(showRow))
+        rv.setViewVisibility(bar.progress, vis(c.showProgress))
+        rv.setViewVisibility(bar.times, vis(c.showTime && !sides))
+        rv.setViewVisibility(bar.sidePos, vis(c.showTime && sides))
+        rv.setViewVisibility(bar.sideDur, vis(c.showTime && sides))
         if (showRow) {
             progress(context, rv, i, pal)
-            val posId = if (sides) R.id.w_time_side_pos else R.id.w_time_pos
-            val durId = if (sides) R.id.w_time_side_dur else R.id.w_time_dur
+            val posId = if (sides) bar.sidePos else bar.pos
+            val durId = if (sides) bar.sideDur else bar.dur
             rv.setTextViewText(posId, formatTime(s.position()))
             rv.setTextViewText(durId, formatTime(s.durationMs))
             textStyle(rv, posId, 11f * c.textScale / 100f, pal.fg2)
             textStyle(rv, durId, 11f * c.textScale / 100f, pal.fg2)
         }
         if (Build.VERSION.SDK_INT >= 31) {
-            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, c.progressGap.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+            val dip = TypedValue.COMPLEX_UNIT_DIP
+            // Odstęp taśma–przyciski: gdy taśma jest nad przyciskami – margines przycisków, gdy pod – margines taśmy.
+            val above = bar === barTop
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, if (above) c.progressGap.toFloat() else 0f, dip)
+            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above) (if (c.compact) 0f else 6f) else c.progressGap.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_cover, RemoteViews.MARGIN_END, if (c.compact) 8f else 12f, dip)
+            rv.setViewLayoutMargin(R.id.w_cover_end, RemoteViews.MARGIN_START, if (c.compact) 6f else 8f, dip)
+            rv.setViewLayoutMargin(R.id.w_cover_top, RemoteViews.MARGIN_BOTTOM, if (c.compact) 2f else 8f, dip)
         }
 
         // Okładka dopasowana do wysokości widżetu i suwaka rozmiaru (Android 12+), na starszych stała.
-        val bar = if (!showRow) 0 else 6 + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
+        val barDp = if (!showRow) 0 else (if (c.compact) 0 else 6) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
             (if (c.showTime && !sides) 15 else 0)
-        val reserved = c.padding * 2 + 48 * c.buttonScale / 100 + c.progressGap + bar
+        val reserved = c.padding * 2 + 48 * c.buttonScale / 100 + c.progressGap + barDp
         val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
             // Nad tytułem: zostaje miejsce na tytuł i wykonawcę.
             ((h - reserved - 52) * c.coverSize / 100).coerceIn(32, 180).coerceAtMost((i.size.wDp * 0.6f).toInt())
@@ -333,6 +343,15 @@ object WidgetRenderer {
 
     private fun vis(b: Boolean) = if (b) View.VISIBLE else View.GONE
 
+    /** Widoki jednego wiersza postępu (Odtwarzacz ma dwa: nad przyciskami i pod nimi). */
+    private class Bar(val row: Int, val progress: Int, val sidePos: Int, val sideDur: Int, val times: Int, val pos: Int, val dur: Int)
+
+    private val barTop = Bar(R.id.w_progress_row, R.id.w_progress, R.id.w_time_side_pos, R.id.w_time_side_dur, R.id.w_times, R.id.w_time_pos, R.id.w_time_dur)
+    private val barBottom = Bar(R.id.w_progress_row_b, R.id.w_progress_b, R.id.w_time_side_pos_b, R.id.w_time_side_dur_b, R.id.w_times_b, R.id.w_time_pos_b, R.id.w_time_dur_b)
+
+    /** Wiersz postępu użyty przez widżet; dla innych rodzajów – zwykły w_progress. */
+    private fun barOf(i: Input) = if (i.kind == WidgetKind.PLAYER && i.cfg.controlsPos == WidgetControlsPos.ABOVE_BAR) barBottom else barTop
+
     private fun textStyle(rv: RemoteViews, id: Int, sp: Float, color: Int) {
         rv.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp)
         rv.setTextColor(id, color)
@@ -447,8 +466,8 @@ object WidgetRenderer {
     }
 
     private fun progress(context: Context, rv: RemoteViews, i: Input, pal: Palette) {
-        val show = i.cfg.showProgress && (i.kind != WidgetKind.PLAYER || i.size.hDp >= 140)
-        rv.setViewVisibility(R.id.w_progress, vis(show))
+        val show = i.cfg.showProgress && (i.kind != WidgetKind.PLAYER || i.size.hDp >= 110)
+        rv.setViewVisibility(barOf(i).progress, vis(show))
         if (!show) return
         val c = i.cfg
         val inset = when (i.kind) {
@@ -457,8 +476,9 @@ object WidgetRenderer {
             else -> c.padding * 2
         }
         val hDp = c.progressHeight.coerceIn(2, 48)
-        if (Build.VERSION.SDK_INT >= 31) rv.setViewLayoutHeight(R.id.w_progress, hDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
-        rv.setImageViewBitmap(R.id.w_progress, progressBitmap(context, i, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
+        val id = barOf(i).progress
+        if (Build.VERSION.SDK_INT >= 31) rv.setViewLayoutHeight(id, hDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+        rv.setImageViewBitmap(id, progressBitmap(context, i, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
     }
 
     // ---------------------------------------------------------------- akcje

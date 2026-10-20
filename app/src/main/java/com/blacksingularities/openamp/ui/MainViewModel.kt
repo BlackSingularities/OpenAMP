@@ -256,7 +256,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun runAnalysis() {
         viewModelScope.launch {
-            val err = Graph.curator.analyze(Graph.library.tracks.value, userData.value, settings.value.aiModel, I18n.english)
+            val err = Graph.curator.analyze(Graph.library.tracks.value, userData.value, I18n.english)
             message(if (err != null) tr("Analiza nie powiodła się: {0}", err) else tr("Gotowe – nowe kategorie i miksy"))
         }
     }

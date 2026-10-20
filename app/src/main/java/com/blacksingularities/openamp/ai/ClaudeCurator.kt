@@ -20,8 +20,6 @@ object ClaudeCurator {
     /** Większe biblioteki: do modelu trafia ta część, resztę dopasowujemy po wykonawcy. */
     private const val MAX_TRACKS = 3000
 
-    val MODELS = listOf("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5")
-
     private fun obj(vararg props: Pair<String, Any>, required: List<String>): Map<String, Any> = mapOf(
         "type" to "object",
         "additionalProperties" to false,
@@ -45,7 +43,10 @@ object ClaudeCurator {
         required = listOf("categories", "mixes"),
     )
 
-    fun run(apiKey: String, model: String, all: List<Track>, data: UserData, english: Boolean): Curation {
+    /** Polecenie i lista utworów – wspólne dla wszystkich dostawców. */
+    class Prepared(val sent: List<Track>, val system: String, val listing: String)
+
+    fun prepare(all: List<Track>, data: UserData, english: Boolean): Prepared {
         // Najpierw ulubione i najczęściej grane – to one najlepiej opisują gust.
         val ordered = all.sortedWith(
             compareByDescending<Track> { it.id in data.favorites }.thenByDescending { data.stats[it.id]?.count ?: 0 },
@@ -75,7 +76,24 @@ object ClaudeCurator {
                shaped by what the user actually plays and likes (plays, favorite) mixed with tracks worth rediscovering.
                Titles short and evocative, subtitle one short sentence.
             Refer to tracks only by their index. Use only indexes that appear in the list.
+            Answer with a single JSON object only:
+            {"categories":[{"name":"…","description":"…","tracks":[0,1]}],"mixes":[{"title":"…","subtitle":"…","tracks":[2,3]}]}
         """.trimIndent()
+        return Prepared(sent, system, listing)
+    }
+
+    /** Dostawcy z API zgodnym z OpenAI. */
+    fun runOpenAi(provider: AiProvider, baseUrl: String, apiKey: String, model: String, all: List<Track>, data: UserData, english: Boolean): Curation {
+        val p = prepare(all, data, english)
+        val text = AiClient.chatJson(provider, baseUrl, apiKey, model, p.system, p.listing)
+        return parse(AiClient.extractJson(text), p.sent, all)
+    }
+
+    fun run(apiKey: String, model: String, all: List<Track>, data: UserData, english: Boolean): Curation {
+        val p = prepare(all, data, english)
+        val sent = p.sent
+        val system = p.system
+        val listing = p.listing
 
         val client = AnthropicOkHttpClient.builder()
             .apiKey(apiKey)
@@ -120,7 +138,7 @@ object ClaudeCurator {
 
     private fun String.clean() = replace('|', '/').replace('\n', ' ').trim()
 
-    private fun parse(json: String, sent: List<Track>, all: List<Track>): Curation {
+    fun parse(json: String, sent: List<Track>, all: List<Track>): Curation {
         val o = JSONObject(json.trim())
         fun ids(a: org.json.JSONArray?): List<Long> =
             if (a == null) emptyList() else List(a.length()) { a.optInt(it, -1) }.mapNotNull { sent.getOrNull(it)?.id }.distinct()

@@ -52,12 +52,75 @@ class CuratorStore(context: Context) {
     val value: Curation get() = _state.value
     private val _status = MutableStateFlow<CuratorStatus>(CuratorStatus.Idle)
     val status: StateFlow<CuratorStatus> = _status.asStateFlow()
-    private val _apiKey = MutableStateFlow(prefs.getString("key", "") ?: "")
-    val apiKey: StateFlow<String> = _apiKey.asStateFlow()
 
-    fun setApiKey(key: String) {
-        _apiKey.value = key.trim()
-        prefs.edit().putString("key", key.trim()).apply()
+    /** Ustawienia jednego dostawcy: klucz, model, adres i ostatnio pobrana lista modeli. */
+    data class ProviderConfig(val key: String = "", val model: String = "", val baseUrl: String = "", val models: List<String> = emptyList())
+
+    private val _provider = MutableStateFlow(
+        prefs.getString("provider", null)?.let { n -> AiProvider.entries.firstOrNull { it.name == n } } ?: AiProvider.ANTHROPIC,
+    )
+    val provider: StateFlow<AiProvider> = _provider.asStateFlow()
+
+    private val _configs = MutableStateFlow(AiProvider.entries.associateWith { loadConfig(it) })
+    val configs: StateFlow<Map<AiProvider, ProviderConfig>> = _configs.asStateFlow()
+
+    private fun loadConfig(p: AiProvider): ProviderConfig {
+        // Klucz Claude z wcześniejszych wersji („key”) zostaje kluczem Anthropic.
+        val legacy = if (p == AiProvider.ANTHROPIC) prefs.getString("key", "") ?: "" else ""
+        return ProviderConfig(
+            key = prefs.getString("key_${p.name}", null) ?: legacy,
+            model = prefs.getString("model_${p.name}", null) ?: p.fallbackModels.firstOrNull().orEmpty(),
+            baseUrl = prefs.getString("url_${p.name}", null) ?: p.baseUrl,
+            models = prefs.getString("models_${p.name}", null)?.split("\n")?.filter { it.isNotBlank() } ?: p.fallbackModels,
+        )
+    }
+
+    fun config(p: AiProvider = provider.value): ProviderConfig = _configs.value[p] ?: ProviderConfig()
+
+    fun setProvider(p: AiProvider) {
+        _provider.value = p
+        prefs.edit().putString("provider", p.name).apply()
+    }
+
+    fun updateConfig(p: AiProvider, block: (ProviderConfig) -> ProviderConfig) {
+        val c = block(config(p))
+        _configs.value = _configs.value + (p to c)
+        prefs.edit()
+            .putString("key_${p.name}", c.key.trim())
+            .putString("model_${p.name}", c.model.trim())
+            .putString("url_${p.name}", c.baseUrl.trim())
+            .putString("models_${p.name}", c.models.joinToString("\n"))
+            .apply()
+    }
+
+    /** Czy zdalna analiza jest skonfigurowana (klucz albo serwer bez klucza z wybranym modelem). */
+    fun remoteReady(p: AiProvider = provider.value): Boolean {
+        val c = config(p)
+        return (!p.needsKey || c.key.isNotBlank()) && c.model.isNotBlank() && c.baseUrl.isNotBlank() &&
+            (p.needsKey || prefs.getBoolean("enabled_${p.name}", false))
+    }
+
+    /** Serwery bez klucza (Ollama, LM Studio, własny) trzeba świadomie włączyć. */
+    fun setLocalEnabled(p: AiProvider, on: Boolean) {
+        prefs.edit().putBoolean("enabled_${p.name}", on).apply()
+        _configs.value = _configs.value.toMap()
+        _enabledTick.value++
+    }
+
+    fun localEnabled(p: AiProvider) = prefs.getBoolean("enabled_${p.name}", false)
+    private val _enabledTick = MutableStateFlow(0)
+    val enabledTick: StateFlow<Int> = _enabledTick.asStateFlow()
+
+    /** Pobiera listę modeli z API dostawcy i zapamiętuje ją. Zwraca komunikat błędu albo null. */
+    suspend fun refreshModels(p: AiProvider): String? = withContext(Dispatchers.IO) {
+        val c = config(p)
+        try {
+            val list = AiClient.listModels(p, c.baseUrl, c.key).ifEmpty { p.fallbackModels }
+            updateConfig(p) { it.copy(models = list, model = it.model.takeIf { m -> m.isNotBlank() } ?: list.firstOrNull().orEmpty()) }
+            null
+        } catch (e: Exception) {
+            e.message ?: e.toString()
+        }
     }
 
     /** O ile utworów (dodanych + usuniętych) biblioteka różni się od stanu z ostatniej analizy. */
@@ -95,15 +158,18 @@ class CuratorStore(context: Context) {
     }
 
     /** Pełna analiza: kategorie i miksy. Zwraca komunikat błędu albo null. */
-    suspend fun analyze(tracks: List<Track>, data: UserData, model: String, english: Boolean): String? {
+    suspend fun analyze(tracks: List<Track>, data: UserData, english: Boolean): String? {
         if (_status.value is CuratorStatus.Running) return null
-        val key = apiKey.value
+        val p = provider.value
+        val c = config(p)
         val pool = tracks.filter { it.id !in data.disliked }.ifEmpty { tracks }
         return try {
             val result = withContext(Dispatchers.IO) {
-                if (key.isNotBlank()) {
-                    _status.value = CuratorStatus.Running(if (english) "Claude is listening to your library…" else "Claude przegląda bibliotekę…")
-                    ClaudeCurator.run(key, model, pool, data, english)
+                if (remoteReady(p)) {
+                    val name = p.label.substringBefore(" (")
+                    _status.value = CuratorStatus.Running(if (english) "$name is listening to your library…" else "$name przegląda bibliotekę…")
+                    if (p.api == AiApi.ANTHROPIC) ClaudeCurator.run(c.key, c.model, pool, data, english)
+                    else ClaudeCurator.runOpenAi(p, c.baseUrl, c.key, c.model, pool, data, english)
                 } else {
                     _status.value = CuratorStatus.Running(if (english) "Analysing on the phone…" else "Analiza na telefonie…")
                     LocalCurator.run(pool, data, english)

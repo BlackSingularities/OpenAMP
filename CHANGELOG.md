@@ -1,5 +1,13 @@
 # Historia zmian
 
+## 1.6.8
+
+- **AI: wielu dostawców** – Anthropic, OpenAI, Google Gemini, OpenRouter, Mistral, xAI, DeepSeek, Groq, Cerebras, Together, Fireworks, DeepInfra, Perplexity, Cohere, NVIDIA, Hugging Face, Moonshot, Qwen, Z.ai, a także Ollama, LM Studio i dowolny serwer zgodny z OpenAI. Każdy ma własny klucz, adres i model; lista modeli jest pobierana z API dostawcy.
+- Ekran odtwarzania: wizualizacje na okładce nad dolnymi przyciskami, mniejsze przyciski pod tytułem, tytuł i wykonawca mogą być wyśrodkowane, z regulowanym rozmiarem.
+- Widżet: przyciski nad albo pod taśmą, zwarty układ bez odstępów i marginesy od 0 dp; widżet jest domyślnie bardziej zwarty.
+- Powiadomienie: domyślnie zwarte (niskie także po rozwinięciu) i ze stałym przyciskiem **X** zamykającym odtwarzacz.
+- Przebudowane ustawienia aplikacji: siedem sekcji, w każdej karty z podtytułem, wybory i suwaki na górze, przełączniki-kafelki w kartach.
+
 ## 1.6.7
 
 - Widżet **Odtwarzacz**: okładka po lewej, po prawej, u góry albo jako tło, z suwakiem rozmiaru i kadrowaniem w pionie (widżet **Okładka** – powiększenie kadru).

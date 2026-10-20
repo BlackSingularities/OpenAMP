@@ -99,6 +99,9 @@ import com.blacksingularities.openamp.i18n.tr
 import java.util.Locale
 import kotlin.math.max
 
+/** Wizualizacje na okładce zaczynają się nad przyciskami „lubię” i tekstu (18 dp marginesu + 38 dp + odstęp). */
+private val VisAboveButtons = 64.dp
+
 /** Ciemna, półprzezroczysta pigułka na tle okładki (napisy i przyciski ekranu odtwarzania). */
 private val Glassy = Color(0x59000000)
 
@@ -129,7 +132,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
         val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, s.showLikes, data.favorites, data.disliked, m) }
         val controls: @Composable () -> Unit = {
             Column {
-                TitlePills(vm, track) { menu = true }
+                TitlePills(vm, track, s.titleCenter, s.titleSize) { menu = true }
                 Gap(8.dp)
                 ActionRow(vm, ps, s.visualizer, { speedDialog = true })
                 Gap(4.dp)
@@ -293,9 +296,9 @@ private fun CoverBlock(
                         }
                         .shadow(24.dp, shape)
                     if (shapeMode == CoverShape.VINYL) Vinyl(shown, playing, accent, m) else Artwork(shown, m, size = 1000, shape = shape, crossfade = !gestures)
-                    if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(70.dp).padding(bottom = 58.dp), mirror = false)
-                    if (vis == VisualizerStyle.MIRROR) MirrorBars(live, Color.White.copy(alpha = 0.9f), Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).height(100.dp).padding(bottom = 50.dp))
-                    if (vis == VisualizerStyle.LINE) SpectrumLine(live, Color.White, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.86f).height(90.dp).padding(bottom = 50.dp))
+                    if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(56.dp), mirror = false)
+                    if (vis == VisualizerStyle.MIRROR) MirrorBars(live, Color.White.copy(alpha = 0.9f), Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(64.dp))
+                    if (vis == VisualizerStyle.LINE) SpectrumLine(live, Color.White, Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.86f).height(56.dp))
                     if (vis == VisualizerStyle.WAVE) WaveScope(live, Color.White, Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp))
                 }
             }
@@ -319,16 +322,21 @@ private fun CoverBlock(
 }
 
 @Composable
-private fun TitlePills(vm: MainViewModel, track: Track?, onMenu: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun TitlePills(vm: MainViewModel, track: Track?, center: Boolean, titleSp: Int, onMenu: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = if (center) Alignment.CenterHorizontally else Alignment.Start,
+    ) {
         Text(
             track?.title ?: tr("Nic nie jest odtwarzane"),
-            color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            color = Color.White, fontSize = titleSp.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.reactive(tr("Więcej"), onLongPress = onMenu) { onMenu() }.clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 16.dp, vertical = 6.dp),
         )
         if (track != null) Text(
             "${track.artist} - ${track.album}",
-            color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            // Wykonawca rośnie razem z tytułem (14 sp przy tytule 20 sp).
+            color = Color.White.copy(alpha = 0.9f), fontSize = (titleSp * 0.7f).sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.reactive(tr("Przejdź do wykonawcy"), onLongPress = { vm.goTab(Route.Library); vm.open(Route.Detail(DetailKind.ALBUM, track.albumId.toString())) }) {
                 vm.goTab(Route.Library); vm.open(Route.Detail(DetailKind.ARTIST, track.artist.lowercase()))
             }.clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 16.dp, vertical = 6.dp),
@@ -350,8 +358,8 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
         WidePill(Icons.Rounded.Bedtime, tr("Wyłącznik czasowy"), sleepAt != null || sleepEnd, pill, onLong = onSpeed) { vm.sleepDialog = true }
         Text(
             if (ps.queue.isNotEmpty()) "${ps.index + 1} / ${ps.queue.size}" else "–",
-            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.reactive(tr("Kolejka")) { vm.queueOpen = true }.clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 12.dp, vertical = 7.dp),
+            color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.reactive(tr("Kolejka")) { vm.queueOpen = true }.clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 11.dp, vertical = 6.dp),
         )
         WidePill(if (ps.repeat == RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, tr("Powtarzanie"), ps.repeat != RepeatMode.OFF, pill) { vm.player.cycleRepeat() }
         WidePill(Icons.Rounded.Shuffle, tr("Losowa kolejność"), ps.shuffle, pill) { vm.player.toggleShuffle() }
@@ -367,9 +375,9 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
 private fun WidePill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean, modifier: Modifier, onLong: (() -> Unit)? = null, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Box(
-        modifier.size(48.dp).reactive(label, onLongPress = onLong, onClick = onClick).clip(CircleShape).background(if (active) accent else Glassy),
+        modifier.size(40.dp).reactive(label, onLongPress = onLong, onClick = onClick).clip(CircleShape).background(if (active) accent else Glassy),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
 }
 
 /**

@@ -74,6 +74,9 @@ data class AppSettings(
     val notifButton2: NotifButton = NotifButton.CLOSE,
     /** Zamknięcie odtwarzacza (i powiadomienia) po tylu minutach pauzy; -1 – nigdy, 0 – od razu. */
     val autoCloseMin: Int = 5,
+    /** Zwarte powiadomienie (niskie, także po rozwinięciu) i stały przycisk X. */
+    val notifCompact: Boolean = true,
+    val notifClose: Boolean = true,
     // Ekran blokady i AOD
     val lockScreen: Boolean = false,
     val lockBackground: LockBackground = LockBackground.BLUR,
@@ -93,6 +96,9 @@ data class AppSettings(
     val stickyHeaders: Boolean = true,
     /** Widok miksów: siatka kart albo lista. */
     val homeView: ViewMode = ViewMode.GRID,
+    /** Tytuł i wykonawca na ekranie odtwarzania: wyśrodkowane i rozmiar tytułu w sp. */
+    val titleCenter: Boolean = false,
+    val titleSize: Int = 20,
     // AI
     val aiPrompt: Boolean = true,
     val aiModel: String = "claude-opus-5-5",
@@ -167,6 +173,8 @@ class SettingsStore(context: Context) {
                 notifButton1 = enum("notifButton1", d.notifButton1),
                 notifButton2 = enum("notifButton2", d.notifButton2),
                 autoCloseMin = getInt("autoCloseMin", d.autoCloseMin),
+                notifCompact = getBoolean("notifCompact", d.notifCompact),
+                notifClose = getBoolean("notifClose", d.notifClose),
                 lockScreen = getBoolean("lockScreen", d.lockScreen),
                 lockBackground = enum("lockBackground", d.lockBackground),
                 lockClock = getBoolean("lockClock", d.lockClock),
@@ -182,6 +190,8 @@ class SettingsStore(context: Context) {
                 autoHideBar = getBoolean("autoHideBar", d.autoHideBar),
                 stickyHeaders = getBoolean("stickyHeaders", d.stickyHeaders),
                 homeView = enum("homeView", d.homeView),
+                titleCenter = getBoolean("titleCenter", d.titleCenter),
+                titleSize = getInt("titleSize", d.titleSize),
                 aiPrompt = getBoolean("aiPrompt", d.aiPrompt),
                 aiModel = getString("aiModel", d.aiModel) ?: d.aiModel,
             )
@@ -238,6 +248,8 @@ class SettingsStore(context: Context) {
             .putString("notifButton1", s.notifButton1.name)
             .putString("notifButton2", s.notifButton2.name)
             .putInt("autoCloseMin", s.autoCloseMin)
+            .putBoolean("notifCompact", s.notifCompact)
+            .putBoolean("notifClose", s.notifClose)
             .putBoolean("lockScreen", s.lockScreen)
             .putString("lockBackground", s.lockBackground.name)
             .putBoolean("lockClock", s.lockClock)
@@ -253,6 +265,8 @@ class SettingsStore(context: Context) {
             .putBoolean("autoHideBar", s.autoHideBar)
             .putBoolean("stickyHeaders", s.stickyHeaders)
             .putString("homeView", s.homeView.name)
+            .putBoolean("titleCenter", s.titleCenter)
+            .putInt("titleSize", s.titleSize)
             .putBoolean("aiPrompt", s.aiPrompt)
             .putString("aiModel", s.aiModel)
             .apply()
