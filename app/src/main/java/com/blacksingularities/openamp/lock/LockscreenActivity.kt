@@ -72,6 +72,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -248,22 +254,25 @@ private fun FullView(
     val artColor = remember(art) { art?.let { runCatching { vibrantColor(it) }.getOrNull() } }
     val accent = if (artColor != null) Color(artColor) else MaterialTheme.colorScheme.primary
     val image = remember(art) { art?.asImageBitmap() }
+    val glass = accent.copy(alpha = 0.22f)
     val density = LocalDensity.current
 
     Box(Modifier.fillMaxSize()) {
         // Tło
         when (s.lockBackground) {
-            LockBackground.BLUR -> if (image != null) {
-                Image(
+            LockBackground.BLUR -> {
+                if (image != null) Image(
                     image, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(70.dp) else Modifier),
                 )
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (Build.VERSION.SDK_INT >= 31) 0.45f else 0.72f)))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.85f)))))
             }
             LockBackground.ART_COLOR -> Box(
-                Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.55f), Color.Black, Color.Black))),
+                Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.7f), accent.copy(alpha = 0.25f).compositeOver(Color.Black), Color.Black))),
             )
-            LockBackground.BLACK -> Unit
+            LockBackground.BLACK -> Box(
+                Modifier.fillMaxSize().background(Brush.radialGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent), radius = 1400f)),
+            )
         }
 
         Column(
@@ -275,7 +284,8 @@ private fun FullView(
             if (s.lockClock) Clock(big = true)
             Spacer(Modifier.weight(1f))
             Artwork(
-                track, Modifier.fillMaxWidth(if (s.lockClock) 0.72f else 0.86f).aspectRatio(1f),
+                track, Modifier.fillMaxWidth(if (s.lockClock) 0.72f else 0.86f).aspectRatio(1f)
+                    .shadow(40.dp, RoundedCornerShape(28.dp), ambientColor = accent, spotColor = accent),
                 size = 1024, shape = RoundedCornerShape(28.dp), crossfade = true,
             )
             Spacer(Modifier.height(22.dp))
@@ -284,7 +294,7 @@ private fun FullView(
                 maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
             )
             Text(
-                track?.artist ?: "", color = Color.White.copy(alpha = 0.75f), fontSize = 16.sp,
+                track?.artist ?: "", color = lerp(accent, Color.White, 0.45f), fontSize = 16.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
             )
             if (!track?.album.isNullOrBlank()) Text(
@@ -299,6 +309,7 @@ private fun FullView(
                     onValueChange = { seeking = it },
                     onValueChangeFinished = { seeking?.let { conn.seekTo((it * ps.durationMs).toLong()) }; seeking = null },
                     modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = accent, inactiveTrackColor = Color.White.copy(alpha = 0.15f)),
                 )
                 Row(Modifier.fillMaxWidth()) {
                     Text(formatTime((frac * ps.durationMs).toLong()), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.weight(1f))
@@ -311,7 +322,6 @@ private fun FullView(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val glass = Color(0x26FFFFFF)
                 if (s.lockShuffleRepeat) RoundButton(Icons.Rounded.Shuffle, tr("Losowo"), { conn.toggleShuffle() }, active = ps.shuffle, background = glass)
                 RoundButton(Icons.Rounded.SkipPrevious, tr("Poprzedni"), { conn.previous() }, size = 56.dp, iconSize = 30.dp, background = glass)
                 RoundButton(
@@ -352,37 +362,62 @@ private fun FullView(
 private fun AodView(conn: PlayerConnection, track: com.blacksingularities.openamp.data.Track?, showArt: Boolean, onWake: () -> Unit) {
     val ps by conn.state.collectAsState()
     val pos by conn.position.collectAsState()
-    var dx by remember { mutableIntStateOf(0) }
-    var dy by remember { mutableIntStateOf(0) }
+    val art = rememberArtwork(track, 300)
+    val artColor = remember(art) { art?.let { runCatching { vibrantColor(it) }.getOrNull() } }
+    val tint = artColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+    val next = ps.nextId?.let { Graph.library.get(it) }
+    // Treść wędruje po ekranie przeciw wypaleniu – w granicach wyliczonych z jej rozmiaru.
+    var target by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
-            dx = Random.nextInt(-24, 25); dy = Random.nextInt(-80, 81)
+            target = androidx.compose.ui.geometry.Offset(Random.nextFloat() * 2 - 1, Random.nextFloat() * 2 - 1)
         }
     }
-    val ox by animateDpAsState(dx.dp, tween(5000), label = "ox")
-    val oy by animateDpAsState(dy.dp, tween(5000), label = "oy")
-    Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectTapGestures { onWake() } }) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectTapGestures { onWake() } }) {
+        var content by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+        val density = LocalDensity.current
+        val rangeX = with(density) { ((constraints.maxWidth - content.width) / 2 - 16.dp.roundToPx()).coerceAtLeast(0).toDp() }
+        val rangeY = with(density) { ((constraints.maxHeight - content.height) / 2 - 40.dp.roundToPx()).coerceAtLeast(0).toDp() }
+        val ox by animateDpAsState(rangeX * target.x, tween(5000), label = "ox")
+        val oy by animateDpAsState(rangeY * target.y, tween(5000), label = "oy")
         Column(
-            Modifier.align(Alignment.Center).offset(ox, oy).widthIn(max = 300.dp),
+            Modifier.align(Alignment.Center).offset(ox, oy).widthIn(max = 300.dp).onSizeChanged { content = it },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Clock(big = false, alpha = 0.6f)
-            if (showArt && track != null) Artwork(
-                track, Modifier.padding(top = 22.dp).size(96.dp).alpha(0.55f), size = 300, shape = RoundedCornerShape(18.dp),
-            )
-            Text(
-                track?.title ?: "", color = Color.White.copy(alpha = 0.65f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(track?.artist ?: "", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (ps.durationMs > 0) {
-                val f = (pos.toFloat() / ps.durationMs).coerceIn(0f, 1f)
-                Box(Modifier.padding(top = 14.dp).widthIn(max = 160.dp).fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp)).background(Color(0x22FFFFFF))) {
-                    Box(Modifier.fillMaxWidth(f).height(2.dp).background(Color.White.copy(alpha = 0.5f)))
+            Clock(big = false, alpha = 0.7f)
+            if (showArt && track != null) {
+                Box(Modifier.padding(top = 18.dp).size(150.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val r = size.minDimension / 2
+                        drawCircle(Brush.radialGradient(listOf(tint.copy(alpha = 0.28f), Color.Transparent), center, r), r)
+                        val st = 2.5.dp.toPx()
+                        val inset = 10.dp.toPx()
+                        val sz = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2)
+                        val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+                        drawArc(Color.White.copy(alpha = 0.07f), -90f, 360f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(st))
+                        val f = if (ps.durationMs > 0) (pos.toFloat() / ps.durationMs).coerceIn(0f, 1f) else 0f
+                        drawArc(tint.copy(alpha = 0.75f), -90f, 360f * f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(st, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                    }
+                    Artwork(track, Modifier.size(98.dp).alpha(0.6f), size = 300, shape = RoundedCornerShape(20.dp))
                 }
             }
-            if (!ps.isPlaying) Text(tr("Wstrzymano"), color = Color.White.copy(alpha = 0.35f), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(
+                track?.title ?: "", color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp),
+            )
+            Text(track?.artist ?: "", color = tint.copy(alpha = 0.6f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!showArt && ps.durationMs > 0) {
+                val f = (pos.toFloat() / ps.durationMs).coerceIn(0f, 1f)
+                Box(Modifier.padding(top = 12.dp).widthIn(max = 160.dp).fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp)).background(Color(0x22FFFFFF))) {
+                    Box(Modifier.fillMaxWidth(f).height(2.dp).background(tint.copy(alpha = 0.6f)))
+                }
+            }
+            if (next != null) Text(
+                tr("Następnie: {0} — {1}", next.title, next.artist), color = Color.White.copy(alpha = 0.28f), fontSize = 11.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp),
+            )
+            if (!ps.isPlaying) Text(tr("Wstrzymano"), color = Color.White.copy(alpha = 0.35f), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

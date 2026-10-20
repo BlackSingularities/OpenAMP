@@ -66,6 +66,7 @@ android {
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        resources.excludes += "/META-INF/{DEPENDENCIES,LICENSE*,NOTICE*,INDEX.LIST}"
     }
 }
 
@@ -106,6 +107,9 @@ dependencies {
     implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
+
+    // Analiza biblioteki przez Claude (kategorie i miksy) – klucz API podaje użytkownik.
+    implementation("com.anthropic:anthropic-java:2.34.0")
 
     testImplementation("junit:junit:4.13.2")
 }

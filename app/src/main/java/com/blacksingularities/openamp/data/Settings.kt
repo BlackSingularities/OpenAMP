@@ -9,13 +9,15 @@ import kotlinx.coroutines.flow.asStateFlow
 
 enum class ThemeMode { SYSTEM, DARK, LIGHT, BLACK }
 enum class VisualizerStyle { BARS, WAVE, CIRCLE, NONE }
-enum class SeekStyle { WAVEFORM, TAPE, SPECTROGRAM, SIMPLE }
+enum class SeekStyle { WAVEFORM, MIRROR, LINE, DOTS, SEGMENTS, TAPE, SPECTROGRAM, CASSETTE }
 enum class RepeatMode { OFF, ALL, ONE }
 enum class NpBackground { BLUR, GRADIENT, AURORA, BLACK }
 enum class CoverShape { ROUNDED, SQUARE, CIRCLE, VINYL }
 /** Dodatkowe przyciski w powiadomieniu (obok poprzedni / odtwórz / następny). */
 enum class NotifButton { NONE, LIKE, SHUFFLE, REPEAT, CLOSE }
 enum class LockBackground { BLUR, ART_COLOR, BLACK }
+/** Wygląd powiadomienia: własny układ (okładka po lewej) albo systemowy odtwarzacz. */
+enum class NotifStyle { CUSTOM, SYSTEM }
 /** Uproszczony ekran „always on” odtwarzacza na ekranie blokady. */
 enum class AodMode { OFF, CHARGING, ALWAYS }
 
@@ -84,6 +86,16 @@ data class AppSettings(
     val aodTimeoutSec: Int = 15,
     val aodDim: Boolean = true,
     val aodArt: Boolean = true,
+    val notifStyle: NotifStyle = NotifStyle.CUSTOM,
+    /** Dolny pasek na ekranie odtwarzania chowa się po chwili bez dotyku. */
+    val autoHideBar: Boolean = true,
+    /** Nagłówki sekcji (litery, lata…) przyklejone u góry list. */
+    val stickyHeaders: Boolean = true,
+    /** Widok miksów: siatka kart albo lista. */
+    val homeView: ViewMode = ViewMode.GRID,
+    // AI
+    val aiPrompt: Boolean = true,
+    val aiModel: String = "claude-opus-5-5",
 )
 
 /** Ustawienia w SharedPreferences, wystawione jako StateFlow. */
@@ -166,6 +178,12 @@ class SettingsStore(context: Context) {
                 aodTimeoutSec = getInt("aodTimeoutSec", d.aodTimeoutSec),
                 aodDim = getBoolean("aodDim", d.aodDim),
                 aodArt = getBoolean("aodArt", d.aodArt),
+                notifStyle = enum("notifStyle", d.notifStyle),
+                autoHideBar = getBoolean("autoHideBar", d.autoHideBar),
+                stickyHeaders = getBoolean("stickyHeaders", d.stickyHeaders),
+                homeView = enum("homeView", d.homeView),
+                aiPrompt = getBoolean("aiPrompt", d.aiPrompt),
+                aiModel = getString("aiModel", d.aiModel) ?: d.aiModel,
             )
         }
     }
@@ -231,6 +249,12 @@ class SettingsStore(context: Context) {
             .putInt("aodTimeoutSec", s.aodTimeoutSec)
             .putBoolean("aodDim", s.aodDim)
             .putBoolean("aodArt", s.aodArt)
+            .putString("notifStyle", s.notifStyle.name)
+            .putBoolean("autoHideBar", s.autoHideBar)
+            .putBoolean("stickyHeaders", s.stickyHeaders)
+            .putString("homeView", s.homeView.name)
+            .putBoolean("aiPrompt", s.aiPrompt)
+            .putString("aiModel", s.aiModel)
             .apply()
     }
 }

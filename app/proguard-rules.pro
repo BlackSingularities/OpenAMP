@@ -2,3 +2,17 @@
 -keep class com.blacksingularities.openamp.playback.PlaybackService { *; }
 -dontwarn org.checkerframework.**
 -dontwarn com.google.errorprone.**
+# Anthropic Java SDK (Jackson + OkHttp) – serializacja przez refleksję.
+-keep class com.anthropic.** { *; }
+-keep class com.fasterxml.jackson.** { *; }
+-keepclassmembers class * { @com.fasterxml.jackson.annotation.* *; }
+-dontwarn com.fasterxml.jackson.**
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.slf4j.**
+-dontwarn java.beans.**
+-dontwarn javax.annotation.**
+-dontwarn kotlin.reflect.**
+-dontwarn java.lang.reflect.AnnotatedType
+-dontwarn java.lang.reflect.AnnotatedParameterizedType
+-dontwarn com.github.victools.**

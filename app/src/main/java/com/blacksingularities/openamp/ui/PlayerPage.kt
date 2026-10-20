@@ -46,6 +46,10 @@ import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -126,15 +130,17 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
         val controls: @Composable () -> Unit = {
             Column {
                 TitlePills(vm, track) { menu = true }
-                Gap(10.dp)
+                Gap(8.dp)
                 ActionRow(vm, ps, s.visualizer, { speedDialog = true })
-                Gap(6.dp)
+                Gap(4.dp)
                 SeekArea(vm, ps, pos, wave, live, s.seekStyle, accent)
             }
         }
         val techH = if (s.showTechInfo && track != null) 26.dp else 0.dp
         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp)) { TechLine(track, info, s.showTechInfo) { details = true } }
-        Box(Modifier.statusBarsPadding().padding(bottom = bottomPadding + techH).fillMaxSize()) {
+        Column(Modifier.statusBarsPadding().padding(bottom = bottomPadding + techH).fillMaxSize()) {
+            PlayerTopBar(vm, ps, onMenu = { menu = true })
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             if (wide) {
                 Row(Modifier.fillMaxSize().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     cover(Modifier.fillMaxHeight().aspectRatio(1f))
@@ -142,20 +148,21 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                     Box(Modifier.weight(1f)) { controls() }
                 }
             } else {
-                Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp)) {
+                Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 2.dp)) {
                     cover(Modifier.fillMaxWidth().weight(1f, fill = false).aspectRatio(1f, matchHeightConstraintsFirst = true).align(Alignment.CenterHorizontally))
-                    Gap(14.dp)
+                    Gap(12.dp)
                     controls()
                 }
             }
+            }
         }
-        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding()) { TrackMenu(vm, track.takeIf { menu }, { menu = false }) }
+        Box(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 12.dp, top = 40.dp)) { TrackMenu(vm, track.takeIf { menu }, { menu = false }) }
     }
 
     if (vm.queueOpen) QueueSheet(vm)
     if (vm.sleepDialog) SleepTimerDialog { vm.sleepDialog = false }
     if (speedDialog) SpeedDialog(vm) { speedDialog = false }
-    if (details) track?.let { TrackDetailsDialog(it) { details = false } }
+    if (details) track?.let { TrackDetailsDialog(vm, it) { details = false } }
 }
 
 /** Okładka (albo tekst utworu) z przyciskami „lubię / nie lubię” i kolejką na dole. */
@@ -202,10 +209,7 @@ private fun CoverBlock(
     Box(modifier) {
         AnimatedContent(vm.showLyrics, transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) }, label = "lyr") { lyrics ->
             if (lyrics) {
-                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color.Black.copy(alpha = 0.55f))) {
-                    LyricsPanel(vm, Modifier.fillMaxSize())
-                    RoundButton(Icons.Rounded.Image, tr("Okładka"), { vm.showLyrics = false }, Modifier.align(Alignment.BottomEnd).padding(18.dp), background = Glassy, size = 38.dp, iconSize = 20.dp)
-                }
+                LyricsCard(vm, track)
             } else {
                 Box(
                     Modifier.fillMaxSize()
@@ -254,12 +258,7 @@ private fun CoverBlock(
                                 if (over != crossed) { crossed = over; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
                             }
                         }
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = { vm.goTab(Route.Queue) },
-                                onDoubleTap = { o -> if (o.x < size.width / 2) vm.player.seekTo((vm.player.position.value - 10_000).coerceAtLeast(0)) else vm.player.seekTo(vm.player.position.value + 10_000) },
-                            )
-                        },
+                        ,
                     contentAlignment = Alignment.Center,
                 ) {
                     if (vis == VisualizerStyle.CIRCLE) CircleSpectrum(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
@@ -367,8 +366,9 @@ private fun WidePill(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 }
 
 /**
- * Pole przewijania: fala dźwiękowa całego utworu (lub taśma / spektrogram / pasek) z nałożonymi
- * przyciskami sterowania – jak w klasycznych odtwarzaczach. Przeciąganie w poziomie przewija.
+ * Pole przewijania: taśma utworu w wybranym stylu z nałożonymi przyciskami sterowania.
+ * Przeciągnięcie w poziomie w dowolnym miejscu pola – także zaczęte na przycisku – przewija;
+ * dotknięcie wolnego miejsca przeskakuje (na taśmach przesuwanych: ±10 s po danej stronie głowicy).
  */
 @Composable
 private fun SeekArea(
@@ -380,66 +380,92 @@ private fun SeekArea(
     style: SeekStyle,
     accent: Color,
 ) {
-    Box(Modifier.fillMaxWidth().heightIn(min = 150.dp).height(170.dp), contentAlignment = Alignment.Center) {
-        when (style) {
-            SeekStyle.WAVEFORM -> FullWaveform(wave, pos, ps.durationMs, accent, live) { vm.player.seekTo(it) }
-            SeekStyle.TAPE -> WaveformTape(wave, pos, ps.durationMs, accent, live, { vm.player.seekTo(it) }, Modifier.fillMaxWidth())
-            SeekStyle.SPECTROGRAM -> SpectrogramTape(wave, pos, ps.durationMs, accent, live, { vm.player.seekTo(it) })
-            SeekStyle.SIMPLE -> SimpleSeek(pos, ps.durationMs, { vm.player.seekTo(it) }, Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp))
-        }
-        // Przyciski na fali
+    var scrub by remember { mutableStateOf<Float?>(null) }
+    val dur by rememberUpdatedState(ps.durationMs)
+    val posNow by rememberUpdatedState(pos)
+    val styleNow by rememberUpdatedState(style)
+    val points by rememberUpdatedState(wave?.size ?: 600)
+    val haptic = LocalHapticFeedback.current
+    val frac = scrub ?: if (ps.durationMs > 0) (pos.toFloat() / ps.durationMs).coerceIn(0f, 1f) else 0f
+    Box(
+        Modifier.fillMaxWidth().height(164.dp)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        if (dur > 0) { scrub = posNow.toFloat() / dur; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                    },
+                    onDragEnd = { scrub?.let { vm.player.seekTo((it * dur).toLong()) }; scrub = null },
+                    onDragCancel = { scrub = null },
+                ) { c, dx ->
+                    if (dur <= 0) return@detectHorizontalDragGestures
+                    c.consume()
+                    val df = if (styleNow.scrolls) -dx / (points * TapeStep.toPx()) else dx / size.width
+                    scrub = ((scrub ?: 0f) + df).coerceIn(0f, 1f)
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures { o ->
+                    if (dur <= 0) return@detectTapGestures
+                    if (styleNow.scrolls) vm.player.seekTo((posNow + if (o.x < size.width / 2) -10_000 else 10_000).coerceIn(0, dur))
+                    else vm.player.seekTo((o.x / size.width * dur).toLong().coerceIn(0, dur))
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        SeekTape(style, wave, (frac * ps.durationMs).toLong(), frac, live, accent, scrub != null, Modifier.fillMaxWidth().height(if (style == SeekStyle.CASSETTE) 120.dp else 132.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            RoundButton(Icons.Rounded.FastRewind, tr("−10 s"), { vm.player.seekTo((pos - 10_000).coerceAtLeast(0)) }, background = Color.Black.copy(alpha = 0.35f), tint = Color.White.copy(alpha = 0.6f), size = 50.dp)
-            RoundButton(Icons.Rounded.SkipPrevious, tr("Poprzedni"), { vm.player.previous() }, background = Color.Black, size = 62.dp, iconSize = 32.dp)
-            RoundButton(if (ps.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (ps.isPlaying) tr("Pauza") else tr("Odtwórz"), { vm.player.toggle() }, background = Color.Black, size = 84.dp, iconSize = 46.dp)
-            RoundButton(Icons.Rounded.SkipNext, tr("Następny"), { vm.player.next() }, background = Color.Black, size = 62.dp, iconSize = 32.dp)
-            RoundButton(Icons.Rounded.FastForward, tr("+10 s"), { vm.player.seekTo((pos + 10_000).coerceAtMost(ps.durationMs)) }, background = Color.Black.copy(alpha = 0.35f), tint = Color.White.copy(alpha = 0.6f), size = 50.dp)
+            RoundButton(Icons.Rounded.FastRewind, tr("−10 s"), { vm.player.seekTo((pos - 10_000).coerceAtLeast(0)) }, background = Color.Black.copy(alpha = 0.35f), tint = Color.White.copy(alpha = 0.6f), size = 46.dp, iconSize = 22.dp)
+            RoundButton(Icons.Rounded.SkipPrevious, tr("Poprzedni"), { vm.player.previous() }, background = Color.Black, size = 58.dp, iconSize = 30.dp)
+            RoundButton(if (ps.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (ps.isPlaying) tr("Pauza") else tr("Odtwórz"), { vm.player.toggle() }, background = Color.Black, size = 78.dp, iconSize = 42.dp)
+            RoundButton(Icons.Rounded.SkipNext, tr("Następny"), { vm.player.next() }, background = Color.Black, size = 58.dp, iconSize = 30.dp)
+            RoundButton(Icons.Rounded.FastForward, tr("+10 s"), { vm.player.seekTo((pos + 10_000).coerceAtMost(ps.durationMs)) }, background = Color.Black.copy(alpha = 0.35f), tint = Color.White.copy(alpha = 0.6f), size = 46.dp, iconSize = 22.dp)
         }
-        Text(formatTime(pos), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomStart).clip(RoundedCornerShape(50)).background(Color.Black).padding(horizontal = 8.dp, vertical = 3.dp))
-        Text(formatTime(ps.durationMs), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomEnd).clip(RoundedCornerShape(50)).background(Color.Black).padding(horizontal = 8.dp, vertical = 3.dp))
+        val shown = (frac * ps.durationMs).toLong()
+        Text(formatTime(shown), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomStart).clip(RoundedCornerShape(50)).background(Color.Black).padding(horizontal = 8.dp, vertical = 3.dp))
+        Text("−" + formatTime((ps.durationMs - shown).coerceAtLeast(0)), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomEnd).clip(RoundedCornerShape(50)).background(Color.Black).padding(horizontal = 8.dp, vertical = 3.dp))
+        androidx.compose.animation.AnimatedVisibility(scrub != null, Modifier.align(Alignment.TopCenter), enter = fadeIn(tween(120)), exit = fadeOut(tween(200))) {
+            Text(
+                formatTime(shown) + " / " + formatTime(ps.durationMs), color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
-/** Fala całego utworu: część odtworzona jasna, reszta przygaszona; dotyk/przeciągnięcie przewija. */
+/** Górny pasek: „więcej” po lewej, po prawej przycisk listy – kolejne dotknięcia: lista odtwarzania, potem biblioteka. */
 @Composable
-private fun FullWaveform(wave: FloatArray?, pos: Long, duration: Long, accent: Color, live: LiveSpectrum, onSeek: (Long) -> Unit) {
-    var drag by remember { mutableStateOf<Float?>(null) }
-    val dur by rememberUpdatedState(duration)
-    Canvas(
-        Modifier.fillMaxSize()
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { drag = (it.x / size.width).coerceIn(0f, 1f) },
-                    onDragEnd = { drag?.let { onSeek((it * dur).toLong()) }; drag = null },
-                    onDragCancel = { drag = null },
-                ) { c, _ -> c.consume(); drag = (c.position.x / size.width).coerceIn(0f, 1f) }
-            },
-    ) {
-        @Suppress("UNUSED_VARIABLE") val t = live.tick
-        val bars = 64
-        val gap = size.width / bars * 0.35f
-        val w = size.width / bars - gap
-        val p = drag ?: if (duration > 0) pos.toFloat() / duration else 0f
-        val mid = size.height / 2
-        val src = wave
-        for (i in 0 until bars) {
-            val v = if (src != null) {
-                val a = i * src.size / bars
-                val b = max(a + 1, (i + 1) * src.size / bars)
-                var m = 0f
-                for (k in a until b.coerceAtMost(src.size)) m = max(m, src[k])
-                m
-            } else 0.25f
-            val frac = (i + 0.5f) / bars
-            val boost = if (kotlin.math.abs(frac - p) < 0.03f) live.level * 0.3f else 0f
-            val h = max(4.dp.toPx(), (v + boost).coerceAtMost(1f) * (size.height / 2 - 6.dp.toPx()))
-            val played = frac <= p
-            val color = if (played) Color.White else Color.White.copy(alpha = 0.38f)
-            drawRoundRect(color, Offset(i * (w + gap) + gap / 2, mid - h), Size(w, h * 2), CornerRadius(w / 2))
-        }
-        if (drag != null) drawLine(accent, Offset(p * size.width, 0f), Offset(p * size.width, size.height), strokeWidth = 2.dp.toPx())
+private fun PlayerTopBar(vm: MainViewModel, ps: com.blacksingularities.openamp.playback.PlayerUiState, onMenu: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        RoundButton(Icons.Rounded.MoreVert, tr("Więcej"), onMenu, background = Glassy, size = 36.dp, iconSize = 20.dp)
+        Spacer(Modifier.weight(1f))
+        PillButton(
+            if (ps.queue.isNotEmpty()) tr("Lista") + "  ${ps.index + 1}/${ps.queue.size}" else tr("Lista"),
+            { vm.goTab(Route.Queue) }, icon = Icons.Rounded.NorthEast, background = Glassy,
+        )
     }
-    if (drag != null) Text(formatTime(((drag ?: 0f) * duration).toLong()), color = Color.Black, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 10.dp, vertical = 4.dp))
+}
+
+/** Tekst utworu na rozmytej okładce, z małą miniaturą i własnym paskiem narzędzi (bez nakładania się). */
+@Composable
+private fun LyricsCard(vm: MainViewModel, track: Track?) {
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(26.dp)).background(Color.Black)) {
+        Artwork(
+            track, Modifier.fillMaxSize().scale(1.2f).then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(36.dp) else Modifier).graphicsLayer { alpha = 0.75f },
+            size = 300, shape = RoundedCornerShape(0.dp), crossfade = true,
+        )
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.62f), Color.Black.copy(alpha = 0.8f)))))
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 10.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Artwork(track, Modifier.size(38.dp), size = 160, shape = RoundedCornerShape(9.dp))
+                Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                    Text(track?.title ?: "", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track?.artist ?: "", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                RoundButton(Icons.Rounded.Image, tr("Okładka"), { vm.showLyrics = false }, background = Glassy, size = 34.dp, iconSize = 18.dp)
+            }
+            LyricsPanel(vm, Modifier.weight(1f).fillMaxWidth())
+        }
+    }
 }
 
 @Composable

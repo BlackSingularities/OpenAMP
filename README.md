@@ -6,7 +6,8 @@ Odtwarzacz muzyki na Androida (10+) o otwartym kodzie źródłowym. Kotlin, Jetp
 
 - **Biblioteka** – utwory, albumy, wykonawcy, gatunki, foldery, playlisty; wyszukiwanie; sortowanie m.in. według liczby odtworzeń, daty dodania i ostatniego odtworzenia; widok listy, kompaktowej listy, siatki i dużej siatki.
 - **Ekran odtwarzania** – duża okładka (gest w bok zmienia utwór), tło z rozmytej okładki, kolory interfejsu dopasowane do okładki, metadane (format, częstotliwość, bitrate, kanały).
-- **Taśma utworu** – fala dźwiękowa całego pliku przesuwa się pod głowicą (przeciąganie przewija), alternatywnie spektrogram na żywo.
+- **Analiza AI** – kategorie (nastroje, style, epoki, okazje) i miksy złożone z utworów; z własnym kluczem API Anthropic układa je Claude (wysyłana jest tylko lista utworów z metadanymi), bez klucza – analiza lokalna. Propozycja ponownej analizy po zmianie biblioteki o co najmniej 5 utworów; usunięte pliki znikają ze wszystkich list.
+- **Taśma utworu** – osiem stylów (fala, lustrzana fala, linia konturu, matryca kropek, segmenty LED, taśma przesuwana, spektrogram, kaseta); przewijanie przeciągnięciem w całym polu wokół przycisków.
 - **Wizualizacje** – widmo liczone z FFT bezpośrednio w torze audio (bez uprawnienia do mikrofonu): słupki, oscyloskop, okrąg wokół okładki.
 - **Teksty** – LRC ze stemplami czasu (podświetlanie, przewijanie, przeskok do linii, przesunięcie czasu) albo zwykły tekst przewijany razem z utworem. Źródła: tagi ID3 (USLT/SYLT), komentarze Vorbis we FLAC, M4A, plik `.lrc` obok utworu, plik wskazany ręcznie, [LRCLIB](https://lrclib.net).
 - **Dźwięk** – korektor graficzny z edytowalną krzywą i presetami, wzmocnienie basów, przestrzenność, wzmocnienie głośności, szybkość i wysokość, pomijanie ciszy, płynne przejścia głośności.

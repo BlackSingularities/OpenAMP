@@ -24,6 +24,7 @@ object Graph {
     lateinit var settings: SettingsStore
     lateinit var userData: UserDataStore
     lateinit var library: MediaLibrary
+    lateinit var curator: com.blacksingularities.openamp.ai.CuratorStore
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val scanLock = Mutex()
@@ -54,6 +55,22 @@ object Graph {
         val s = settings.value
         library.scan(s.minDurationSec, s.excludedFolders, s.hiddenFormats)
         scannedOnce = true
+        pruneDeleted()
+    }
+
+    /**
+     * Pliki usunięte z urządzenia znikają z playlist, ulubionych oraz kategorii i miksów AI.
+     * Zabezpieczenie: gdy naraz „zniknęła” ponad połowa biblioteki (np. odmontowana karta),
+     * niczego nie usuwamy.
+     */
+    private fun pruneDeleted() {
+        val ids = library.deviceIds ?: return
+        if (ids.isEmpty()) return
+        val known = userData.value.playlists.flatMap { it.trackIds }.toSet() + userData.value.favorites + curator.value.knownIds()
+        val missing = known.count { it !in ids }
+        if (known.size > 20 && missing > known.size / 2) return
+        userData.pruneMissing(ids)
+        curator.pruneMissing(ids)
     }
 
     suspend fun ensureScanned() {
@@ -68,6 +85,7 @@ class OpenAmpApp : Application() {
         Graph.settings = SettingsStore(this)
         Graph.userData = UserDataStore(this)
         Graph.library = MediaLibrary(this)
+        Graph.curator = com.blacksingularities.openamp.ai.CuratorStore(this)
         I18n.apply(Graph.settings.value.language)
         AudioFx.init(this)
         Dsp.init(this)

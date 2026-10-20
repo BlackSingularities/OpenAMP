@@ -164,18 +164,19 @@ fun PillButton(
     label: String? = text,
     background: Color = Flat.Block,
     onLongPress: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val bg by animateColorAsState(if (active) accent else background, tween(160), label = "pb")
     val fg = if (active) MaterialTheme.colorScheme.onPrimary else Color.White
     Row(
         modifier.reactive(label, onLongPress = onLongPress, onClick = onClick).clip(RoundedCornerShape(50)).background(bg)
-            .padding(horizontal = if (text == null) 12.dp else 14.dp, vertical = 9.dp),
+            .padding(horizontal = if (text == null) (if (compact) 10.dp else 11.dp) else (if (compact) 11.dp else 13.dp), vertical = if (compact) 7.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
-        if (icon != null && text != null) Spacer(Modifier.width(6.dp))
-        if (text != null) Text(text, color = fg, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+        if (icon != null) Icon(icon, null, tint = fg, modifier = Modifier.size(if (compact) 16.dp else 18.dp))
+        if (icon != null && text != null) Spacer(Modifier.width(5.dp))
+        if (text != null) Text(text, color = fg, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 13.sp, maxLines = 1)
     }
 }
 

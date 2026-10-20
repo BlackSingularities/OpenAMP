@@ -133,10 +133,20 @@ private fun Main(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.stack.size > 1) { vm.back() }
     val onPlayer = vm.route == Route.Player
-    val bottom = 58.dp + if (track != null && !onPlayer) 70.dp else 0.dp
+    val bottom = 54.dp + if (track != null && !onPlayer) 66.dp else 0.dp
+    val ps by vm.player.state.collectAsState()
+    val autoHide = vm.settings.collectAsState().value.autoHideBar
+    var lastTouch by remember { mutableStateOf(System.currentTimeMillis()) }
+    var barHidden by remember { mutableStateOf(false) }
+    LaunchedEffect(onPlayer, ps.isPlaying, autoHide, lastTouch, vm.menuOpen) {
+        barHidden = false
+        if (!onPlayer || !ps.isPlaying || !autoHide || vm.menuOpen) return@LaunchedEffect
+        kotlinx.coroutines.delay(5000)
+        barHidden = true
+    }
 
     CompositionLocalProvider(LocalHints provides hints) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onAnyTouch { lastTouch = System.currentTimeMillis() }) {
             AnimatedContent(
                 vm.route to vm.stack.size,
                 transitionSpec = {
@@ -164,13 +174,16 @@ private fun Main(vm: MainViewModel) {
                 AnimatedVisibility(track != null && !onPlayer, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
                     MiniPlayer(vm)
                 }
-                BottomBar(vm)
+                AnimatedVisibility(!barHidden, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut(tween(400))) {
+                    BottomBar(vm)
+                }
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = bottom))
             HintBubble(hints, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp))
         }
     }
     if (vm.menuOpen) MenuSheet(vm)
+    DeleteHost(vm)
     UpdateDialog(vm)
 }
 
@@ -180,31 +193,29 @@ private fun BottomBar(vm: MainViewModel) {
     val r = vm.route
     // Pasek na całą szerokość, wtopiony w dolną krawędź (tło sięga pod systemowy pasek nawigacji).
     Row(
-        Modifier.fillMaxWidth().background(Color.Black).navigationBarsPadding().height(58.dp),
+        Modifier.fillMaxWidth().background(Color.Black).navigationBarsPadding().height(54.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats || r == Route.Queue
         RoundButton(Icons.Rounded.GridView, tr("Biblioteka"), {
             if (r == Route.Library) vm.nowPlayingOpen = true else vm.goTab(Route.Library)
-        }, active = inLibrary, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        }, active = inLibrary, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
         RoundButton(Icons.Rounded.Equalizer, tr("Korektor"), {
             if (r == Route.Equalizer) vm.nowPlayingOpen = true else vm.goTab(Route.Equalizer)
-        }, active = r == Route.Equalizer, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        }, active = r == Route.Equalizer, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
         RoundButton(Icons.Rounded.Search, tr("Szukaj"), {
             if (r != Route.Search) vm.goTab(Route.Search)
-        }, active = r == Route.Search, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
-        RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 48.dp, iconSize = 26.dp)
+        }, active = r == Route.Search, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
+        RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
     }
 }
 
 /** Menu (czwarty przycisk paska): skróty do wszystkich miejsc aplikacji. */
 @Composable
 private fun MenuSheet(vm: MainViewModel) {
-    val sleepAt by Graph.sleepAt.collectAsState()
     ModalBottomSheet(onDismissRequest = { vm.menuOpen = false }, containerColor = Color.Black, dragHandle = null) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            SectionHeader(Icons.Rounded.Menu, "OpenAMP")
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             val go: (() -> Unit) -> () -> Unit = { a -> { vm.menuOpen = false; a() } }
             TileGrid(
                 listOf(
@@ -212,13 +223,9 @@ private fun MenuSheet(vm: MainViewModel) {
                     Tile(Icons.AutoMirrored.Rounded.QueueMusic, tr("Kolejka"), tr("Kolejka"), false) { go { vm.nowPlayingOpen = true; vm.queueOpen = true }() },
                     Tile(Icons.Rounded.BarChart, tr("Statystyki"), tr("Statystyki"), vm.route == Route.Stats) { go { vm.goTab(Route.Stats) }() },
                     Tile(Icons.Rounded.Settings, tr("Ustawienia"), tr("Ustawienia"), vm.route == Route.Settings) { go { vm.goTab(Route.Settings) }() },
-                    Tile(Icons.Rounded.Bedtime, tr("Wyłącznik"), tr("Wyłącznik czasowy"), sleepAt != null) { go { vm.nowPlayingOpen = true; vm.sleepDialog = true }() },
-                    Tile(Icons.Rounded.Lyrics, tr("Tekst"), tr("Tekst utworu"), vm.showLyrics) { go { vm.nowPlayingOpen = true; vm.showLyrics = !vm.showLyrics }() },
-                    Tile(Icons.Rounded.Refresh, tr("Skanuj"), tr("Odśwież bibliotekę"), false) { go { vm.rescan() }() },
-                    Tile(Icons.Rounded.SystemUpdate, tr("Aktualizacje"), tr("Sprawdź teraz"), false) { go { vm.updateDialog = true; vm.checkUpdate() }() },
                 ),
             )
-            Gap(12.dp)
+            Gap(6.dp)
         }
     }
 }
