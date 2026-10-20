@@ -4,6 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -265,5 +268,22 @@ fun SpectrumLine(live: LiveSpectrum, color: Color, modifier: Modifier) {
         val area = Path().apply { addPath(line); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
         drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = (0.45f + live.beat * 0.4f).coerceAtMost(1f)), Color.Transparent)))
         drawPath(line, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+/**
+ * Wizualizacja z lekkim cieniem: najpierw ten sam rysunek w półprzezroczystej czerni, lekko
+ * przesunięty i rozmyty (Android 12+), potem właściwy – widać ją na białej i jasnej okładce.
+ * [draw] dostaje kolor cienia (albo null dla właściwego rysunku) i modyfikator wypełniający pole.
+ */
+@Composable
+fun Shadowed(modifier: Modifier, draw: @Composable (shadow: Color?, Modifier) -> Unit) {
+    Box(modifier) {
+        draw(
+            Color.Black.copy(alpha = 0.55f),
+            Modifier.matchParentSize().offset(y = 1.5.dp)
+                .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(4.dp, BlurredEdgeTreatment.Unbounded) else Modifier),
+        )
+        draw(null, Modifier.matchParentSize())
     }
 }

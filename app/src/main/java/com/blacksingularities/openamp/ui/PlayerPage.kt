@@ -202,7 +202,8 @@ private fun CoverBlock(
     val prevTrack = frozenPrev ?: livePrev
     val hasNext by rememberUpdatedState(ps.nextId != null)
     val hasPrev by rememberUpdatedState(ps.prevId != null)
-    val scale by animateFloatAsState(if (playing) 1f else 0.97f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
+    // Start odtwarzania: okładka rośnie tylko o 2 px z każdej strony (na pauzie jest o tyle mniejsza).
+    val paused by animateFloatAsState(if (playing) 0f else 1f, spring(dampingRatio = 0.6f, stiffness = 240f), label = "cov")
     val ringVis = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || vis == VisualizerStyle.PULSE
     val round = vis == VisualizerStyle.CIRCLE || vis == VisualizerStyle.RING_WAVE || shapeMode == CoverShape.CIRCLE || shapeMode == CoverShape.VINYL
     val shape = when {
@@ -265,8 +266,8 @@ private fun CoverBlock(
                         ,
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (vis == VisualizerStyle.CIRCLE) CircleSpectrum(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
-                    if (vis == VisualizerStyle.RING_WAVE) RingWave(live, accent, Modifier.fillMaxSize(), innerFraction = 0.80f)
+                    if (vis == VisualizerStyle.CIRCLE) Shadowed(Modifier.fillMaxSize()) { c, m -> CircleSpectrum(live, c ?: accent, m, innerFraction = 0.80f) }
+                    if (vis == VisualizerStyle.RING_WAVE) Shadowed(Modifier.fillMaxSize()) { c, m -> RingWave(live, c ?: accent, m, innerFraction = 0.80f) }
                     if (vis == VisualizerStyle.PULSE) PulseGlow(live, accent, Modifier.fillMaxSize())
                     val frac = { (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) }
                     val fill = if (ringVis) 0.88f else 1f
@@ -292,14 +293,15 @@ private fun CoverBlock(
                             rotationZ = offset.value / width * 4f
                             // Odczyt tick w warstwie odświeża ją co klatkę tylko dla stylu „Puls”.
                             val pulse = if (vis == VisualizerStyle.PULSE) { live.tick; 1f + live.beat * 0.05f } else 1f
+                            val scale = 1f - paused * 4f / size.width.coerceAtLeast(1f)
                             val sc = scale * pulse * (1f - 0.08f * frac()); scaleX = sc; scaleY = sc
                         }
                         .shadow(24.dp, shape)
                     if (shapeMode == CoverShape.VINYL) Vinyl(shown, playing, accent, m) else Artwork(shown, m, size = 1000, shape = shape, crossfade = !gestures)
-                    if (vis == VisualizerStyle.BARS) SpectrumBars(live, Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(56.dp), mirror = false)
-                    if (vis == VisualizerStyle.MIRROR) MirrorBars(live, Color.White.copy(alpha = 0.9f), Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(64.dp))
-                    if (vis == VisualizerStyle.LINE) SpectrumLine(live, Color.White, Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.86f).height(56.dp))
-                    if (vis == VisualizerStyle.WAVE) WaveScope(live, Color.White, Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp))
+                    if (vis == VisualizerStyle.BARS) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(56.dp)) { c, m -> SpectrumBars(live, c ?: Color.White.copy(alpha = 0.85f), m, mirror = false) }
+                    if (vis == VisualizerStyle.MIRROR) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(64.dp)) { c, m -> MirrorBars(live, c ?: Color.White.copy(alpha = 0.9f), m) }
+                    if (vis == VisualizerStyle.LINE) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.86f).height(56.dp)) { c, m -> SpectrumLine(live, c ?: Color.White, m) }
+                    if (vis == VisualizerStyle.WAVE) Shadowed(Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp)) { c, m -> WaveScope(live, c ?: Color.White, m) }
                 }
             }
         }
