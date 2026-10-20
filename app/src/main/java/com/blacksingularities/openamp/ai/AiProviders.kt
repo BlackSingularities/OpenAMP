@@ -92,7 +92,7 @@ object AiClient {
     }.getOrNull() ?: text.take(200).ifBlank { null }
 
     /** Modele dostępne u dostawcy (z /models), posortowane; pusta lista – gdy dostawca ich nie podaje. */
-    fun listModels(provider: AiProvider, baseUrl: String, key: String): List<String> {
+    fun listModels(provider: AiProvider, baseUrl: String, key: String): List<AiModelInfo> {
         val base = baseUrl.trimEnd('/')
         if (base.isBlank()) error("Brak adresu serwera")
         val text = request("$base/models" + if (provider == AiProvider.ANTHROPIC) "?limit=1000" else "", provider, key, null, 30_000)
@@ -102,13 +102,22 @@ object AiClient {
             trimmed.startsWith("[") -> JSONArray(trimmed)
             else -> JSONObject(trimmed).let { it.optJSONArray("data") ?: it.optJSONArray("models") ?: JSONArray() }
         }
-        val ids = (0 until arr.length()).mapNotNull { i ->
-            val o = arr.optJSONObject(i) ?: return@mapNotNull arr.optString(i).ifBlank { null }
-            (o.optString("id").ifBlank { o.optString("name") }).removePrefix("models/").ifBlank { null }
+        val list = (0 until arr.length()).mapNotNull { i ->
+            val o = arr.optJSONObject(i) ?: return@mapNotNull arr.optString(i).ifBlank { null }?.let { AiModelInfo(it) }
+            val id = (o.optString("id").ifBlank { o.optString("name") }).removePrefix("models/").ifBlank { return@mapNotNull null }
+            // OpenRouter podaje nazwę, cenę za token i długość kontekstu; Anthropic – display_name, reszta – owned_by.
+            val name = o.optString("display_name").ifBlank { o.optString("name").takeIf { !it.startsWith("models/") && it != id }.orEmpty() }
+            val pricing = o.optJSONObject("pricing")
+            fun perMillion(k: String) = pricing?.optString(k)?.toDoubleOrNull()?.takeIf { it >= 0 }?.times(1_000_000)
+            val ctx = o.optLong("context_length", 0).takeIf { it > 0 }
+                ?: o.optLong("context_window", 0).takeIf { it > 0 }
+                ?: o.optLong("inputTokenLimit", 0).takeIf { it > 0 }
+            AiModelInfo(id, name, perMillion("prompt"), perMillion("completion"), ctx, o.optString("owned_by"))
         }
-        // Modele niebędące czatem (obrazy, mowa, wektory) tylko by przeszkadzały.
-        val skip = Regex("embed|whisper|tts|dall-e|image|moderation|rerank|audio|transcribe|realtime|vision-only|guard", RegexOption.IGNORE_CASE)
-        return ids.filterNot { skip.containsMatchIn(it) }.distinct().sorted()
+        // Modele niebędące czatem (obrazy, mowa, wektory) tylko by przeszkadzały – poza agregatorami i własnym serwerem.
+        val skip = Regex("embed|whisper|tts|dall-e|image|moderation|rerank|audio|transcribe|realtime|vision-only|guard|sora|ocr|davinci|babbage", RegexOption.IGNORE_CASE)
+        val chat = if (provider == AiProvider.OPENROUTER || provider == AiProvider.CUSTOM) list else list.filterNot { skip.containsMatchIn(it.id) }
+        return chat.distinctBy { it.id }.sortedBy { it.title.lowercase() }
     }
 
     /**
@@ -140,5 +149,34 @@ object AiClient {
         val b = text.lastIndexOf('}')
         if (a < 0 || b <= a) error("Odpowiedź bez JSON")
         return text.substring(a, b + 1)
+    }
+}
+
+/**
+ * Model dostawcy z tym, co podaje API: nazwa, ceny w USD za milion tokenów (wejście / wyjście),
+ * długość kontekstu i właściciel. Zapisywany jako jeden wiersz rozdzielany tabulatorami.
+ */
+data class AiModelInfo(
+    val id: String,
+    val name: String = "",
+    val promptPerMillion: Double? = null,
+    val completionPerMillion: Double? = null,
+    val context: Long? = null,
+    val owner: String = "",
+) {
+    val title: String get() = name.ifBlank { id }
+    val hasPricing: Boolean get() = promptPerMillion != null || completionPerMillion != null
+    val isFree: Boolean get() = id.endsWith(":free") || (hasPricing && promptPerMillion == 0.0 && completionPerMillion == 0.0)
+
+    fun encode(): String = listOf(id, name, promptPerMillion?.toString().orEmpty(), completionPerMillion?.toString().orEmpty(), context?.toString().orEmpty(), owner)
+        .joinToString("\t") { it.replace('\t', ' ').replace('\n', ' ') }
+
+    companion object {
+        /** Odczyt wiersza; starsze wersje zapisywały same identyfikatory. */
+        fun decode(line: String): AiModelInfo? {
+            val f = line.split('\t')
+            val id = f.firstOrNull()?.trim().orEmpty().ifBlank { return null }
+            return AiModelInfo(id, f.getOrNull(1).orEmpty(), f.getOrNull(2)?.toDoubleOrNull(), f.getOrNull(3)?.toDoubleOrNull(), f.getOrNull(4)?.toLongOrNull(), f.getOrNull(5).orEmpty())
+        }
     }
 }

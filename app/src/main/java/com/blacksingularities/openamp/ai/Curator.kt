@@ -54,7 +54,7 @@ class CuratorStore(context: Context) {
     val status: StateFlow<CuratorStatus> = _status.asStateFlow()
 
     /** Ustawienia jednego dostawcy: klucz, model, adres i ostatnio pobrana lista modeli. */
-    data class ProviderConfig(val key: String = "", val model: String = "", val baseUrl: String = "", val models: List<String> = emptyList())
+    data class ProviderConfig(val key: String = "", val model: String = "", val baseUrl: String = "", val models: List<AiModelInfo> = emptyList())
 
     private val _provider = MutableStateFlow(
         prefs.getString("provider", null)?.let { n -> AiProvider.entries.firstOrNull { it.name == n } } ?: AiProvider.ANTHROPIC,
@@ -71,7 +71,7 @@ class CuratorStore(context: Context) {
             key = prefs.getString("key_${p.name}", null) ?: legacy,
             model = prefs.getString("model_${p.name}", null) ?: p.fallbackModels.firstOrNull().orEmpty(),
             baseUrl = prefs.getString("url_${p.name}", null) ?: p.baseUrl,
-            models = prefs.getString("models_${p.name}", null)?.split("\n")?.filter { it.isNotBlank() } ?: p.fallbackModels,
+            models = prefs.getString("models_${p.name}", null)?.split("\n")?.mapNotNull { AiModelInfo.decode(it) } ?: p.fallbackModels.map { AiModelInfo(it) },
         )
     }
 
@@ -89,7 +89,7 @@ class CuratorStore(context: Context) {
             .putString("key_${p.name}", c.key.trim())
             .putString("model_${p.name}", c.model.trim())
             .putString("url_${p.name}", c.baseUrl.trim())
-            .putString("models_${p.name}", c.models.joinToString("\n"))
+            .putString("models_${p.name}", c.models.joinToString("\n") { it.encode() })
             .apply()
     }
 
@@ -115,8 +115,8 @@ class CuratorStore(context: Context) {
     suspend fun refreshModels(p: AiProvider): String? = withContext(Dispatchers.IO) {
         val c = config(p)
         try {
-            val list = AiClient.listModels(p, c.baseUrl, c.key).ifEmpty { p.fallbackModels }
-            updateConfig(p) { it.copy(models = list, model = it.model.takeIf { m -> m.isNotBlank() } ?: list.firstOrNull().orEmpty()) }
+            val list = AiClient.listModels(p, c.baseUrl, c.key).ifEmpty { p.fallbackModels.map { AiModelInfo(it) } }
+            updateConfig(p) { it.copy(models = list, model = it.model.takeIf { m -> m.isNotBlank() } ?: list.firstOrNull()?.id.orEmpty()) }
             null
         } catch (e: Exception) {
             e.message ?: e.toString()
