@@ -24,6 +24,15 @@ object Waveform {
     const val POINTS = 600
     private val memory = LruCache<Long, FloatArray>(24)
 
+    /** Fala tylko z pamięci albo z dysku – bez dekodowania pliku (np. dla widżetów). */
+    fun cached(context: Context, track: Track): FloatArray? {
+        memory.get(track.id)?.let { return it }
+        val file = File(File(context.cacheDir, "waveforms"), "${track.id}_${track.size}.bin")
+        if (!file.exists()) return null
+        val b = runCatching { file.readBytes() }.getOrNull() ?: return null
+        return FloatArray(b.size) { (b[it].toInt() and 0xFF) / 255f }.also { memory.put(track.id, it) }
+    }
+
     suspend fun load(context: Context, track: Track): FloatArray? = withContext(Dispatchers.IO) {
         memory.get(track.id)?.let { return@withContext it }
         val dir = File(context.cacheDir, "waveforms").apply { mkdirs() }

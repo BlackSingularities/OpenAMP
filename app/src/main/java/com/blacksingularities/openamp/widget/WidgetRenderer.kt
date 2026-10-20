@@ -9,11 +9,16 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Typeface
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -22,8 +27,10 @@ import androidx.core.graphics.ColorUtils
 import com.blacksingularities.openamp.MainActivity
 import com.blacksingularities.openamp.R
 import com.blacksingularities.openamp.data.RepeatMode
+import com.blacksingularities.openamp.data.SeekStyle
 import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.ui.formatTime
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -47,7 +54,24 @@ object WidgetRenderer {
         val favorite: Boolean,
         val sleepOn: Boolean,
         val appAccent: Int,
+        /** Fala dźwiękowa bieżącego utworu (null – jeszcze nie policzona). */
+        val wave: FloatArray? = null,
+        /** Styl taśmy z ekranu odtwarzania – dla paska w stylu „jak w aplikacji”. */
+        val appSeek: SeekStyle = SeekStyle.WAVEFORM,
     )
+
+    /** Styl paska po rozwinięciu „jak w aplikacji” (taśmy przewijane rysujemy jako falę). */
+    fun resolveStyle(style: WidgetProgressStyle, app: SeekStyle): WidgetProgressStyle =
+        if (style != WidgetProgressStyle.APP) style else when (app) {
+            SeekStyle.MIRROR -> WidgetProgressStyle.MIRROR
+            SeekStyle.LINE -> WidgetProgressStyle.CONTOUR
+            SeekStyle.DOTS -> WidgetProgressStyle.DOTS
+            SeekStyle.SEGMENTS -> WidgetProgressStyle.SEGMENTS
+            else -> WidgetProgressStyle.WAVE
+        }
+
+    fun usesWave(style: WidgetProgressStyle) = style == WidgetProgressStyle.WAVE || style == WidgetProgressStyle.MIRROR ||
+        style == WidgetProgressStyle.CONTOUR || style == WidgetProgressStyle.DOTS || style == WidgetProgressStyle.SEGMENTS
 
     private class Palette(val fg: Int, val fg2: Int, val fg3: Int, val accent: Int, val onAccent: Int, val light: Boolean)
 
@@ -87,8 +111,9 @@ object WidgetRenderer {
         val pal = palette(i)
         progress(context, rv, i, pal)
         if (i.kind == WidgetKind.PLAYER && i.cfg.showTime) {
-            rv.setTextViewText(R.id.w_time_pos, formatTime(i.state.position()))
-            rv.setTextViewText(R.id.w_time_dur, formatTime(i.state.durationMs))
+            val sides = i.cfg.timePos == WidgetTimePos.SIDES
+            rv.setTextViewText(if (sides) R.id.w_time_side_pos else R.id.w_time_pos, formatTime(i.state.position()))
+            rv.setTextViewText(if (sides) R.id.w_time_side_dur else R.id.w_time_dur, formatTime(i.state.durationMs))
         }
         return rv
     }
@@ -99,11 +124,14 @@ object WidgetRenderer {
         texts(rv, i, pal, titleSp = 15f, artistSp = 12f)
         rv.setViewVisibility(R.id.w_info, vis(big))
         rv.setViewVisibility(R.id.w_artist, vis(c.showArtist && i.state.trackId != null || i.state.trackId == null))
-        val wide = i.size.wDp >= 140
+        val wide = i.size.wDp >= 140 && c.showPrevNext
         rv.setViewVisibility(R.id.w_prev, vis(wide))
         rv.setViewVisibility(R.id.w_next, vis(wide))
+        val pad = px(context, c.padding)
+        rv.setViewPadding(R.id.w_content, pad, 0, pad, max(px(context, 4), pad - px(context, 4)))
         controls(context, rv, i, pal)
-        like(context, rv, i, pal, onArt = c.showCover && i.art != null)
+        buttons(rv, i, play = 48, side = 40, sideWidth = null, extra = null, row = 48)
+        like(context, rv, i, pal, onArt = coverAsBackground(i))
         progress(context, rv, i, pal)
         rv.setOnClickPendingIntent(R.id.w_bg, tapIntent(context, i))
         rv.setOnClickPendingIntent(R.id.w_info, tapIntent(context, i))
@@ -113,15 +141,20 @@ object WidgetRenderer {
         val c = i.cfg
         texts(rv, i, pal, titleSp = 14f, artistSp = 12f)
         rv.setViewVisibility(R.id.w_artist, vis(c.showArtist || i.state.trackId == null))
-        cover(context, rv, i, pal, 48)
-        rv.setViewVisibility(R.id.w_prev, vis(i.size.wDp >= 230))
+        val pad = px(context, c.padding)
+        rv.setViewPadding(R.id.w_content, pad, 0, max(0, pad - px(context, 2)), 0)
+        val coverDp = (48 * c.coverSize / 100).coerceIn(24, (i.size.hDp - 8).coerceAtLeast(24))
+        val pos = if (c.coverPos == WidgetCoverPos.TOP) WidgetCoverPos.LEFT else c.coverPos
+        placeCover(context, rv, i, pal, coverDp, pos, listOf(WidgetCoverPos.LEFT to R.id.w_cover, WidgetCoverPos.RIGHT to R.id.w_cover_end))
+        rv.setViewVisibility(R.id.w_prev, vis(i.size.wDp >= 230 && c.showPrevNext))
+        rv.setViewVisibility(R.id.w_next, vis(c.showPrevNext))
         controls(context, rv, i, pal)
-        like(context, rv, i, pal)
+        buttons(rv, i, play = 44, side = 40, sideWidth = 40, extra = null, row = null)
+        like(context, rv, i, pal, onArt = coverAsBackground(i))
         if (i.size.wDp < 270) rv.setViewVisibility(R.id.w_like, View.GONE)
         progress(context, rv, i, pal)
-        rv.setOnClickPendingIntent(R.id.w_cover, tapIntent(context, i))
         rv.setOnClickPendingIntent(R.id.w_info, tapIntent(context, i))
-        rv.setOnClickPendingIntent(R.id.w_bg, openApp(context, i.id, null, 20))
+        rv.setOnClickPendingIntent(R.id.w_bg, if (coverAsBackground(i)) tapIntent(context, i) else openApp(context, i.id, null, 20))
     }
 
     private fun buildPlayer(context: Context, rv: RemoteViews, i: Input, pal: Palette) {
@@ -143,57 +176,87 @@ object WidgetRenderer {
         rv.setViewVisibility(R.id.w_meta, vis(meta.isNotEmpty()))
         rv.setTextViewText(R.id.w_meta, meta)
         textStyle(rv, R.id.w_meta, 11f * c.textScale / 100f, pal.fg3)
+        val pad = px(context, c.padding)
+        rv.setViewPadding(R.id.w_content, pad, pad, pad, pad)
 
         // Wiersz postępu i czasy – gdy jest miejsce.
         val showRow = (c.showProgress || c.showTime) && h >= 140
+        val sides = c.timePos == WidgetTimePos.SIDES
         rv.setViewVisibility(R.id.w_progress_row, vis(showRow))
         rv.setViewVisibility(R.id.w_progress, vis(c.showProgress))
-        rv.setViewVisibility(R.id.w_times, vis(c.showTime))
+        rv.setViewVisibility(R.id.w_times, vis(c.showTime && !sides))
+        rv.setViewVisibility(R.id.w_time_side_pos, vis(c.showTime && sides))
+        rv.setViewVisibility(R.id.w_time_side_dur, vis(c.showTime && sides))
         if (showRow) {
             progress(context, rv, i, pal)
-            rv.setTextViewText(R.id.w_time_pos, formatTime(s.position()))
-            rv.setTextViewText(R.id.w_time_dur, formatTime(s.durationMs))
-            textStyle(rv, R.id.w_time_pos, 11f, pal.fg2)
-            textStyle(rv, R.id.w_time_dur, 11f, pal.fg2)
+            val posId = if (sides) R.id.w_time_side_pos else R.id.w_time_pos
+            val durId = if (sides) R.id.w_time_side_dur else R.id.w_time_dur
+            rv.setTextViewText(posId, formatTime(s.position()))
+            rv.setTextViewText(durId, formatTime(s.durationMs))
+            textStyle(rv, posId, 11f * c.textScale / 100f, pal.fg2)
+            textStyle(rv, durId, 11f * c.textScale / 100f, pal.fg2)
+        }
+        if (Build.VERSION.SDK_INT >= 31) {
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, c.progressGap.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
         }
 
-        // Okładka dopasowana do wysokości widżetu (Android 12+), na starszych stała.
-        val reserved = 28 + 56 + (if (showRow) (if (c.showTime) 34 else 22) else 0)
-        val coverDp = (h - reserved).coerceIn(48, 150).coerceAtMost((i.size.wDp * 0.42f).toInt())
-        cover(context, rv, i, pal, coverDp)
-        if (Build.VERSION.SDK_INT >= 31 && c.showCover) {
-            rv.setViewLayoutWidth(R.id.w_cover, coverDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
-            rv.setViewLayoutHeight(R.id.w_cover, coverDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+        // Okładka dopasowana do wysokości widżetu i suwaka rozmiaru (Android 12+), na starszych stała.
+        val bar = if (!showRow) 0 else 6 + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
+            (if (c.showTime && !sides) 15 else 0)
+        val reserved = c.padding * 2 + 48 * c.buttonScale / 100 + c.progressGap + bar
+        val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
+            // Nad tytułem: zostaje miejsce na tytuł i wykonawcę.
+            ((h - reserved - 52) * c.coverSize / 100).coerceIn(32, 180).coerceAtMost((i.size.wDp * 0.6f).toInt())
+        } else {
+            // Wiersz z tytułem nie rośnie ponad wolne miejsce – większa okładka byłaby przycięta.
+            ((h - reserved) * c.coverSize / 100).coerceIn(32, 180).coerceAtMost((i.size.wDp * 0.5f).toInt()).coerceAtMost((h - reserved - 14).coerceAtLeast(32))
         }
+        placeCover(
+            context, rv, i, pal, coverDp, c.coverPos,
+            listOf(WidgetCoverPos.LEFT to R.id.w_cover, WidgetCoverPos.RIGHT to R.id.w_cover_end, WidgetCoverPos.TOP to R.id.w_cover_top),
+        )
 
-        val extras = c.showShuffleRepeat && i.size.wDp >= 230
-        rv.setViewVisibility(R.id.w_shuffle, vis(extras))
-        rv.setViewVisibility(R.id.w_repeat, vis(extras))
-        if (extras) {
+        val roomy = i.size.wDp >= 230
+        val showShuffle = c.showShuffle && roomy
+        val showRepeat = c.showRepeat && roomy
+        rv.setViewVisibility(R.id.w_shuffle, vis(showShuffle))
+        rv.setViewVisibility(R.id.w_repeat, vis(showRepeat))
+        rv.setViewVisibility(R.id.w_prev, vis(c.showPrevNext))
+        rv.setViewVisibility(R.id.w_next, vis(c.showPrevNext))
+        if (showShuffle) {
             icon(rv, R.id.w_shuffle, R.drawable.ic_w_shuffle, if (s.shuffle) pal.accent else pal.fg3)
+            rv.setOnClickPendingIntent(R.id.w_shuffle, action(context, i, WidgetActions.SHUFFLE, 5))
+            rv.setContentDescription(R.id.w_shuffle, tr("Losowo"))
+        }
+        if (showRepeat) {
             icon(
                 rv, R.id.w_repeat, if (s.repeat == RepeatMode.ONE) R.drawable.ic_w_repeat_one else R.drawable.ic_w_repeat,
                 if (s.repeat != RepeatMode.OFF) pal.accent else pal.fg3,
             )
-            rv.setOnClickPendingIntent(R.id.w_shuffle, action(context, i, WidgetActions.SHUFFLE, 5))
             rv.setOnClickPendingIntent(R.id.w_repeat, action(context, i, WidgetActions.REPEAT, 6))
-            rv.setContentDescription(R.id.w_shuffle, tr("Losowo"))
             rv.setContentDescription(R.id.w_repeat, tr("Powtarzanie"))
         }
         controls(context, rv, i, pal)
-        like(context, rv, i, pal)
-        rv.setOnClickPendingIntent(R.id.w_cover, tapIntent(context, i))
+        buttons(rv, i, play = 48, side = 44, sideWidth = null, extra = 40, row = 48)
+        like(context, rv, i, pal, onArt = coverAsBackground(i))
         rv.setOnClickPendingIntent(R.id.w_info, tapIntent(context, i))
-        rv.setOnClickPendingIntent(R.id.w_bg, openApp(context, i.id, null, 20))
+        rv.setOnClickPendingIntent(R.id.w_bg, if (coverAsBackground(i)) tapIntent(context, i) else openApp(context, i.id, null, 20))
     }
 
     private fun buildShortcuts(context: Context, rv: RemoteViews, i: Input, pal: Palette) {
         val c = i.cfg
+        val pad = px(context, c.padding)
+        rv.setViewPadding(R.id.w_content, pad, pad, pad, pad)
         val header = i.size.hDp >= 130 && c.showCover
         rv.setViewVisibility(R.id.w_header, vis(header))
         if (header) {
             texts(rv, i, pal, titleSp = 14f, artistSp = 12f)
-            cover(context, rv, i, pal, 40)
+            val coverDp = (40 * c.coverSize / 100).coerceIn(24, 48)
+            cover(context, rv, i, pal, coverDp)
+            if (Build.VERSION.SDK_INT >= 31) {
+                rv.setViewLayoutWidth(R.id.w_cover, coverDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+                rv.setViewLayoutHeight(R.id.w_cover, coverDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+            }
             controls(context, rv, i, pal)
             rv.setOnClickPendingIntent(R.id.w_cover, tapIntent(context, i))
             rv.setOnClickPendingIntent(R.id.w_info, tapIntent(context, i))
@@ -280,7 +343,11 @@ object WidgetRenderer {
         val scale = i.cfg.textScale / 100f
         val title = s.title?.takeIf { it.isNotBlank() } ?: if (s.trackId == null) tr("Nic nie jest odtwarzane") else tr("Nieznany utwór")
         val artist = if (s.trackId == null) tr("Dotknij ▶, aby zagrać") else s.artist?.takeIf { it.isNotBlank() } ?: tr("Nieznany wykonawca")
-        rv.setTextViewText(R.id.w_title, title)
+        rv.setTextViewText(
+            R.id.w_title,
+            if (i.cfg.boldTitle) SpannableString(title).apply { setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) } else title,
+        )
+        rv.setInt(R.id.w_title, "setMaxLines", i.cfg.titleLines.coerceIn(1, 3))
         rv.setTextViewText(R.id.w_artist, artist)
         textStyle(rv, R.id.w_title, titleSp * scale, pal.fg)
         textStyle(rv, R.id.w_artist, artistSp * scale, pal.fg2)
@@ -324,20 +391,74 @@ object WidgetRenderer {
         rv.setOnClickPendingIntent(R.id.w_like, action(context, i, WidgetActions.LIKE, 4))
     }
 
-    private fun cover(context: Context, rv: RemoteViews, i: Input, pal: Palette, dp: Int) {
-        rv.setViewVisibility(R.id.w_cover, vis(i.cfg.showCover))
-        if (!i.cfg.showCover) return
+    private fun px(context: Context, dp: Int) = (dp * context.resources.displayMetrics.density).roundToInt()
+
+    /** Okładka jako tło całego widżetu (widżet „Okładka” albo położenie „tło”). */
+    private fun coverAsBackground(i: Input): Boolean = i.cfg.showCover && i.art != null && when (i.kind) {
+        WidgetKind.COVER -> true
+        WidgetKind.PLAYER, WidgetKind.BAR -> i.cfg.coverPos == WidgetCoverPos.BACKGROUND
+        WidgetKind.SHORTCUTS -> false
+    }
+
+    /**
+     * Okładka w wybranym miejscu: [slots] to możliwe położenia z identyfikatorami widoków
+     * (pozostałe są chowane). Rozmiar w dp ustawiany na Androidzie 12+.
+     */
+    private fun placeCover(
+        context: Context, rv: RemoteViews, i: Input, pal: Palette, dp: Int,
+        pos: WidgetCoverPos, slots: List<Pair<WidgetCoverPos, Int>>,
+    ) {
+        val target = slots.firstOrNull { it.first == pos }?.second
+        for ((_, id) in slots) if (id != target) rv.setViewVisibility(id, View.GONE)
+        if (target == null) return
+        cover(context, rv, i, pal, dp, target)
+        if (Build.VERSION.SDK_INT >= 31) {
+            rv.setViewLayoutWidth(target, dp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+            rv.setViewLayoutHeight(target, dp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+        }
+        rv.setOnClickPendingIntent(target, tapIntent(context, i))
+    }
+
+    /**
+     * Wielkość przycisków (Android 12+): [play] – koło odtwarzania, [side] – poprzedni/następny,
+     * [extra] – losowanie/powtarzanie, [row] – wysokość wiersza; wartości w dp przy 100%.
+     */
+    private fun buttons(rv: RemoteViews, i: Input, play: Int, side: Int, sideWidth: Int?, extra: Int?, row: Int?) {
+        if (Build.VERSION.SDK_INT < 31) return
+        val k = i.cfg.buttonScale.coerceIn(60, 150) / 100f
+        val unit = TypedValue.COMPLEX_UNIT_DIP
+        rv.setViewLayoutWidth(R.id.w_play_frame, play * k, unit)
+        rv.setViewLayoutHeight(R.id.w_play_frame, play * k, unit)
+        for (id in intArrayOf(R.id.w_prev, R.id.w_next)) {
+            rv.setViewLayoutHeight(id, side * k, unit)
+            if (sideWidth != null) rv.setViewLayoutWidth(id, sideWidth * k, unit)
+        }
+        if (extra != null) for (id in intArrayOf(R.id.w_shuffle, R.id.w_repeat)) rv.setViewLayoutHeight(id, extra * k, unit)
+        if (row != null) rv.setViewLayoutHeight(R.id.w_controls, row * k, unit)
+    }
+
+    private fun cover(context: Context, rv: RemoteViews, i: Input, pal: Palette, dp: Int, id: Int = R.id.w_cover) {
+        // Okładka jako tło – osobny obrazek byłby zdublowany.
+        val show = i.cfg.showCover && !coverAsBackground(i)
+        rv.setViewVisibility(id, vis(show))
+        if (!show) return
         val px = (dp * scaleOf(context)).roundToInt().coerceIn(48, 420)
-        rv.setImageViewBitmap(R.id.w_cover, coverBitmap(context, i, pal, px))
+        rv.setImageViewBitmap(id, coverBitmap(context, i, pal, px))
     }
 
     private fun progress(context: Context, rv: RemoteViews, i: Input, pal: Palette) {
         val show = i.cfg.showProgress && (i.kind != WidgetKind.PLAYER || i.size.hDp >= 140)
         rv.setViewVisibility(R.id.w_progress, vis(show))
         if (!show) return
-        val thin = i.kind != WidgetKind.PLAYER
-        val inset = when (i.kind) { WidgetKind.PLAYER -> 28; WidgetKind.BAR -> 36; else -> 28 }
-        rv.setImageViewBitmap(R.id.w_progress, progressBitmap(context, i, pal, (i.size.wDp - inset).coerceAtLeast(40), thin))
+        val c = i.cfg
+        val inset = when (i.kind) {
+            WidgetKind.PLAYER -> c.padding * 2 + (if (c.showTime && c.timePos == WidgetTimePos.SIDES) 96 else 0)
+            WidgetKind.BAR -> 36
+            else -> c.padding * 2
+        }
+        val hDp = c.progressHeight.coerceIn(2, 48)
+        if (Build.VERSION.SDK_INT >= 31) rv.setViewLayoutHeight(R.id.w_progress, hDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+        rv.setImageViewBitmap(R.id.w_progress, progressBitmap(context, i, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
     }
 
     // ---------------------------------------------------------------- akcje
@@ -371,7 +492,7 @@ object WidgetRenderer {
 
     private fun palette(i: Input): Palette {
         val c = i.cfg
-        val coverOnArt = i.kind == WidgetKind.COVER && c.showCover && i.art != null
+        val coverOnArt = coverAsBackground(i)
         val light = !coverOnArt && c.opacity >= 45 && when (c.background) {
             WidgetBackground.LIGHT -> true
             WidgetBackground.CUSTOM -> ColorUtils.calculateLuminance(c.customColor) > 0.55
@@ -415,10 +536,15 @@ object WidgetRenderer {
         val content = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(content)
         val art = i.art
-        val coverOnArt = i.kind == WidgetKind.COVER && c.showCover && art != null
+        val coverOnArt = coverAsBackground(i)
         when {
+            coverOnArt && i.kind != WidgetKind.COVER -> {
+                // Okładka pod całym odtwarzaczem: równe przyciemnienie, bo tekst i przyciski są wszędzie.
+                drawCrop(canvas, art!!, w, h, 1f, c.coverFocus / 100f)
+                canvas.drawColor(0x8C000000.toInt())
+            }
             coverOnArt -> {
-                drawCrop(canvas, art!!, w, h)
+                drawCrop(canvas, art!!, w, h, c.coverSize.coerceIn(100, 200) / 100f, c.coverFocus / 100f)
                 // Przyciemnienie u dołu pod tekst i przyciski, lekko u góry pod serduszko.
                 val p = Paint(Paint.ANTI_ALIAS_FLAG)
                 p.shader = LinearGradient(0f, h * 0.30f, 0f, h.toFloat(), 0x00000000, 0xD9000000.toInt(), Shader.TileMode.CLAMP)
@@ -453,7 +579,7 @@ object WidgetRenderer {
         val canvas = Canvas(content)
         val art = i.art
         if (art != null) {
-            drawCrop(canvas, art, px, px)
+            drawCrop(canvas, art, px, px, 1f, i.cfg.coverFocus / 100f)
         } else {
             // Zastępcza okładka: delikatny blok w kolorze akcentu z nutą.
             canvas.drawColor(ColorUtils.blendARGB(pal.accent, if (pal.light) Color.WHITE else Color.BLACK, 0.72f))
@@ -473,44 +599,146 @@ object WidgetRenderer {
         return rounded(content, r, 255, circle = i.cfg.coverShape == WidgetCoverShape.CIRCLE)
     }
 
-    private fun progressBitmap(context: Context, i: Input, pal: Palette, wDp: Int, thin: Boolean): Bitmap {
+    /** Wartość fali w odcinku [i] z [n] (maksimum) – z zastępczym kształtem, gdy fali jeszcze nie ma. */
+    private fun sample(w: FloatArray?, i: Int, n: Int): Float {
+        if (w == null || w.isEmpty()) return 0.22f + 0.1f * abs(kotlin.math.sin(i * 0.7f))
+        val a = i * w.size / n
+        val b = max(a + 1, (i + 1) * w.size / n).coerceAtMost(w.size)
+        var m = 0f
+        for (k in a until b) m = max(m, w[k])
+        return m
+    }
+
+    /** Wygładzony przebieg głośności (jak lustrzana fala i kontur w aplikacji). */
+    private fun envelope(w: FloatArray?, n: Int): FloatArray {
+        val e = FloatArray(n) { sample(w, it, n) }
+        return FloatArray(n) { k -> (e[max(0, k - 1)] + e[k] * 2 + e[min(n - 1, k + 1)]) / 4f }
+    }
+
+    /** Pasek postępu [wDp]×[hDp] w stylu z ustawień – klasyczne paski albo fala utworu jak na ekranie odtwarzania. */
+    private fun progressBitmap(context: Context, i: Input, pal: Palette, wDp: Int, hDp: Int): Bitmap {
         val sc = scaleOf(context)
         val w = (wDp * sc).roundToInt().coerceIn(20, 1400)
-        val h = ((if (thin) 4 else 12) * sc).roundToInt().coerceAtLeast(3)
+        val h = (hDp * sc).roundToInt().coerceAtLeast(3)
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val s = i.state
         val f = if (s.durationMs > 0) (s.position().toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
         val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ColorUtils.setAlphaComponent(pal.fg, 0x40) }
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = pal.accent }
+        val head = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (pal.light) pal.accent else Color.WHITE }
+        val wave = i.wave
         val cy = h / 2f
-        val style = if (thin) WidgetProgressStyle.LINE else i.cfg.progressStyle
-        when (style) {
-            WidgetProgressStyle.LINE, WidgetProgressStyle.BOLD -> {
-                val th = when {
-                    thin -> h.toFloat()
-                    style == WidgetProgressStyle.BOLD -> 7 * sc
-                    else -> 3.5f * sc
+        val x = w * f
+        when (val style = resolveStyle(i.cfg.progressStyle, i.appSeek)) {
+            WidgetProgressStyle.THIN, WidgetProgressStyle.LINE, WidgetProgressStyle.BOLD, WidgetProgressStyle.APP -> {
+                val th = when (style) {
+                    WidgetProgressStyle.THIN -> h.toFloat()
+                    WidgetProgressStyle.BOLD -> min(h.toFloat(), max(6 * sc, h * 0.6f))
+                    else -> min(h.toFloat(), 3.5f * sc)
                 }
-                val knob = if (!thin && style == WidgetProgressStyle.LINE) 5.5f * sc else 0f
+                val knob = if (style == WidgetProgressStyle.LINE) min(5.5f * sc, h / 2f) else 0f
                 val left = knob
                 val right = w - knob
                 val r = th / 2
                 canvas.drawRoundRect(RectF(left, cy - r, right, cy + r), r, r, track)
-                val x = left + (right - left) * f
-                if (x > left) canvas.drawRoundRect(RectF(left, cy - r, max(x, left + th), cy + r), r, r, fill)
-                if (knob > 0) canvas.drawCircle(x, cy, knob, fill)
+                val px = left + (right - left) * f
+                if (px > left) canvas.drawRoundRect(RectF(left, cy - r, max(px, left + th), cy + r), r, r, fill)
+                if (knob > 0) canvas.drawCircle(px, cy, knob, fill)
             }
             WidgetProgressStyle.SEGMENTS -> {
                 val step = 6 * sc
                 val bw = 3.2f * sc
                 val n = max(4, (w / step).toInt())
                 val gap = (w - n * bw) / (n - 1).coerceAtLeast(1)
-                val bh = 8 * sc
                 for (k in 0 until n) {
                     val x0 = k * (bw + gap)
                     val on = (k + 0.5f) / n <= f
+                    val bh = if (wave != null) max(3 * sc, sample(wave, k, n) * h) else h * 0.65f
                     canvas.drawRoundRect(RectF(x0, cy - bh / 2, x0 + bw, cy + bh / 2), bw / 2, bw / 2, if (on) fill else track)
+                }
+            }
+            WidgetProgressStyle.WAVE -> {
+                val n = max(8, (w / (4.5f * sc)).toInt())
+                val slot = w.toFloat() / n
+                val bw = slot * 0.62f
+                for (k in 0 until n) {
+                    val bh = max(2 * sc, sample(wave, k, n) * h)
+                    val x0 = k * slot + (slot - bw) / 2
+                    val on = (k + 0.5f) / n <= f
+                    canvas.drawRoundRect(RectF(x0, cy - bh / 2, x0 + bw, cy + bh / 2), bw / 2, bw / 2, if (on) fill else track)
+                }
+            }
+            WidgetProgressStyle.MIRROR -> {
+                val n = 90
+                val e = envelope(wave, n)
+                val mid = h * 0.58f
+                val up = mid - sc
+                val down = (h - mid) - sc
+                val path = Path().apply {
+                    moveTo(0f, mid)
+                    for (k in 0 until n) lineTo(w * k / (n - 1f), mid - max(sc * 0.8f, e[k] * up))
+                    for (k in n - 1 downTo 0) lineTo(w * k / (n - 1f), mid + max(sc * 0.8f, e[k] * down * 0.75f))
+                    close()
+                }
+                canvas.drawPath(path, track)
+                canvas.save()
+                canvas.clipRect(0f, 0f, x, h.toFloat())
+                canvas.drawPath(path, fill)
+                canvas.restore()
+                canvas.drawRect(x - sc, 0f, x + sc, h.toFloat(), head)
+            }
+            WidgetProgressStyle.CONTOUR -> {
+                val n = 60
+                val e = envelope(wave, n)
+                val amp = h / 2f - 2 * sc
+                val path = Path()
+                var px = 0f
+                var py = cy
+                for (k in 0 until n) {
+                    val xx = w * k / (n - 1f)
+                    // Na przemian w górę i w dół – kontur przypomina oscylogram.
+                    val yy = cy + (if (k % 2 == 0) -1 else 1) * e[k] * amp
+                    if (k == 0) path.moveTo(xx, yy) else path.cubicTo((px + xx) / 2, py, (px + xx) / 2, yy, xx, yy)
+                    px = xx; py = yy
+                }
+                val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    this.style = Paint.Style.STROKE
+                    strokeCap = Paint.Cap.ROUND
+                    strokeWidth = 1.4f * sc
+                    color = ColorUtils.setAlphaComponent(pal.fg, 0x55)
+                }
+                canvas.drawPath(path, stroke)
+                canvas.save()
+                canvas.clipRect(0f, 0f, x, h.toFloat())
+                stroke.strokeWidth = 2.2f * sc
+                stroke.color = pal.accent
+                canvas.drawPath(path, stroke)
+                canvas.restore()
+                canvas.drawCircle(x, cy, min(3.5f * sc, h / 2f), head)
+            }
+            WidgetProgressStyle.DOTS -> {
+                var rows = max(3, (h / (3.4f * sc)).toInt())
+                if (rows % 2 == 0) rows--
+                val rh = h.toFloat() / rows
+                val cols = max(8, (w / rh).toInt())
+                val cw = w.toFloat() / cols
+                val r = min(cw, rh) * 0.32f
+                val headCol = (f * cols).toInt()
+                val off = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ColorUtils.setAlphaComponent(pal.fg, 0x14) }
+                val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ColorUtils.setAlphaComponent(pal.fg, 0x55) }
+                for (col in 0 until cols) {
+                    val lit = (sample(wave, col, cols) * rows / 2f).roundToInt()
+                    for (row in 0 until rows) {
+                        val d = abs(row - rows / 2)
+                        val paint = when {
+                            d > lit -> off
+                            col == headCol -> head
+                            (col + 0.5f) / cols <= f -> fill
+                            else -> dim
+                        }
+                        canvas.drawCircle(col * cw + cw / 2, row * rh + rh / 2, r, paint)
+                    }
                 }
             }
         }
@@ -518,18 +746,16 @@ object WidgetRenderer {
     }
 
     /** Wypełnienie prostokąta obrazem z przycięciem do proporcji (jak centerCrop). */
-    private fun drawCrop(canvas: Canvas, src: Bitmap, w: Int, h: Int) {
+    private fun drawCrop(canvas: Canvas, src: Bitmap, w: Int, h: Int, zoom: Float = 1f, focusY: Float = 0.5f) {
         val sr = src.width.toFloat() / src.height
         val dr = w.toFloat() / h
-        val crop = if (sr > dr) {
-            val cw = (src.height * dr).roundToInt()
-            val x = (src.width - cw) / 2
-            Rect(x, 0, x + cw, src.height)
-        } else {
-            val ch = (src.width / dr).roundToInt()
-            val y = (src.height - ch) / 2
-            Rect(0, y, src.width, y + ch)
-        }
+        // Kadr o proporcjach celu, pomniejszony o [zoom]; w pionie przesunięty według [focusY].
+        val z = zoom.coerceAtLeast(1f)
+        val cw = (if (sr > dr) src.height * dr else src.width.toFloat()) / z
+        val ch = (if (sr > dr) src.height.toFloat() else src.width / dr) / z
+        val x = (src.width - cw) / 2f
+        val y = (src.height - ch) * focusY.coerceIn(0f, 1f)
+        val crop = Rect(x.roundToInt(), y.roundToInt(), (x + cw).roundToInt().coerceAtMost(src.width), (y + ch).roundToInt().coerceAtMost(src.height))
         canvas.drawBitmap(src, crop, Rect(0, 0, w, h), Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
     }
 

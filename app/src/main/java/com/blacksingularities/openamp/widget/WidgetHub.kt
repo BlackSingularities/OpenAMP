@@ -10,8 +10,10 @@ import androidx.media3.common.Player
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.RepeatMode
 import com.blacksingularities.openamp.data.Track
+import com.blacksingularities.openamp.playback.Waveform
 import com.blacksingularities.openamp.ui.ArtworkLoader
 import com.blacksingularities.openamp.ui.theme.vibrantColor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -59,6 +61,9 @@ object WidgetHub {
     private var artId: Long? = null
     private var art: Bitmap? = null
     private var artColor: Int? = null
+
+    /** Utwory, dla których fala dźwiękowa jest właśnie liczona w tle. */
+    private val wavePending = mutableSetOf<Long>()
 
     /** Widżety z paskiem postępu lub czasem: (rodzaj, id). */
     @Volatile private var progressTargets: List<Pair<WidgetKind, Int>> = emptyList()
@@ -121,6 +126,10 @@ object WidgetHub {
         }
         Graph.scope.launch {
             Graph.sleepAt.collect { trigger.update { it + 1 } }
+        }
+        // Pasek „jak w aplikacji” zmienia się razem ze stylem taśmy na ekranie odtwarzania.
+        Graph.scope.launch {
+            Graph.settings.state.map { it.seekStyle }.distinctUntilChanged().collect { trigger.update { it + 1 } }
         }
     }
 
@@ -190,6 +199,9 @@ object WidgetHub {
         val track = state.trackId?.let { Graph.library.get(it) }
         val (bmp, color) = artwork(context, track)
         val mgr = AppWidgetManager.getInstance(context)
+        val appSeek = Graph.settings.value.seekStyle
+        val style = WidgetRenderer.resolveStyle(cfg.progressStyle, appSeek)
+        val wave = if (track != null && kind != WidgetKind.SHORTCUTS && cfg.showProgress && WidgetRenderer.usesWave(style)) waveOf(context, track) else null
         return WidgetRenderer.Input(
             kind = kind, id = id, cfg = cfg, state = state,
             size = size ?: sizeOf(mgr, id, kind),
@@ -197,7 +209,21 @@ object WidgetHub {
             favorite = state.trackId != null && state.trackId in Graph.userData.value.favorites,
             sleepOn = Graph.sleepAt.value != null || Graph.sleepEndOfTrack.value,
             appAccent = Graph.settings.value.accent,
+            wave = wave,
+            appSeek = appSeek,
         )
+    }
+
+    /** Fala z pamięci podręcznej; gdy jej nie ma – liczona w tle, a widżety przerysowane po wszystkim. */
+    private fun waveOf(context: Context, track: Track): FloatArray? {
+        Waveform.cached(context, track)?.let { return it }
+        val start = synchronized(wavePending) { wavePending.add(track.id) }
+        if (start) Graph.scope.launch(Dispatchers.Default) {
+            val ok = runCatching { Waveform.load(context.applicationContext, track) }.getOrNull() != null
+            synchronized(wavePending) { wavePending.remove(track.id) }
+            if (ok) request()
+        }
+        return null
     }
 
     suspend fun render(context: Context, kind: WidgetKind, ids: IntArray) = renderLock.withLock {

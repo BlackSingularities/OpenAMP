@@ -14,7 +14,17 @@ enum class WidgetAccent { ART, APP, WHITE, CUSTOM }
 
 enum class WidgetCoverShape { ROUNDED, SQUARE, CIRCLE }
 
-enum class WidgetProgressStyle { LINE, BOLD, SEGMENTS }
+/**
+ * Styl paska postępu: [APP] – jak taśma na ekranie odtwarzania, fale rysowane z prawdziwej
+ * fali dźwiękowej utworu (gdy jest już policzona), reszta to klasyczne paski.
+ */
+enum class WidgetProgressStyle { APP, THIN, LINE, BOLD, SEGMENTS, WAVE, MIRROR, CONTOUR, DOTS }
+
+/** Położenie okładki względem tytułu i przycisków. */
+enum class WidgetCoverPos { LEFT, RIGHT, TOP, BACKGROUND }
+
+/** Czasy utworu: pod paskiem albo po jego bokach. */
+enum class WidgetTimePos { BELOW, SIDES }
 
 /** Co robi dotknięcie okładki / tytułu. */
 enum class WidgetTap { OPEN_PLAYER, PLAY_PAUSE, NEXT, OPEN_QUEUE, OPEN_LIBRARY }
@@ -37,7 +47,25 @@ data class WidgetConfig(
     val showProgress: Boolean = true,
     val progressStyle: WidgetProgressStyle = WidgetProgressStyle.LINE,
     val showTime: Boolean = true,
-    val showShuffleRepeat: Boolean = true,
+    val showShuffle: Boolean = true,
+    val showRepeat: Boolean = true,
+    val showPrevNext: Boolean = true,
+    val coverPos: WidgetCoverPos = WidgetCoverPos.LEFT,
+    /** Rozmiar okładki w % domyślnego (w widżecie „Okładka” – powiększenie kadru). */
+    val coverSize: Int = 100,
+    /** Kadrowanie okładki w pionie: 0 – góra, 50 – środek, 100 – dół. */
+    val coverFocus: Int = 50,
+    /** Wysokość paska postępu w dp (Android 12+; starsze – stała z układu). */
+    val progressHeight: Int = 14,
+    /** Odstęp między paskiem postępu a przyciskami w dp. */
+    val progressGap: Int = 0,
+    val timePos: WidgetTimePos = WidgetTimePos.BELOW,
+    /** Wielkość przycisków w % (Android 12+). */
+    val buttonScale: Int = 100,
+    /** Margines wewnętrzny widżetu w dp. */
+    val padding: Int = 14,
+    val titleLines: Int = 2,
+    val boldTitle: Boolean = true,
     val showLike: Boolean = true,
     val showQueuePos: Boolean = true,
     val filledPlay: Boolean = true,
@@ -49,10 +77,16 @@ data class WidgetConfig(
     companion object {
         /** Rozsądne ustawienia startowe dla danego rodzaju. */
         fun defaults(kind: WidgetKind): WidgetConfig = when (kind) {
-            WidgetKind.COVER -> WidgetConfig(corner = 28, showAlbum = false, showShuffleRepeat = false, showLike = false, showQueuePos = false)
-            WidgetKind.BAR -> WidgetConfig(corner = 40, showAlbum = false, showProgress = false, showShuffleRepeat = false, showQueuePos = false, background = WidgetBackground.ART_COLOR)
+            WidgetKind.COVER -> WidgetConfig(
+                corner = 28, showAlbum = false, showShuffle = false, showRepeat = false, showLike = false, showQueuePos = false,
+                coverPos = WidgetCoverPos.BACKGROUND, progressStyle = WidgetProgressStyle.THIN, progressHeight = 4, titleLines = 1,
+            )
+            WidgetKind.BAR -> WidgetConfig(
+                corner = 40, showAlbum = false, showProgress = false, showShuffle = false, showRepeat = false, showQueuePos = false,
+                background = WidgetBackground.ART_COLOR, progressStyle = WidgetProgressStyle.THIN, progressHeight = 4, padding = 8, titleLines = 1,
+            )
             WidgetKind.PLAYER -> WidgetConfig()
-            WidgetKind.SHORTCUTS -> WidgetConfig(background = WidgetBackground.DARK, accent = WidgetAccent.APP, corner = 28)
+            WidgetKind.SHORTCUTS -> WidgetConfig(background = WidgetBackground.DARK, accent = WidgetAccent.APP, corner = 28, padding = 10, titleLines = 1)
         }
 
         const val MAX_SHORTCUTS = 6
@@ -87,9 +121,23 @@ object WidgetConfigStore {
                 showArtist = getBoolean(k("showArtist"), d.showArtist),
                 showAlbum = getBoolean(k("showAlbum"), d.showAlbum),
                 showProgress = getBoolean(k("showProgress"), d.showProgress),
-                progressStyle = enum(k("progressStyle"), d.progressStyle),
+                // Starsze wersje zawsze rysowały cienką linię na okładce i pasku – bez nadpisywania jej teraz.
+                progressStyle = if (kind != WidgetKind.PLAYER && !contains(k("progressHeight"))) d.progressStyle else enum(k("progressStyle"), d.progressStyle),
                 showTime = getBoolean(k("showTime"), d.showTime),
-                showShuffleRepeat = getBoolean(k("showShuffleRepeat"), d.showShuffleRepeat),
+                // Dawny wspólny przełącznik losowania i powtarzania – wartość startowa dla obu nowych.
+                showShuffle = getBoolean(k("showShuffle"), getBoolean(k("showShuffleRepeat"), d.showShuffle)),
+                showRepeat = getBoolean(k("showRepeat"), getBoolean(k("showShuffleRepeat"), d.showRepeat)),
+                showPrevNext = getBoolean(k("showPrevNext"), d.showPrevNext),
+                coverPos = enum(k("coverPos"), d.coverPos),
+                coverSize = getInt(k("coverSize"), d.coverSize),
+                coverFocus = getInt(k("coverFocus"), d.coverFocus),
+                progressHeight = getInt(k("progressHeight"), d.progressHeight),
+                progressGap = getInt(k("progressGap"), d.progressGap),
+                timePos = enum(k("timePos"), d.timePos),
+                buttonScale = getInt(k("buttonScale"), d.buttonScale),
+                padding = getInt(k("padding"), d.padding),
+                titleLines = getInt(k("titleLines"), d.titleLines),
+                boldTitle = getBoolean(k("boldTitle"), d.boldTitle),
                 showLike = getBoolean(k("showLike"), d.showLike),
                 showQueuePos = getBoolean(k("showQueuePos"), d.showQueuePos),
                 filledPlay = getBoolean(k("filledPlay"), d.filledPlay),
@@ -119,7 +167,19 @@ object WidgetConfigStore {
             .putBoolean(k("showProgress"), c.showProgress)
             .putString(k("progressStyle"), c.progressStyle.name)
             .putBoolean(k("showTime"), c.showTime)
-            .putBoolean(k("showShuffleRepeat"), c.showShuffleRepeat)
+            .putBoolean(k("showShuffle"), c.showShuffle)
+            .putBoolean(k("showRepeat"), c.showRepeat)
+            .putBoolean(k("showPrevNext"), c.showPrevNext)
+            .putString(k("coverPos"), c.coverPos.name)
+            .putInt(k("coverSize"), c.coverSize)
+            .putInt(k("coverFocus"), c.coverFocus)
+            .putInt(k("progressHeight"), c.progressHeight)
+            .putInt(k("progressGap"), c.progressGap)
+            .putString(k("timePos"), c.timePos.name)
+            .putInt(k("buttonScale"), c.buttonScale)
+            .putInt(k("padding"), c.padding)
+            .putInt(k("titleLines"), c.titleLines)
+            .putBoolean(k("boldTitle"), c.boldTitle)
             .putBoolean(k("showLike"), c.showLike)
             .putBoolean(k("showQueuePos"), c.showQueuePos)
             .putBoolean(k("filledPlay"), c.filledPlay)
