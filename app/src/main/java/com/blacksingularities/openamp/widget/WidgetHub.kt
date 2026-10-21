@@ -16,7 +16,7 @@ import com.blacksingularities.openamp.ui.theme.vibrantColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -115,7 +115,8 @@ object WidgetHub {
             started = true
         }
         Graph.scope.launch {
-            trigger.collectLatest {
+            // Bez przerywania: każde przerysowanie kończy się, a zaległe zdarzenia zlewają się w jedno.
+            trigger.conflate().collect {
                 delay(120)
                 runCatching { renderAll(Graph.app) }
             }
@@ -231,8 +232,14 @@ object WidgetHub {
         val mgr = AppWidgetManager.getInstance(context)
         for (id in ids) {
             val cfg = WidgetConfigStore.load(context, id, kind)
-            val views = runCatching { WidgetRenderer.build(context, input(context, kind, id, cfg)) }.getOrNull() ?: continue
-            runCatching { mgr.updateAppWidget(id, views) }
+            val inp = runCatching { input(context, kind, id, cfg) }.getOrNull() ?: continue
+            // Zbyt duże bitmapy (przekroczony limit transakcji) launcher odrzuca po cichu i widżet stoi
+            // na starym stanie – wtedy próbujemy ponownie z mniejszym tłem.
+            for (attempt in 0..2) {
+                val ok = runCatching { mgr.updateAppWidget(id, WidgetRenderer.build(context, inp)) }.isSuccess
+                if (ok || WidgetRenderer.bgLimit <= 360) break
+                WidgetRenderer.bgLimit = (WidgetRenderer.bgLimit * 2) / 3
+            }
         }
         refreshTargets(context)
     }

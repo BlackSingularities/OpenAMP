@@ -166,7 +166,6 @@ private fun Main(vm: MainViewModel) {
                         Route.Equalizer -> EqualizerScreen(vm, bottom)
                         Route.Stats -> StatsScreen(vm, bottom)
                         Route.Queue -> QueuePage(vm, bottom)
-                        Route.Search -> SearchPage(vm, bottom)
                     }
                 }
             }
@@ -205,8 +204,8 @@ private fun BottomBar(vm: MainViewModel) {
             if (r == Route.Equalizer) vm.nowPlayingOpen = true else vm.goTab(Route.Equalizer)
         }, active = r == Route.Equalizer, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
         RoundButton(Icons.Rounded.Search, tr("Szukaj"), {
-            if (r != Route.Search) vm.goTab(Route.Search)
-        }, active = r == Route.Search, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
+            if (vm.searchOpen) vm.closeSearch() else vm.openSearch()
+        }, active = vm.searchOpen, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
         RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
     }
 }

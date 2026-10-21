@@ -345,7 +345,8 @@ class DspProcessor : BaseAudioProcessor() {
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         val enc = inputAudioFormat.encoding
-        if (enc != C.ENCODING_PCM_16BIT && enc != C.ENCODING_PCM_FLOAT) throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
+        // Nieobsługiwany format (np. 24/32-bit PCM z FLAC hi-res) – przepuszczamy bez obróbki zamiast blokować odtwarzanie.
+        if (enc != C.ENCODING_PCM_16BIT && enc != C.ENCODING_PCM_FLOAT) return AudioProcessor.AudioFormat.NOT_SET
         channels = inputAudioFormat.channelCount
         rate = inputAudioFormat.sampleRate
         float = enc == C.ENCODING_PCM_FLOAT

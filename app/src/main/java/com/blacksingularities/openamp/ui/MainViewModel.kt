@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.data.AppSettings
+import com.blacksingularities.openamp.data.LibraryTab
 import com.blacksingularities.openamp.data.Track
 import com.blacksingularities.openamp.data.UserData
 import com.blacksingularities.openamp.i18n.I18n
@@ -53,7 +54,6 @@ sealed interface Route {
     data object Equalizer : Route
     data object Stats : Route
     data object Queue : Route
-    data object Search : Route
 }
 
 sealed interface LyricsUi {
@@ -94,7 +94,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Dolny pasek: przejście do sekcji bez rozbudowy stosu. */
     fun goTab(r: Route) {
-        if (route == Route.Search && r != Route.Search) query = ""
+        closeSearch()
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
         if (r != Route.Player) stack.add(r)
     }
@@ -103,6 +103,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var deleteRequest by mutableStateOf<List<Track>?>(null)
     var showLyrics by mutableStateOf(Graph.settings.value.lyricsByDefault)
     var query by mutableStateOf("")
+    /** Pole wyszukiwania nad bieżącą listą (biblioteka, kolejka) – bez osobnego widoku. */
+    var searchOpen by mutableStateOf(false)
+    fun closeSearch() { searchOpen = false; query = "" }
+    /** Kolejka i listy utworów biblioteki filtrują się w miejscu; skądinąd – lista wszystkich utworów. */
+    fun openSearch() {
+        val tab = settings.value.tab
+        if (route != Route.Queue && !(route == Route.Library && !libraryRoot && tab.isTrackList)) {
+            goTab(Route.Library); libraryRoot = false
+            if (!tab.isTrackList) updateSettings { it.copy(tab = LibraryTab.TRACKS) }
+        }
+        searchOpen = true
+    }
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
@@ -231,8 +243,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         when {
             queueOpen -> queueOpen = false
             menuOpen -> menuOpen = false
-            route == Route.Library && !libraryRoot -> libraryRoot = true
-            stack.size > 1 -> { if (route == Route.Search) query = ""; stack.removeAt(stack.lastIndex) }
+            searchOpen -> closeSearch()
+            route == Route.Library && !libraryRoot -> { closeSearch(); libraryRoot = true }
+            stack.size > 1 -> stack.removeAt(stack.lastIndex)
             else -> return false
         }
         return true
