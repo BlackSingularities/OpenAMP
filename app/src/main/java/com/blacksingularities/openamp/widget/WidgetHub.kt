@@ -16,7 +16,7 @@ import com.blacksingularities.openamp.ui.theme.vibrantColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.conflate
+
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -115,8 +115,8 @@ object WidgetHub {
             started = true
         }
         Graph.scope.launch {
-            // Bez przerywania: każde przerysowanie kończy się, a zaległe zdarzenia zlewają się w jedno.
-            trigger.conflate().collect {
+            // Bez przerywania: każde przerysowanie kończy się (StateFlow sam zlewa zaległe zdarzenia).
+            trigger.collect {
                 delay(120)
                 runCatching { renderAll(Graph.app) }
             }
