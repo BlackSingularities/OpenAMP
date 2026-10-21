@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -408,8 +410,11 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
         // Podgląd na tle „tapety” – widać przezroczystość i zaokrąglenia.
         BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             val maxW = maxWidth
-            val w = minOf(size.wDp.dp, maxW - 24.dp)
-            val h = (size.hDp.toFloat() * (w.value / size.wDp)).dp.coerceAtMost(260.dp)
+            // Widżet układany w prawdziwym rozmiarze z pulpitu i tylko pomniejszany – inaczej
+            // wymiary w dp (przyciski, tekst, taśma) dawałyby inny układ niż na ekranie głównym.
+            val k = minOf(1f, (maxW - 24.dp).value / size.wDp, 260f / size.hDp)
+            val w = (size.wDp * k).dp
+            val h = (size.hDp * k).dp
             val wall = if (lightWallpaper) listOf(Color(0xFFE9E4FF), Color(0xFFFFE3D3)) else listOf(Color(0xFF241B3A), Color(0xFF0B2A33))
             Box(
                 Modifier.fillMaxWidth().clip(Shapes.XLarge).background(Brush.linearGradient(wall))
@@ -417,14 +422,16 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                 contentAlignment = Alignment.Center,
             ) {
                 val rv = preview
-                AndroidView(
-                    factory = { FrameLayout(it) },
-                    update = { fl ->
-                        fl.removeAllViews()
-                        if (rv != null) runCatching { fl.addView(rv.apply(fl.context, fl)) }
-                    },
-                    modifier = Modifier.width(w).height(h),
-                )
+                Box(Modifier.width(w).height(h), contentAlignment = Alignment.Center) {
+                    AndroidView(
+                        factory = { FrameLayout(it) },
+                        update = { fl ->
+                            fl.removeAllViews()
+                            if (rv != null) runCatching { fl.addView(rv.apply(fl.context, fl)) }
+                        },
+                        modifier = Modifier.requiredSize(size.wDp.dp, size.hDp.dp).graphicsLayer { scaleX = k; scaleY = k },
+                    )
+                }
             }
         }
         Text(

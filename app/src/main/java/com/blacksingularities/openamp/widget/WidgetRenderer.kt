@@ -197,6 +197,11 @@ object WidgetRenderer {
         rv.setViewVisibility(bar.times, vis(c.showTime && !sides))
         rv.setViewVisibility(bar.sidePos, vis(c.showTime && sides))
         rv.setViewVisibility(bar.sideDur, vis(c.showTime && sides))
+        // Launcher przycina widżet do zaokrąglonych rogów – przy małym marginesie taśma i czasy
+        // dostają własny odstęp od krawędzi, żeby cyfry nie znikały.
+        val edgeX = max(0, barEdgeX - c.padding)
+        val edgeB = if (bar === barBottom || inColumn) max(0, barEdgeBottom - c.padding) else 0
+        rv.setViewPadding(bar.row, px(context, edgeX), 0, px(context, edgeX), px(context, edgeB))
         if (showRow) {
             progress(context, rv, i, pal)
             val posId = if (sides) bar.sidePos else bar.pos
@@ -223,7 +228,7 @@ object WidgetRenderer {
         // Okładka we własnym kontenerze: przy 100% ma wysokość całego wiersza – w kolumnowym układzie
         // przycisków to cały widżet poza taśmą postępu (Android 12+, na starszych stała).
         val barDp = if (!showRow) 0 else (if (c.compact) 0 else c.barTop) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
-            (if (c.showTime && !sides) 15 else 0)
+            (if (c.showTime && !sides) 15 else 0) + edgeB
         val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100 + c.progressGap + c.controlsTop + c.controlsBottom
         val free = (h - c.padding * 2 - buttonsDp - barDp).coerceAtLeast(32)
         val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
@@ -366,6 +371,10 @@ object WidgetRenderer {
 
     /** Widoki jednego wiersza postępu (Odtwarzacz ma dwa: nad przyciskami i pod nimi). */
     private class Bar(val row: Int, val progress: Int, val sidePos: Int, val sideDur: Int, val times: Int, val pos: Int, val dur: Int)
+
+    /** Najmniejszy odstęp taśmy postępu od bocznych i dolnej krawędzi widżetu (dp). */
+    private const val barEdgeX = 12
+    private const val barEdgeBottom = 6
 
     private val barTop = Bar(R.id.w_progress_row, R.id.w_progress, R.id.w_time_side_pos, R.id.w_time_side_dur, R.id.w_times, R.id.w_time_pos, R.id.w_time_dur)
     private val barBottom = Bar(R.id.w_progress_row_b, R.id.w_progress_b, R.id.w_time_side_pos_b, R.id.w_time_side_dur_b, R.id.w_times_b, R.id.w_time_pos_b, R.id.w_time_dur_b)
@@ -528,7 +537,7 @@ object WidgetRenderer {
         if (!show) return
         val c = i.cfg
         val inset = when (i.kind) {
-            WidgetKind.PLAYER -> c.padding * 2 + (if (c.showTime && c.timePos == WidgetTimePos.SIDES) 96 else 0)
+            WidgetKind.PLAYER -> max(c.padding, barEdgeX) * 2 + (if (c.showTime && c.timePos == WidgetTimePos.SIDES) 96 else 0)
             WidgetKind.BAR -> 36
             else -> c.padding * 2
         }
