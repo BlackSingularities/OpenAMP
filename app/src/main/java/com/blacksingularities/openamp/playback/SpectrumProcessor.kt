@@ -48,9 +48,8 @@ class SpectrumProcessor : BaseAudioProcessor() {
     private var edges = IntArray(Spectrum.BANDS + 1)
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
-            throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
-        }
+        // Inny format niż 16-bit PCM – widmo nieaktywne, dźwięk przechodzi bez zmian.
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) return AudioProcessor.AudioFormat.NOT_SET
         channels = inputAudioFormat.channelCount
         sampleRate = inputAudioFormat.sampleRate
         edges = bandEdges(sampleRate)

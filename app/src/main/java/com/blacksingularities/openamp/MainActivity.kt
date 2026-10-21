@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
         when (intent.getStringExtra(EXTRA_ROUTE)) {
             "queue" -> vm.goTab(Route.Queue)
             "library" -> vm.goTab(Route.Library)
-            "search" -> vm.goTab(Route.Search)
+            "search" -> vm.openSearch()
             "equalizer" -> vm.goTab(Route.Equalizer)
             "settings" -> vm.goTab(Route.Settings)
         }

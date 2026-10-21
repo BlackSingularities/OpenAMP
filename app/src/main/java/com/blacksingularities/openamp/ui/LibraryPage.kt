@@ -217,13 +217,16 @@ private sealed interface LRow {
     data class Item(val index: Int) : LRow
 }
 
-private fun buildRows(list: List<Track>, key: ((Track) -> String)?): List<LRow> {
-    if (key == null || list.size < 12) return list.indices.map { LRow.Item(it) }
-    val out = ArrayList<LRow>(list.size + 32)
+/** Wiersze listy; [keep] (wyszukiwanie) ukrywa niepasujące utwory, zachowując ich indeksy w pełnej liście. */
+private fun buildRows(list: List<Track>, key: ((Track) -> String)?, keep: Set<Long>? = null): List<LRow> {
+    val idx = if (keep == null) list.indices.toList() else list.indices.filter { list[it].id in keep }
+    if (key == null || idx.size < 12) return idx.map { LRow.Item(it) }
+    val out = ArrayList<LRow>(idx.size + 32)
     var last: String? = null
     var headerAt = -1
     var count = 0
-    list.forEachIndexed { i, t ->
+    idx.forEach { i ->
+        val t = list[i]
         val k = key(t)
         if (k != last) {
             if (headerAt >= 0) out[headerAt] = LRow.Header(last ?: "", count)
@@ -289,7 +292,7 @@ fun LibraryScreen(vm: MainViewModel, bottomPadding: Dp) {
             return@Column
         }
         AnimatedVisibility(scanning) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 2.dp)) }
-        val toRoot: @Composable () -> Unit = { LibraryButton { vm.libraryRoot = true } }
+        val toRoot: @Composable () -> Unit = { LibraryButton { vm.closeSearch(); vm.libraryRoot = true } }
 
         if (tab.isTrackList) {
             val sortable = tab == LibraryTab.TRACKS || tab == LibraryTab.FAVORITES
@@ -335,27 +338,8 @@ fun LibraryButton(onClick: () -> Unit) {
     PillButton(tr("Biblioteka"), onClick, icon = Icons.Rounded.NorthEast)
 }
 
-/** Osobny widok wyszukiwania (lupka na dolnym pasku): pole na górze, wyniki pod nim. */
 @Composable
-fun SearchPage(vm: MainViewModel, bottomPadding: Dp) {
-    val s by vm.settings.collectAsState()
-    val all by vm.tracks.collectAsState()
-    val data by vm.userData.collectAsState()
-    val results = remember(all, vm.query, s.trackSort, s.trackSortDesc, data.stats) {
-        if (vm.query.isBlank()) emptyList() else LibraryOps.sortTracks(LibraryOps.search(all, vm.query), s.trackSort, s.trackSortDesc, data.stats)
-    }
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        SearchField(vm, Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp))
-        if (vm.query.isBlank()) { Empty(tr("Wpisz tytuł, wykonawcę lub album")); return@Column }
-        TrackListPage(
-            vm, tr("Wyniki"), Icons.Rounded.Search, results, s.trackDensity, PaddingValues(bottom = bottomPadding + 12.dp),
-            sort = ListSort.TRACKS, sections = if (s.stickyHeaders) sectionsFor(s.trackSort, data.stats) else null,
-        )
-    }
-}
-
-@Composable
-private fun SearchField(vm: MainViewModel, modifier: Modifier) {
+fun SearchField(vm: MainViewModel, modifier: Modifier) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     Row(
@@ -372,7 +356,7 @@ private fun SearchField(vm: MainViewModel, modifier: Modifier) {
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
-        if (vm.query.isNotEmpty()) RoundButton(Icons.Rounded.Close, tr("Wyczyść"), { vm.query = "" }, background = Color.Transparent, size = 36.dp)
+        RoundButton(Icons.Rounded.Close, tr("Zamknij"), { vm.closeSearch() }, background = Color.Transparent, size = 36.dp)
     }
 }
 
@@ -530,8 +514,11 @@ fun TrackListPage(
                 item { PillButton(null, { vm.deleteRequest = chosen(); selecting = false; selected.clear() }, icon = Icons.Rounded.Delete, label = tr("Usuń z urządzenia"), compact = true) }
             }
         }
+        // Wyszukiwanie filtruje tę samą listę w miejscu – odtwarzanie dalej idzie po pełnej liście.
+        if (vm.searchOpen) SearchField(vm, Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 6.dp))
         Gap(4.dp)
-        if (list.isEmpty()) { Empty(if (vm.query.isNotBlank()) tr("Brak wyników") else tr("Brak utworów")); return@Column }
+        val keep = remember(list, vm.query) { if (vm.query.isBlank()) null else LibraryOps.search(list, vm.query).mapTo(HashSet()) { it.id } }
+        if (list.isEmpty() || keep?.isEmpty() == true) { Empty(if (keep != null) tr("Brak wyników") else tr("Brak utworów")); return@Column }
 
         val step: (Int) -> Unit = { d ->
             val n = (curDensity + d).coerceIn(0, DENSITY_MAX)
@@ -543,7 +530,7 @@ fun TrackListPage(
         val onLong: (Int, Track) -> Unit = { i, t ->
             if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else menuFor = i to t
         }
-        val rows = remember(list, sections) { buildRows(list, sections) }
+        val rows = remember(list, sections, keep) { buildRows(list, sections, keep) }
         val headers = remember(rows) { rows.mapIndexedNotNull { r, row -> (row as? LRow.Header)?.let { it.label to r } } }
 
         if (density >= 4) {

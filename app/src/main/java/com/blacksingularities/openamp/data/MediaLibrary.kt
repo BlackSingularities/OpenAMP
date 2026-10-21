@@ -68,7 +68,10 @@ class MediaLibrary(private val context: Context) {
             add(M.DATA); add(M.MIME_TYPE)
             if (Build.VERSION.SDK_INT >= 30) { add(M.GENRE); add(M.DISC_NUMBER) }
         }.toTypedArray()
-        val sel = "${M.IS_MUSIC} != 0 AND ${M.DURATION} >= ?"
+        // Część plików FLAC trafia do MediaStore bez flagi IS_MUSIC lub bez długości (np. duży blok
+        // obrazka/ID3 przed nagłówkiem) – bierzemy je po rozszerzeniu/typie, a długość odczyta odtwarzacz.
+        val flac = "(${M.DATA} LIKE '%.flac' OR ${M.MIME_TYPE} LIKE '%flac%')"
+        val sel = "(${M.IS_MUSIC} != 0 OR $flac) AND (${M.DURATION} >= ? OR ($flac AND (${M.DURATION} IS NULL OR ${M.DURATION} <= 0)))"
         val out = ArrayList<Track>()
         context.contentResolver.query(M.EXTERNAL_CONTENT_URI, proj, sel, arrayOf((minSec * 1000L).toString()), null)?.use { cur ->
             fun idx(n: String) = cur.getColumnIndex(n)
