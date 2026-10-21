@@ -608,6 +608,9 @@ object WidgetRenderer {
 
     // ---------------------------------------------------------------- bitmapy
 
+    /** Największy bok tła (px); hub obniża go, gdy launcher odrzuci zbyt dużą aktualizację. */
+    @Volatile var bgLimit = 900
+
     private fun scaleOf(context: Context) = min(context.resources.displayMetrics.density, 2.25f)
 
     private fun background(context: Context, i: Input): Bitmap {
@@ -615,7 +618,7 @@ object WidgetRenderer {
         val sc = scaleOf(context)
         var w = (i.size.wDp * sc).roundToInt().coerceAtLeast(8)
         var h = (i.size.hDp * sc).roundToInt().coerceAtLeast(8)
-        val limit = 900
+        val limit = bgLimit
         if (max(w, h) > limit) {
             val f = limit.toFloat() / max(w, h)
             w = (w * f).roundToInt().coerceAtLeast(8); h = (h * f).roundToInt().coerceAtLeast(8)

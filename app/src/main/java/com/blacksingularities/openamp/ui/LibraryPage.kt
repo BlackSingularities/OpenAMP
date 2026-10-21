@@ -525,7 +525,18 @@ fun TrackListPage(
             if (n != curDensity) vm.updateSettings { it.copy(trackDensity = n) }
         }
         val onTap: (Int, Track) -> Unit = { i, t ->
-            if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else if (onPlay != null) onPlay(i) else vm.player.play(list, i)
+            when {
+                selecting -> if (t.id in selected) selected.remove(t.id) else selected.add(t.id)
+                onPlay != null -> onPlay(i)
+                // Wynik wyszukiwania nie podmienia listy odtwarzania: skok do utworu w bieżącej kolejce,
+                // a gdy go w niej nie ma – granie ze wszystkich utworów.
+                keep != null -> {
+                    val qi = ps.queue.indexOf(t.id)
+                    if (qi >= 0) vm.player.skipTo(qi)
+                    else { val all = vm.tracks.value; vm.player.play(all, all.indexOfFirst { it.id == t.id }.coerceAtLeast(0)) }
+                }
+                else -> vm.player.play(list, i)
+            }
         }
         val onLong: (Int, Track) -> Unit = { i, t ->
             if (selecting) { if (t.id in selected) selected.remove(t.id) else selected.add(t.id) } else menuFor = i to t
