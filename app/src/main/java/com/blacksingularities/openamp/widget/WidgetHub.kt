@@ -14,6 +14,7 @@ import com.blacksingularities.openamp.playback.Waveform
 import com.blacksingularities.openamp.ui.ArtworkLoader
 import com.blacksingularities.openamp.ui.theme.vibrantColor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -23,6 +24,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Migawka odtwarzacza dla widżetów (bez odwołań do samego odtwarzacza). */
 data class WidgetState(
@@ -95,7 +98,7 @@ object WidgetHub {
         if (++ticks % 2 != 0) return
         val pm = Graph.app.getSystemService(PowerManager::class.java)
         if (pm?.isInteractive == false) return
-        Graph.scope.launch { runCatching { updateProgress(Graph.app) } }
+        Graph.scope.launch { runCatching { withTimeout(8_000) { updateProgress(Graph.app) } } }
     }
 
     /** Serwis kończy pracę: zostaje ostatni utwór, wstrzymany. */
@@ -118,7 +121,8 @@ object WidgetHub {
             // Bez przerywania: każde przerysowanie kończy się (StateFlow sam zlewa zaległe zdarzenia).
             trigger.collect {
                 delay(120)
-                runCatching { renderAll(Graph.app) }
+                // Limit czasu: zawieszone przerysowanie nie może zablokować kolejnych na zawsze.
+                runCatching { withTimeout(15_000) { renderAll(Graph.app) } }.exceptionOrNull()?.let { log(Graph.app, "renderAll", it) }
             }
         }
         // Serduszko i wyłącznik czasowy też są widoczne na widżetach.
@@ -179,7 +183,9 @@ object WidgetHub {
     private suspend fun artwork(context: Context, track: Track?): Pair<Bitmap?, Int?> = artLock.withLock {
         if (track == null) return@withLock null to null
         if (artId == track.id) return@withLock art to artColor
-        val bmp = runCatching { ArtworkLoader.load(context, track, 360) }.getOrNull()
+        // Odczyt w osobnym zadaniu: zawieszony plik nie trzyma blokady – po 3 s rysujemy bez okładki.
+        val job = Graph.scope.async(Dispatchers.IO) { runCatching { ArtworkLoader.load(context, track, 360) }.getOrNull() }
+        val bmp = withTimeoutOrNull(3_000) { job.await() }
         artId = track.id
         art = bmp
         artColor = bmp?.let { runCatching { vibrantColor(it) }.getOrNull() }
@@ -195,14 +201,15 @@ object WidgetHub {
     }
 
     /** Dane wejściowe do narysowania widżetu – wspólne dla pulpitu i podglądu w konfiguracji. */
-    suspend fun input(context: Context, kind: WidgetKind, id: Int, cfg: WidgetConfig, size: WidgetRenderer.Size? = null): WidgetRenderer.Input {
+    suspend fun input(context: Context, kind: WidgetKind, id: Int, cfg: WidgetConfig, size: WidgetRenderer.Size? = null, lite: Boolean = false): WidgetRenderer.Input {
         val state = current(context)
         val track = state.trackId?.let { Graph.library.get(it) }
-        val (bmp, color) = artwork(context, track)
+        // Okładka z limitem czasu – zawieszony odczyt nie może zatrzymać odświeżania widżetów.
+        val (bmp, color) = if (lite) null to null else withTimeoutOrNull(4_000) { artwork(context, track) } ?: (null to null)
         val mgr = AppWidgetManager.getInstance(context)
         val appSeek = Graph.settings.value.seekStyle
         val style = WidgetRenderer.resolveStyle(cfg.progressStyle, appSeek)
-        val wave = if (track != null && kind != WidgetKind.SHORTCUTS && cfg.showProgress && WidgetRenderer.usesWave(style)) waveOf(context, track) else null
+        val wave = if (!lite && track != null && kind != WidgetKind.SHORTCUTS && cfg.showProgress && WidgetRenderer.usesWave(style)) waveOf(context, track) else null
         return WidgetRenderer.Input(
             kind = kind, id = id, cfg = cfg, state = state,
             size = size ?: sizeOf(mgr, id, kind),
@@ -232,14 +239,20 @@ object WidgetHub {
         val mgr = AppWidgetManager.getInstance(context)
         for (id in ids) {
             val cfg = WidgetConfigStore.load(context, id, kind)
-            val inp = runCatching { input(context, kind, id, cfg) }.getOrNull() ?: continue
-            // Zbyt duże bitmapy (przekroczony limit transakcji) launcher odrzuca po cichu i widżet stoi
-            // na starym stanie – wtedy próbujemy ponownie z mniejszym tłem.
-            for (attempt in 0..2) {
-                val ok = runCatching { mgr.updateAppWidget(id, WidgetRenderer.build(context, inp)) }.isSuccess
-                if (ok || WidgetRenderer.bgLimit <= 360) break
-                WidgetRenderer.bgLimit = (WidgetRenderer.bgLimit * 2) / 3
+            // Najpierw pełny widżet; gdy się nie uda (np. zbyt duże bitmapy odrzucone przez system) –
+            // mniejsze tło, a w ostateczności wersja bez okładki i fali, byle stan utworu był aktualny.
+            var done = false
+            for (attempt in 0..3) {
+                val lite = attempt == 3
+                val r = runCatching {
+                    val inp = input(context, kind, id, cfg, lite = lite)
+                    mgr.updateAppWidget(id, WidgetRenderer.build(context, inp))
+                }
+                if (r.isSuccess) { done = true; break }
+                log(context, "render $kind#$id try $attempt", r.exceptionOrNull())
+                if (attempt < 2 && WidgetRenderer.bgLimit > 360) WidgetRenderer.bgLimit = (WidgetRenderer.bgLimit * 2) / 3
             }
+            if (!done) log(context, "render $kind#$id gave up", null)
         }
         refreshTargets(context)
     }
@@ -254,6 +267,16 @@ object WidgetHub {
                 val c = WidgetConfigStore.load(context, id, kind)
                 c.showProgress || (kind == WidgetKind.PLAYER && c.showTime)
             }.map { kind to it }
+        }
+    }
+
+    /** Ostatnie błędy rysowania widżetów (pliki aplikacji, widget_log.txt) – do diagnozy. */
+    private fun log(context: Context, what: String, e: Throwable?) {
+        android.util.Log.w("OpenAmpWidget", what, e)
+        runCatching {
+            val f = java.io.File(context.filesDir, "widget_log.txt")
+            if (f.length() > 64_000) f.delete()
+            f.appendText("${java.util.Date()} $what: ${e?.stackTraceToString()?.take(1500) ?: ""}\n")
         }
     }
 
