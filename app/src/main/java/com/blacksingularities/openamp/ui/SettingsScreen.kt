@@ -598,9 +598,17 @@ private fun About() {
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Text(
-            tr("Pomysł i wykonanie: redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
+            tr("Projekt i wykonanie: redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
             modifier = Modifier.clip(Shapes.Small).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        Row(
+            Modifier.padding(top = 8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
+                .clickable { open("https://buycoffee.to/adamredzikowski") }.padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("☕", fontSize = 16.sp)
+            Text(tr("Postaw kawę"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(start = 8.dp))
+        }
     }
 }
 

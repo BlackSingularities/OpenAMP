@@ -31,3 +31,9 @@ Wymaga JDK 17 i Android SDK 36. Każdy push na `main` buduje podpisany APK i pub
 ## Licencja
 
 MIT
+
+---
+
+**Projekt i wykonanie: [redzikowski.com](https://redzikowski.com)**
+
+<a href="https://buycoffee.to/adamredzikowski" target="_blank"><img src="https://buycoffee.to/static/img/share/share-button-dark--pl.png" style="width: 351px; height: 92px" width="351" height="92" alt="Postaw kawę dla adamredzikowski na buycoffee.to"></a>
