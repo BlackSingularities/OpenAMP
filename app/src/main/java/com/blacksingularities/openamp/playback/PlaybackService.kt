@@ -70,12 +70,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val renderers = object : DefaultRenderersFactory(this) {
-            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
-                DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(arrayOf(DspProcessor(), spectrum))
-                    .build()
-        }
+        // Korektor, widmo, rozsądne pomijanie ciszy i tor hi-res (float) – zob. AudioOutput.kt.
+        val renderers = OpenAmpRenderersFactory(this, spectrum)
         val s = Graph.settings.value
         player = ExoPlayer.Builder(this, renderers)
             .setAudioAttributes(
@@ -100,7 +96,7 @@ class PlaybackService : MediaSessionService() {
             this, 0, Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_PLAYER, true),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        session = MediaSession.Builder(this, player)
+        session = MediaSession.Builder(this, FadingPlayer(player))
             .setSessionActivity(open)
             .setCallback(callback)
             .setBitmapLoader(CacheBitmapLoader(ArtBitmapLoader(this)))
@@ -240,14 +236,10 @@ class PlaybackService : MediaSessionService() {
             saveQueue()
         }
 
-        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-            // ReplayGain bieżącego utworu – procesor dźwięku wyrównuje głośność według ustawień korektora.
-            val (track, album) = ReplayGain.read(tracks)
-            Dsp.setReplayGain(track, album)
-        }
-
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (!isPlaying) { saveQueue(); flushListen() }
+            // Zabezpieczenie: gra bez trwającego wyciszania – głośność zawsze pełna (nic nie zostaje przyciszone).
+            if (isPlaying && fadeJob?.isActive != true && player.volume < 1f) player.volume = 1f
             lastTick = System.currentTimeMillis()
         }
 
@@ -320,13 +312,55 @@ class PlaybackService : MediaSessionService() {
         pendingListen = 0
     }
 
-    private fun fadeOutAndPause() {
-        scope.launch {
-            val start = player.volume
-            for (i in 1..20) { player.volume = start * (1 - i / 20f); delay(100) }
-            player.pause()
-            player.volume = start
+    // ---------- Płynne wyciszanie ----------
+    // Jedyne miejsce, które zmienia głośność odtwarzacza. Wcześniej robiła to też aplikacja przez
+    // MediaController (kroki po 25 ms przez IPC) – przerwane w połowie zostawiało odtwarzacz przyciszony.
+
+    private var fadeJob: Job? = null
+
+    private suspend fun ramp(to: Float, ms: Long) {
+        val from = player.volume
+        val steps = (ms / 20).coerceAtLeast(1).toInt()
+        for (i in 1..steps) {
+            player.volume = from + (to - from) * i / steps
+            delay(ms / steps)
         }
+    }
+
+    private fun fadePlay() {
+        fadeJob?.cancel()
+        if (!Graph.settings.value.fade) {
+            player.volume = 1f
+            player.play()
+            return
+        }
+        if (!player.isPlaying) player.volume = 0f
+        player.play()
+        fadeJob = scope.launch { ramp(1f, 250) }
+    }
+
+    private fun fadePause(ms: Long = 250) {
+        fadeJob?.cancel()
+        if (!player.isPlaying || (!Graph.settings.value.fade && ms <= 250)) {
+            player.pause()
+            player.volume = 1f
+            return
+        }
+        // Przerwane przez „graj” – fadePlay podnosi głośność od bieżącej wartości.
+        fadeJob = scope.launch {
+            ramp(0f, ms)
+            player.pause()
+            player.volume = 1f
+        }
+    }
+
+    private fun fadeOutAndPause() = fadePause(2_000)
+
+    /** Odtwarzacz widziany przez sesję: każde „graj” i „pauza” (aplikacja, powiadomienie, widżety, słuchawki) przechodzi przez wyciszanie. */
+    private inner class FadingPlayer(p: Player) : androidx.media3.common.ForwardingPlayer(p) {
+        override fun play() = fadePlay()
+        override fun pause() = fadePause()
+        override fun setPlayWhenReady(playWhenReady: Boolean) = if (playWhenReady) fadePlay() else fadePause()
     }
 
     private fun registerHeadset() {

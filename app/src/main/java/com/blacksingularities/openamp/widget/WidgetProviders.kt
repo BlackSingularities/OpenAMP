@@ -183,7 +183,6 @@ object WidgetActions {
         }
         if (c.playbackState == Player.STATE_IDLE) c.prepare()
         if (c.playbackState == Player.STATE_ENDED) c.seekTo(0)
-        c.volume = 1f
         c.play()
     }
 
@@ -191,7 +190,6 @@ object WidgetActions {
         c.shuffleModeEnabled = false
         c.setMediaItems(list.map { it.toRequestItem() }, 0, 0)
         c.prepare()
-        c.volume = 1f
         c.play()
     }
 

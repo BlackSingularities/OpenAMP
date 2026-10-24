@@ -456,7 +456,11 @@ private fun OutputMeter(playing: Boolean) {
     Gap(8.dp)
     val rate = DspMeter.sampleRate
     Text(
-        if (rate > 0) tr("{0} kHz · {1} · przetwarzanie 64-bit, dithering do 16 bit", String.format(Locale.ROOT, "%.1f", rate / 1000f), if (DspMeter.channels == 1) tr("mono") else tr("stereo"))
+        if (rate > 0) tr(
+            "{0} kHz · {1} · {2} · przetwarzanie 64-bit · wyjście {3}",
+            String.format(Locale.ROOT, "%.1f", rate / 1000f), DspMeter.inputFormat, if (DspMeter.channels == 1) tr("mono") else tr("stereo"),
+            if (DspMeter.floatOut) tr("float (hi-res)") else tr("16 bit z ditheringiem"),
+        )
         else tr("Brak sygnału – zacznij odtwarzanie"),
         fontSize = 11.sp, color = Flat.Dim,
     )

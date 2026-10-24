@@ -65,6 +65,10 @@ object DspMeter {
     @Volatile var reductionDb = 0f
     @Volatile var sampleRate = 0
     @Volatile var channels = 0
+    /** Format wejścia procesora: „16 bit”, „24 bit”, „32 bit”, „32 bit float”. */
+    @Volatile var inputFormat = ""
+    /** Czy wynik idzie do AudioTrack jako float (tor hi-res), czy 16 bit z ditheringiem. */
+    @Volatile var floatOut = false
 }
 
 /**
@@ -176,6 +180,21 @@ object Dsp {
         if (track == rgTrack && album == rgAlbum) return
         rgTrack = track; rgAlbum = album
         version++
+    }
+
+    /** ReplayGain następnego utworu, czekający na początek jego dźwięku w procesorze. */
+    @Volatile private var stagedRg: Pair<Float?, Float?>? = null
+
+    /** Znaczniki utworu, który właśnie trafia na wyjście – zaczną obowiązywać przy najbliższej granicy w procesorze. */
+    fun stageReplayGain(track: Float?, album: Float?) {
+        stagedRg = track to album
+    }
+
+    /** Wywoływane przez procesor na granicy strumienia (flush): od tej próbki gra nowy utwór. */
+    fun commitReplayGain() {
+        val rg = stagedRg ?: return
+        stagedRg = null
+        setReplayGain(rg.first, rg.second)
     }
 
     /** Wzmocnienie ReplayGain w dB dla ustawień [s] (0, gdy wyłączone albo utwór nie ma znaczników). */

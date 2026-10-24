@@ -76,6 +76,42 @@ class DspTest {
     }
 
     @Test
+    fun hiResNeutralIsExact() {
+        Dsp.update { DspState() }
+        val p = DspProcessor(floatOutput = true)
+        p.configure(AudioProcessor.AudioFormat(rate, 2, C.ENCODING_PCM_24BIT))
+        p.flush()
+        // 24-bit: wartości, których 16 bitów by nie oddało.
+        val frames = 4000
+        val input = IntArray(frames * 2) { i -> ((sin(2 * PI * 440 * (i / 2) / rate) * 0.9 * 8388607).toInt()) or 1 }
+        val buf = ByteBuffer.allocateDirect(input.size * 3).order(ByteOrder.LITTLE_ENDIAN)
+        input.forEach { v -> buf.put(v.toByte()); buf.put((v shr 8).toByte()); buf.put((v shr 16).toByte()) }
+        buf.flip()
+        p.queueInput(buf)
+        val out = p.output.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val got = FloatArray(out.remaining()).also { out.get(it) }
+        assertEquals(input.size, got.size)
+        val lag = got.indexOfFirst { it != 0f } - input.indexOfFirst { it != 0 }
+        for (i in 0 until input.size - lag) assertEquals("próbka $i", (input[i] / 8388608.0).toFloat(), got[i + lag], 0f)
+    }
+
+    @Test
+    fun replayGainStartsAtTrackBoundary() {
+        Dsp.update { DspState(replayGain = com.blacksingularities.openamp.playback.ReplayGainMode.TRACK) }
+        Dsp.setReplayGain(null, null)
+        val p = DspProcessor()
+        p.configure(AudioProcessor.AudioFormat(rate, 2, C.ENCODING_PCM_16BIT))
+        p.flush()
+        // Znacznik następnego utworu nie działa, dopóki procesor nie dojdzie do granicy strumienia.
+        Dsp.stageReplayGain(-6f, null)
+        assertNull(Dsp.rgTrack)
+        p.queueEndOfStream()
+        p.flush()
+        assertEquals(-6f, Dsp.rgTrack!!, 0f)
+        Dsp.setReplayGain(null, null)
+    }
+
+    @Test
     fun replayGainParsing() {
         assertEquals(-6.53f, ReplayGain.parseDb("-6.53 dB")!!, 0.001f)
         assertEquals(2.1f, ReplayGain.parseDb("+2,1 dB")!!, 0.001f)

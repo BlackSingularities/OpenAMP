@@ -22,11 +22,20 @@ import kotlin.math.tanh
  * - kompresor z miękkim kolanem i limiter z wyprzedzeniem 1,5 ms (zamiast twardego ucinania szczytów),
  * - dithering TPDF przy powrocie do 16 bitów.
  * Przy neutralnych ustawieniach próbki przechodzą bez zmian (bit w bit).
+ *
+ * Wejście: PCM 16, 24, 32 bit albo float. [floatOutput] – wynik jako float (tor hi-res w [OpenAmpAudioSink]);
+ * inaczej w formacie wejścia (16 bit z ditheringiem).
+ * Na granicy utworów (koniec strumienia, potem flush) stan filtrów, limitera i linii opóźniającej zostaje –
+ * odtwarzanie bez przerw jest ciągłe, a ReplayGain nowego utworu zaczyna działać dokładnie od jego pierwszej próbki.
  */
-class DspProcessor : BaseAudioProcessor() {
+class DspProcessor(private val floatOutput: Boolean = false) : BaseAudioProcessor() {
     private var channels = 2
     private var rate = 44100
-    private var float = false
+    private var encoding = C.ENCODING_PCM_16BIT
+    /** Koniec strumienia przed flushem – granica utworów, nie przewinięcie. */
+    private var boundary = false
+    /** Zmieniła się częstotliwość albo liczba kanałów – stan trzeba wyzerować mimo granicy. */
+    private var formatChanged = true
     private var seen = -1L
     private var snapshot = DspState()
 
@@ -77,10 +86,13 @@ class DspProcessor : BaseAudioProcessor() {
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         val enc = inputAudioFormat.encoding
         // Nieobsługiwany format – przepuszczamy bez obróbki zamiast blokować odtwarzanie.
-        if (enc != C.ENCODING_PCM_16BIT && enc != C.ENCODING_PCM_FLOAT) return AudioProcessor.AudioFormat.NOT_SET
+        val supported = enc == C.ENCODING_PCM_16BIT || enc == C.ENCODING_PCM_FLOAT ||
+            (floatOutput && (enc == C.ENCODING_PCM_24BIT || enc == C.ENCODING_PCM_32BIT))
+        if (!supported) return AudioProcessor.AudioFormat.NOT_SET
+        if (inputAudioFormat.channelCount != channels || inputAudioFormat.sampleRate != rate) formatChanged = true
         channels = inputAudioFormat.channelCount
         rate = inputAudioFormat.sampleRate
-        float = enc == C.ENCODING_PCM_FLOAT
+        encoding = enc
         val r = rate.toDouble()
         smoothK = 1 - exp(-1 / (r * 0.010))
         compAtt = 1 - exp(-1 / (r * 0.008))
@@ -92,11 +104,33 @@ class DspProcessor : BaseAudioProcessor() {
         fadeLen = (r * 0.030).toInt().coerceAtLeast(1)
         DspMeter.sampleRate = rate
         DspMeter.channels = channels
+        DspMeter.inputFormat = when (enc) {
+            C.ENCODING_PCM_16BIT -> "16 bit"
+            C.ENCODING_PCM_24BIT -> "24 bit"
+            C.ENCODING_PCM_32BIT -> "32 bit"
+            else -> "32 bit float"
+        }
+        DspMeter.floatOut = floatOutput || enc == C.ENCODING_PCM_FLOAT
         seen = -1
-        return inputAudioFormat
+        return if (floatOutput) AudioProcessor.AudioFormat(rate, channels, C.ENCODING_PCM_FLOAT) else inputAudioFormat
+    }
+
+    /** Koniec strumienia: nic nie wypuszczamy – ogon z linii opóźniającej zagra na początku następnego utworu. */
+    override fun onQueueEndOfStream() {
+        boundary = true
     }
 
     override fun onFlush() {
+        val continuous = boundary && !formatChanged
+        boundary = false
+        formatChanged = false
+        // ReplayGain nowego utworu – przygotowany przy konfiguracji wyjścia, obowiązuje od tej chwili.
+        Dsp.commitReplayGain()
+        if (continuous) {
+            // Granica utworów bez przerwy: filtry, limiter i opóźnienie grają dalej, wzmocnienia przechodzą płynnie.
+            refresh()
+            return
+        }
         chain = Chain(chain.co, channels)
         oldChain = null
         fadeLeft = 0
@@ -112,6 +146,8 @@ class DspProcessor : BaseAudioProcessor() {
 
     override fun onReset() {
         seen = -1
+        boundary = false
+        formatChanged = true
     }
 
     private fun refresh() {
@@ -167,9 +203,11 @@ class DspProcessor : BaseAudioProcessor() {
         if (remaining == 0) return
         refresh()
         val src = inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        val out = replaceOutputBuffer(remaining).order(ByteOrder.LITTLE_ENDIAN)
-        val bytes = if (float) 4 else 2
+        val float = encoding == C.ENCODING_PCM_FLOAT
+        val bytes = when (encoding) { C.ENCODING_PCM_16BIT -> 2; C.ENCODING_PCM_24BIT -> 3; else -> 4 }
         val frames = remaining / (bytes * channels)
+        val outFloat = floatOutput || float
+        val out = replaceOutputBuffer(frames * channels * (if (outFloat) 4 else 2)).order(ByteOrder.LITTLE_ENDIAN)
         if (delay.size != lookahead * channels) { delay = DoubleArray(lookahead * channels); delayPos = 0 }
         val frame = DoubleArray(channels)
         val stereo = channels == 2
@@ -178,7 +216,17 @@ class DspProcessor : BaseAudioProcessor() {
         var minGain = 1.0
 
         for (n in 0 until frames) {
-            for (c in 0 until channels) frame[c] = if (float) src.float.toDouble() else src.short / 32768.0
+            for (c in 0 until channels) frame[c] = when (encoding) {
+                C.ENCODING_PCM_16BIT -> src.short / 32768.0
+                C.ENCODING_PCM_FLOAT -> src.float.toDouble()
+                C.ENCODING_PCM_24BIT -> {
+                    val b0 = src.get().toInt() and 0xFF
+                    val b1 = src.get().toInt() and 0xFF
+                    val b2 = src.get().toInt()
+                    ((b2 shl 16) or (b1 shl 8) or b0) / 8388608.0
+                }
+                else -> src.int / 2147483648.0
+            }
 
             gain = approach(gain, gainT); balL = approach(balL, balLT); balR = approach(balR, balRT)
             width = approach(width, widthT); xfeed = approach(xfeed, xfeedT)
@@ -265,7 +313,7 @@ class DspProcessor : BaseAudioProcessor() {
                 // Zabezpieczenie: szczyty powyżej 0,97 pełnej skali (ponad próg limitera), zaokrąglane
                 // miękko (ciągle, bez załamania); przy neutralnym torze próbki zostają nietknięte.
                 if (!neutral && abs(v) > 0.97) v = Math.copySign(0.97 + 0.03 * tanh((abs(v) - 0.97) / 0.03), v)
-                if (float) out.putFloat(v.toFloat())
+                if (outFloat) out.putFloat(v.toFloat())
                 else {
                     // Dithering TPDF (±1 LSB) – zamiast zniekształceń kwantyzacji cichy, równy szum.
                     val d = if (neutral) 0.0 else rand() - rand()

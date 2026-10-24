@@ -31,6 +31,20 @@ object ReplayGain {
         return track to album
     }
 
+    /** Wzmocnienia (utwór, album) w dB z metadanych formatu jednego strumienia. */
+    fun fromMetadata(md: Metadata?): Pair<Float?, Float?> {
+        var track: Float? = null
+        var album: Float? = null
+        if (md != null) for (k in 0 until md.length()) {
+            val (key, value) = entry(md.get(k)) ?: continue
+            when (key.lowercase()) {
+                "replaygain_track_gain" -> track = track ?: parseDb(value)
+                "replaygain_album_gain" -> album = album ?: parseDb(value)
+            }
+        }
+        return track to album
+    }
+
     private fun entry(e: Metadata.Entry): Pair<String, String>? = when (e) {
         is VorbisComment -> e.key to e.value
         is TextInformationFrame -> e.description?.let { d -> e.values.firstOrNull()?.let { d to it } }
