@@ -73,8 +73,6 @@ data class WidgetConfig(
     val coverFocus: Int = 50,
     /** Wysokość paska postępu w dp (Android 12+; starsze – stała z układu). */
     val progressHeight: Int = 14,
-    /** Odstęp między paskiem postępu a przyciskami w dp. */
-    val progressGap: Int = 0,
     val timePos: WidgetTimePos = WidgetTimePos.BELOW,
     /** Wielkość przycisków w % (Android 12+). */
     val buttonScale: Int = 100,
@@ -85,16 +83,18 @@ data class WidgetConfig(
     /** Tytuł, wykonawca i pozostałe wiersze tekstu wyśrodkowane. */
     val centerText: Boolean = false,
     val controlsPos: WidgetControlsPos = WidgetControlsPos.BELOW_BAR,
-    /** Zwarty układ: bez odstępów między okładką, tekstem, taśmą i przyciskami. */
-    val compact: Boolean = false,
     val showLike: Boolean = true,
     val showQueuePos: Boolean = true,
     val buttonStyle: WidgetButtonStyle = WidgetButtonStyle.CIRCLE,
-    /** Dodatkowe odstępy nad i pod przyciskami w dp (Android 12+). */
-    val controlsTop: Int = 0,
-    val controlsBottom: Int = 0,
-    /** Odstęp nad paskiem postępu w dp, gdy pasek jest pod okładką i tytułem (Android 12+). */
-    val barTop: Int = 6,
+    /**
+     * Odstępy Odtwarzacza w dp (Android 12+), liczone od góry, niezależnie od tego, co gdzie stoi:
+     * [gapTop] – pod okładką i tytułem, [gapMid] – między taśmą a przyciskami, [gapColumn] – między
+     * tytułem a przyciskami w kolumnie, [gapCover] – między okładką a tekstem. Ujemne nasuwają elementy na siebie.
+     */
+    val gapTop: Int = 6,
+    val gapMid: Int = 0,
+    val gapColumn: Int = 6,
+    val gapCover: Int = 12,
     val textScale: Int = 100,
     val tap: WidgetTap = WidgetTap.OPEN_PLAYER,
     val shortcuts: List<WidgetShortcut> = listOf(WidgetShortcut.RESUME, WidgetShortcut.SHUFFLE_ALL, WidgetShortcut.DAILY_MIX, WidgetShortcut.FAVORITES),
@@ -119,8 +119,13 @@ data class WidgetConfig(
     }
 }
 
-/** Zapis ustawień widżetów: osobne klucze dla każdego identyfikatora widżetu. */
+/**
+ * Zapis ustawień widżetów: osobne klucze dla każdego identyfikatora widżetu.
+ * Odczytane ustawienia są trzymane w pamięci – pasek postępu odświeżany co 2 s nie czyta ich za każdym razem.
+ */
 object WidgetConfigStore {
+    private val cache = java.util.concurrent.ConcurrentHashMap<Int, WidgetConfig>()
+
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences("openamp_widgets", Context.MODE_PRIVATE)
 
@@ -129,12 +134,24 @@ object WidgetConfigStore {
 
     fun has(context: Context, id: Int): Boolean = prefs(context).contains("w${id}_bg")
 
-    fun load(context: Context, id: Int, kind: WidgetKind): WidgetConfig {
+    fun load(context: Context, id: Int, kind: WidgetKind): WidgetConfig =
+        cache[id] ?: read(context, id, kind).also { cache[id] = it }
+
+    private fun read(context: Context, id: Int, kind: WidgetKind): WidgetConfig {
         val d = WidgetConfig.defaults(kind)
         val p = prefs(context)
         if (!p.contains("w${id}_bg")) return d
         fun k(n: String) = "w${id}_$n"
         return with(p) {
+            val controlsPos = enum(k("controlsPos"), d.controlsPos)
+            // Odstępy sprzed przebudowy (zwarty układ, odstęp nad paskiem, od przycisków, nad i pod przyciskami)
+            // przeliczone na odstępy liczone od góry – widżet po aktualizacji wygląda tak samo.
+            val legacy = !contains(k("gapTop")) && contains(k("barTop"))
+            val compact = getBoolean(k("compact"), false)
+            val barTop = if (compact) 0 else getInt(k("barTop"), 6)
+            val progressGap = getInt(k("progressGap"), 0)
+            val controlsTop = getInt(k("controlsTop"), 0)
+            val controlsBottom = getInt(k("controlsBottom"), 0)
             WidgetConfig(
                 background = enum(k("bg"), d.background),
                 customColor = getInt(k("customColor"), d.customColor),
@@ -160,22 +177,27 @@ object WidgetConfigStore {
                 coverSize = getInt(k("coverSize"), d.coverSize),
                 coverFocus = getInt(k("coverFocus"), d.coverFocus),
                 progressHeight = getInt(k("progressHeight"), d.progressHeight),
-                progressGap = getInt(k("progressGap"), d.progressGap),
                 timePos = enum(k("timePos"), d.timePos),
                 buttonScale = getInt(k("buttonScale"), d.buttonScale),
                 padding = getInt(k("padding"), d.padding),
                 titleLines = getInt(k("titleLines"), d.titleLines),
                 boldTitle = getBoolean(k("boldTitle"), d.boldTitle),
                 centerText = getBoolean(k("centerText"), d.centerText),
-                controlsPos = enum(k("controlsPos"), d.controlsPos),
-                compact = getBoolean(k("compact"), d.compact),
+                controlsPos = controlsPos,
                 showLike = getBoolean(k("showLike"), d.showLike),
                 showQueuePos = getBoolean(k("showQueuePos"), d.showQueuePos),
                 // Dawny przełącznik „pełny ▶” – wyłączony oznacza przyciski bez tła.
                 buttonStyle = if (!contains(k("buttonStyle")) && !getBoolean(k("filledPlay"), true)) WidgetButtonStyle.PLAIN else enum(k("buttonStyle"), d.buttonStyle),
-                controlsTop = getInt(k("controlsTop"), d.controlsTop),
-                controlsBottom = getInt(k("controlsBottom"), d.controlsBottom),
-                barTop = getInt(k("barTop"), d.barTop),
+                gapTop = if (!legacy) getInt(k("gapTop"), d.gapTop) else when (controlsPos) {
+                    WidgetControlsPos.ABOVE_BAR -> controlsTop
+                    else -> barTop
+                },
+                gapMid = if (!legacy) getInt(k("gapMid"), d.gapMid) else when (controlsPos) {
+                    WidgetControlsPos.BELOW_BAR -> progressGap + controlsTop
+                    else -> progressGap + controlsBottom
+                },
+                gapColumn = if (!legacy) getInt(k("gapColumn"), d.gapColumn) else (if (compact) 0 else 6) + controlsTop,
+                gapCover = if (!legacy) getInt(k("gapCover"), d.gapCover) else if (compact) 8 else 12,
                 textScale = getInt(k("textScale"), d.textScale),
                 tap = enum(k("tap"), d.tap),
                 shortcuts = getString(k("shortcuts"), null)?.split(',')
@@ -187,8 +209,12 @@ object WidgetConfigStore {
     }
 
     fun save(context: Context, id: Int, c: WidgetConfig) {
+        cache[id] = c
         fun k(n: String) = "w${id}_$n"
-        prefs(context).edit()
+        val e = prefs(context).edit()
+        // Klucze dawnych odstępów – po zapisie obowiązują już nowe.
+        listOf("compact", "barTop", "progressGap", "controlsTop", "controlsBottom", "showShuffleRepeat", "filledPlay").forEach { e.remove(k(it)) }
+        e
             .putString(k("bg"), c.background.name)
             .putInt(k("customColor"), c.customColor)
             .putInt(k("opacity"), c.opacity)
@@ -211,7 +237,6 @@ object WidgetConfigStore {
             .putInt(k("coverSize"), c.coverSize)
             .putInt(k("coverFocus"), c.coverFocus)
             .putInt(k("progressHeight"), c.progressHeight)
-            .putInt(k("progressGap"), c.progressGap)
             .putString(k("timePos"), c.timePos.name)
             .putInt(k("buttonScale"), c.buttonScale)
             .putInt(k("padding"), c.padding)
@@ -219,13 +244,13 @@ object WidgetConfigStore {
             .putBoolean(k("boldTitle"), c.boldTitle)
             .putBoolean(k("centerText"), c.centerText)
             .putString(k("controlsPos"), c.controlsPos.name)
-            .putBoolean(k("compact"), c.compact)
             .putBoolean(k("showLike"), c.showLike)
             .putBoolean(k("showQueuePos"), c.showQueuePos)
             .putString(k("buttonStyle"), c.buttonStyle.name)
-            .putInt(k("controlsTop"), c.controlsTop)
-            .putInt(k("controlsBottom"), c.controlsBottom)
-            .putInt(k("barTop"), c.barTop)
+            .putInt(k("gapTop"), c.gapTop)
+            .putInt(k("gapMid"), c.gapMid)
+            .putInt(k("gapColumn"), c.gapColumn)
+            .putInt(k("gapCover"), c.gapCover)
             .putInt(k("textScale"), c.textScale)
             .putString(k("tap"), c.tap.name)
             .putString(k("shortcuts"), c.shortcuts.joinToString(",") { it.name })
@@ -234,6 +259,7 @@ object WidgetConfigStore {
     }
 
     fun delete(context: Context, id: Int) {
+        cache.remove(id)
         val p = prefs(context)
         val e = p.edit()
         p.all.keys.filter { it.startsWith("w${id}_") }.forEach { e.remove(it) }
