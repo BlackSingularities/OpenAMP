@@ -474,10 +474,11 @@ private fun OutputMeter(playing: Boolean) {
 private fun ReductionMeter(playing: Boolean) {
     val m = rememberMeter(playing)
     val accent = MaterialTheme.colorScheme.primary
+    val hair = Flat.Hair
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(tr("Ściszenie"), fontSize = 11.sp, color = Flat.Dim, modifier = Modifier.width(72.dp))
         Canvas(Modifier.weight(1f).height(8.dp)) {
-            drawRoundRect(Flat.Hair, size = size, cornerRadius = CornerRadius(size.height / 2))
+            drawRoundRect(hair, size = size, cornerRadius = CornerRadius(size.height / 2))
             // Skala 0…−12 dB od prawej – jak wskaźnik redukcji w kompresorach.
             val f = (-m[2] / 12f).coerceIn(0f, 1f)
             drawRoundRect(accent, Offset(size.width * (1 - f), 0f), Size(size.width * f, size.height), CornerRadius(size.height / 2))
@@ -489,11 +490,12 @@ private fun ReductionMeter(playing: Boolean) {
 /** Pasek poziomu −60…0 dBFS: zielony, od −12 dB żółty, od −3 dB czerwony. */
 @Composable
 private fun MeterBar(label: String, dbfs: Float) {
+    val hair = Flat.Hair
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flat.Dim, modifier = Modifier.width(18.dp))
         Canvas(Modifier.weight(1f).height(10.dp)) {
             fun x(d: Float) = ((d + 60f) / 60f).coerceIn(0f, 1f) * size.width
-            drawRoundRect(Flat.Hair, size = size, cornerRadius = CornerRadius(3.dp.toPx()))
+            drawRoundRect(hair, size = size, cornerRadius = CornerRadius(3.dp.toPx()))
             clipRect(right = x(dbfs)) {
                 drawRect(Brush.horizontalGradient(
                     0f to Color(0xFF3DDC84), 0.8f to Color(0xFF3DDC84), 0.8f to Color(0xFFFFC14D), 0.95f to Color(0xFFFFC14D), 0.95f to Color(0xFFFF5A5A),
