@@ -98,6 +98,8 @@ dependencies {
 
     // Odtwarzanie: ExoPlayer + MediaSession (powiadomienie, ekran blokady, słuchawki, Android Auto).
     implementation("androidx.media3:media3-exoplayer:$media3")
+    // Znaczniki ReplayGain (komentarze Vorbis, ramki ID3).
+    implementation("androidx.media3:media3-extractor:$media3")
     implementation("androidx.media3:media3-session:$media3")
 
     implementation(composeBom)

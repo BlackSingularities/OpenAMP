@@ -240,6 +240,12 @@ class PlaybackService : MediaSessionService() {
             saveQueue()
         }
 
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            // ReplayGain bieżącego utworu – procesor dźwięku wyrównuje głośność według ustawień korektora.
+            val (track, album) = ReplayGain.read(tracks)
+            Dsp.setReplayGain(track, album)
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (!isPlaying) { saveQueue(); flushListen() }
             lastTick = System.currentTimeMillis()
