@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -259,13 +260,13 @@ object WidgetRenderer {
         rv.setViewVisibility(ctl.prev, vis(c.showPrevNext))
         rv.setViewVisibility(ctl.next, vis(c.showPrevNext))
         if (showShuffle) {
-            icon(rv, ctl.shuffle, R.drawable.ic_w_shuffle, if (s.shuffle) pal.accent else pal.fg3)
+            icon(context, rv, ctl.shuffle, R.drawable.ic_w_shuffle, if (s.shuffle) pal.accent else pal.fg3)
             rv.setOnClickPendingIntent(ctl.shuffle, action(context, i, WidgetActions.SHUFFLE, 5))
             rv.setContentDescription(ctl.shuffle, tr("Losowo"))
         }
         if (showRepeat) {
             icon(
-                rv, ctl.repeat, if (s.repeat == RepeatMode.ONE) R.drawable.ic_w_repeat_one else R.drawable.ic_w_repeat,
+                context, rv, ctl.repeat, if (s.repeat == RepeatMode.ONE) R.drawable.ic_w_repeat_one else R.drawable.ic_w_repeat,
                 if (s.repeat != RepeatMode.OFF) pal.accent else pal.fg3,
             )
             rv.setOnClickPendingIntent(ctl.repeat, action(context, i, WidgetActions.REPEAT, 6))
@@ -315,9 +316,8 @@ object WidgetRenderer {
             val active = sc == WidgetShortcut.SLEEP && i.sleepOn ||
                 sc == WidgetShortcut.RESUME && i.state.playing
             val iconRes = if (sc == WidgetShortcut.RESUME && i.state.playing) R.drawable.ic_w_pause else shortcutIcon(sc)
-            rv.setImageViewResource(slot.icon, iconRes)
-            rv.setInt(slot.icon, "setColorFilter", if (active) pal.onAccent else pal.fg)
-            rv.setInt(slot.bg, "setColorFilter", if (active) pal.accent else ColorUtils.setAlphaComponent(pal.fg, 0x1F))
+            icon(context, rv, slot.icon, iconRes, if (active) pal.onAccent else pal.fg)
+            icon(context, rv, slot.bg, R.drawable.widget_circle, if (active) pal.accent else ColorUtils.setAlphaComponent(pal.fg, 0x1F), dp = 56, inset = 0.07f)
             rv.setViewVisibility(slot.label, vis(labels))
             rv.setTextViewText(slot.label, shortcutLabel(sc))
             textStyle(rv, slot.label, 11f * c.textScale / 100f, pal.fg2)
@@ -410,9 +410,9 @@ object WidgetRenderer {
         }
     }
 
-    private fun icon(rv: RemoteViews, id: Int, res: Int, color: Int) {
-        rv.setImageViewResource(id, res)
-        rv.setInt(id, "setColorFilter", color)
+    /** Ikona [res] w kolorze [color] z delikatnym cieniem – jako bitmapa, bo RemoteViews nie daje cienia obrazkom. */
+    private fun icon(context: Context, rv: RemoteViews, id: Int, res: Int, color: Int, dp: Int = 32, inset: Float = 0f) {
+        rv.setImageViewBitmap(id, shaded(context, res, color, dp, inset))
     }
 
     /** Identyfikatory jednego zestawu przycisków (Odtwarzacz ma dwa: wiersz i kolumnę obok okładki). */
@@ -423,24 +423,22 @@ object WidgetRenderer {
 
     private fun controls(context: Context, rv: RemoteViews, i: Input, pal: Palette, ctl: Ctl = ctlRow) {
         val playing = i.state.playing
-        rv.setImageViewResource(ctl.play, if (playing) R.drawable.ic_w_pause else R.drawable.ic_w_play)
+        val playRes = if (playing) R.drawable.ic_w_pause else R.drawable.ic_w_play
         val style = i.cfg.buttonStyle
         when (style) {
             WidgetButtonStyle.CIRCLE, WidgetButtonStyle.SQUARE, WidgetButtonStyle.BUBBLES -> {
                 rv.setViewVisibility(ctl.playBg, View.VISIBLE)
-                rv.setImageViewResource(ctl.playBg, if (style == WidgetButtonStyle.SQUARE) R.drawable.widget_rsquare else R.drawable.widget_circle)
-                rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
-                rv.setInt(ctl.play, "setColorFilter", pal.onAccent)
+                icon(context, rv, ctl.playBg, if (style == WidgetButtonStyle.SQUARE) R.drawable.widget_rsquare else R.drawable.widget_circle, pal.accent, dp = 64, inset = 0.07f)
+                icon(context, rv, ctl.play, playRes, pal.onAccent, dp = 36)
             }
             WidgetButtonStyle.RING -> {
                 rv.setViewVisibility(ctl.playBg, View.VISIBLE)
-                rv.setImageViewResource(ctl.playBg, R.drawable.widget_ring)
-                rv.setInt(ctl.playBg, "setColorFilter", pal.accent)
-                rv.setInt(ctl.play, "setColorFilter", pal.accent)
+                icon(context, rv, ctl.playBg, R.drawable.widget_ring, pal.accent, dp = 64, inset = 0.07f)
+                icon(context, rv, ctl.play, playRes, pal.accent, dp = 36)
             }
             WidgetButtonStyle.PLAIN -> {
                 rv.setViewVisibility(ctl.playBg, View.GONE)
-                rv.setInt(ctl.play, "setColorFilter", pal.fg)
+                icon(context, rv, ctl.play, playRes, pal.fg, dp = 36)
             }
         }
         // „Wszystkie w kołach”: delikatne koła pod poprzednim i następnym (i losowaniem/powtarzaniem w Odtwarzaczu).
@@ -450,11 +448,11 @@ object WidgetRenderer {
         if (soft != 0) for (id in others) rv.setInt(id, "setBackgroundResource", soft)
         rv.setContentDescription(ctl.play, if (playing) tr("Pauza") else tr("Odtwórz"))
         rv.setOnClickPendingIntent(ctl.play, action(context, i, WidgetActions.PLAY_PAUSE, 1))
-        icon(rv, ctl.next, R.drawable.ic_w_next, pal.fg)
+        icon(context, rv, ctl.next, R.drawable.ic_w_next, pal.fg)
         rv.setContentDescription(ctl.next, tr("Następny"))
         rv.setOnClickPendingIntent(ctl.next, action(context, i, WidgetActions.NEXT, 2))
         if (i.kind != WidgetKind.SHORTCUTS) {
-            icon(rv, ctl.prev, R.drawable.ic_w_prev, pal.fg)
+            icon(context, rv, ctl.prev, R.drawable.ic_w_prev, pal.fg)
             rv.setContentDescription(ctl.prev, tr("Poprzedni"))
             rv.setOnClickPendingIntent(ctl.prev, action(context, i, WidgetActions.PREV, 3))
         }
@@ -465,7 +463,7 @@ object WidgetRenderer {
         rv.setViewVisibility(R.id.w_like, vis(show))
         if (!show) return
         val color = if (i.favorite) (if (onArt) Color.WHITE else pal.accent) else if (onArt) Color.WHITE else pal.fg3
-        icon(rv, R.id.w_like, if (i.favorite) R.drawable.ic_w_heart else R.drawable.ic_w_heart_outline, color)
+        icon(context, rv, R.id.w_like, if (i.favorite) R.drawable.ic_w_heart else R.drawable.ic_w_heart_outline, color)
         rv.setContentDescription(R.id.w_like, if (i.favorite) tr("Usuń z ulubionych") else tr("Dodaj do ulubionych"))
         rv.setOnClickPendingIntent(R.id.w_like, action(context, i, WidgetActions.LIKE, 4))
     }
@@ -546,7 +544,7 @@ object WidgetRenderer {
         if (Build.VERSION.SDK_INT >= 31) rv.setViewLayoutHeight(id, hDp.toFloat(), TypedValue.COMPLEX_UNIT_DIP)
         val s = i.state
         val f = if (s.durationMs > 0) (s.position().toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
-        rv.setImageViewBitmap(id, progressBitmap(context, resolveStyle(c.progressStyle, i.appSeek), f, i.wave, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp))
+        rv.setImageViewBitmap(id, withShadow(progressBitmap(context, resolveStyle(c.progressStyle, i.appSeek), f, i.wave, pal, (i.size.wDp - inset).coerceAtLeast(40), hDp), scaleOf(context)))
     }
 
     // ---------------------------------------------------------------- akcje
@@ -687,7 +685,7 @@ object WidgetRenderer {
             WidgetCoverShape.SQUARE -> px * 0.04f
             WidgetCoverShape.CIRCLE -> px / 2f
         }
-        return rounded(content, r, 255, circle = i.cfg.coverShape == WidgetCoverShape.CIRCLE)
+        return withShadow(rounded(content, r, 255, circle = i.cfg.coverShape == WidgetCoverShape.CIRCLE), scaleOf(context), inset = (px * 0.05f).roundToInt())
     }
 
     /** Wartość fali w odcinku [i] z [n] (maksimum) – z zastępczym kształtem, gdy fali jeszcze nie ma. */
@@ -863,6 +861,39 @@ object WidgetRenderer {
         canvas.drawBitmap(mid, Rect(0, 0, mid.width, mid.height), Rect(0, 0, w, h), Paint(Paint.FILTER_BITMAP_FLAG))
         // Lekkie nasycenie barw i rozjaśnienie ciemnych okładek, żeby tło nie było szare.
         canvas.drawColor(0x14FFFFFF)
+    }
+
+    /** Obrazek [res] zabarwiony na [color], kwadrat [dp] (z marginesem [inset] na cień), z delikatnym cieniem. */
+    private fun shaded(context: Context, res: Int, color: Int, dp: Int, inset: Float): Bitmap {
+        val sc = scaleOf(context)
+        val s = (dp * sc).roundToInt().coerceAtLeast(8)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        ContextCompat.getDrawable(context, res)?.mutate()?.let { d ->
+            val o = (s * inset).roundToInt()
+            d.setBounds(o, o, s - o, s - o)
+            d.setTint(color)
+            d.draw(Canvas(bmp))
+        }
+        return withShadow(bmp, sc)
+    }
+
+    /**
+     * Delikatny, lekko przesunięty w dół cień pod nieprzezroczystymi pikselami [src].
+     * [inset] (px) pomniejsza obraz, żeby cień zmieścił się w bitmapie.
+     */
+    private fun withShadow(src: Bitmap, sc: Float, inset: Int = 0): Bitmap {
+        val w = src.width
+        val h = src.height
+        val body = if (inset <= 0) src else Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also {
+            Canvas(it).drawBitmap(src, null, Rect(inset, inset, w - inset, h - inset), Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        }
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val off = IntArray(2)
+        val alpha = body.extractAlpha(Paint().apply { maskFilter = BlurMaskFilter(2.5f * sc, BlurMaskFilter.Blur.NORMAL) }, off)
+        canvas.drawBitmap(alpha, off[0].toFloat(), off[1] + sc, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x52000000 })
+        canvas.drawBitmap(body, 0f, 0f, null)
+        return out
     }
 
     /** Zaokrąglenie (albo koło) z wygładzonymi krawędziami i zadaną przezroczystością. */

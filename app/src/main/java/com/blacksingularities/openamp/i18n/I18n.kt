@@ -960,5 +960,5 @@ private val En: Map<String, String> = mapOf(
     "Odstęp nad przyciskami" to "Space above buttons",
     "Odstęp pod przyciskami" to "Space below buttons",
     "Odstęp nad paskiem" to "Space above bar",
-    "Między okładką z tytułem a paskiem postępu" to "Between artwork with title and the progress bar",
+    "Między okładką z tytułem a paskiem postępu; ujemny nasuwa pasek wyżej" to "Between artwork with title and the progress bar; negative pulls the bar up",
 )

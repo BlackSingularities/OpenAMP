@@ -546,11 +546,11 @@ private fun WidgetEditor(id: Int, kind: WidgetKind, onBack: () -> Unit, onSaved:
                                 short = { when (it) { null -> tr("Brak"); WidgetTimePos.BELOW -> tr("Pod"); WidgetTimePos.SIDES -> tr("Boki") } },
                             ) { v -> set { if (v == null) it.copy(showTime = false) else it.copy(showTime = true, timePos = v) } }
                             if (cfg.controlsPos != WidgetControlsPos.ABOVE_BAR) SetSlider(
-                                Icons.Rounded.VerticalAlignTop, tr("Odstęp nad paskiem"), "${cfg.barTop} dp", cfg.barTop.toFloat(), 0f..24f, 23,
-                                subtitle = if (sizesSupported) tr("Między okładką z tytułem a paskiem postępu") else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
+                                Icons.Rounded.VerticalAlignTop, tr("Odstęp nad paskiem"), "${cfg.barTop} dp", cfg.barTop.toFloat(), -24f..24f, 47,
+                                subtitle = if (sizesSupported) tr("Między okładką z tytułem a paskiem postępu; ujemny nasuwa pasek wyżej") else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
                             ) { v -> set { it.copy(barTop = v.roundToInt()) } }
                             if (cfg.controlsPos != WidgetControlsPos.IN_COLUMN) SetSlider(
-                                Icons.Rounded.SpaceBar, tr("Odstęp od przycisków"), "${cfg.progressGap} dp", cfg.progressGap.toFloat(), 0f..16f, 15,
+                                Icons.Rounded.SpaceBar, tr("Odstęp od przycisków"), "${cfg.progressGap} dp", cfg.progressGap.toFloat(), -16f..16f, 31,
                                 subtitle = if (sizesSupported) null else tr("Wymaga Androida 12 lub nowszego"), enabled = sizesSupported,
                             ) { v -> set { it.copy(progressGap = v.roundToInt()) } }
                         }

@@ -39,6 +39,12 @@
             android:orientation="vertical">
 
             <TextView
+
+                android:shadowColor="#52000000"
+
+                android:shadowDy="1"
+
+                android:shadowRadius="3"
                 android:id="@+id/w_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -49,6 +55,12 @@
                 android:textSize="14sp" />
 
             <TextView
+
+                android:shadowColor="#52000000"
+
+                android:shadowDy="1"
+
+                android:shadowRadius="3"
                 android:id="@+id/w_artist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
