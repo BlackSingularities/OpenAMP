@@ -49,7 +49,23 @@ data class DspState(
     /** Automatyczne profile korektora dla słuchawek, Bluetooth i głośnika. */
     val autoProfiles: Boolean = true,
     val profile: String = "SPEAKER",
+    /** Wyrównanie głośności według znaczników ReplayGain i dodatkowe wzmocnienie dla niego (dB). */
+    val replayGain: ReplayGainMode = ReplayGainMode.OFF,
+    val rgPreamp: Float = 0f,
 )
+
+/** ReplayGain: wyłączony, według utworu albo albumu (gdy brak znacznika – ten drugi). */
+enum class ReplayGainMode { OFF, TRACK, ALBUM }
+
+/** Odczyty z procesora na żywo – dla mierników na ekranie korektora (bez wpływu na dźwięk). */
+object DspMeter {
+    @Volatile var peakL = 0f
+    @Volatile var peakR = 0f
+    /** Bieżące ściszenie przez kompresor i limiter (dB, ≤ 0). */
+    @Volatile var reductionDb = 0f
+    @Volatile var sampleRate = 0
+    @Volatile var channels = 0
+}
 
 /**
  * Silnik dźwięku OpenAMP: 10-pasmowy korektor parametryczny (filtry dwukwadratowe RBJ),
@@ -125,7 +141,8 @@ object Dsp {
         val saved = if (::prefs.isInitialized) prefs.getString("profile_$kind", null) else null
         update { s ->
             val loaded = saved?.let { runCatching { fromJson(JSONObject(it)) }.getOrNull() }
-            (loaded ?: s).copy(userPresets = s.userPresets, autoProfiles = s.autoProfiles, profile = kind)
+            // ReplayGain jest wspólny dla wszystkich wyjść – nie przełącza się z profilem.
+            (loaded ?: s).copy(userPresets = s.userPresets, autoProfiles = s.autoProfiles, profile = kind, replayGain = s.replayGain, rgPreamp = s.rgPreamp)
         }
     }
 
@@ -137,6 +154,39 @@ object Dsp {
     @Volatile
     var version = 0L
         private set
+
+    /** Porównanie A/B: przytrzymanie przycisku chwilowo omija korektor i efekty (bez zapisu). */
+    @Volatile
+    var bypass = false
+        private set
+
+    fun setBypass(on: Boolean) {
+        if (bypass == on) return
+        bypass = on
+        version++
+    }
+
+    /** Znaczniki ReplayGain bieżącego utworu (dB) – ustawiane przez serwis odtwarzania. */
+    @Volatile var rgTrack: Float? = null
+        private set
+    @Volatile var rgAlbum: Float? = null
+        private set
+
+    fun setReplayGain(track: Float?, album: Float?) {
+        if (track == rgTrack && album == rgAlbum) return
+        rgTrack = track; rgAlbum = album
+        version++
+    }
+
+    /** Wzmocnienie ReplayGain w dB dla ustawień [s] (0, gdy wyłączone albo utwór nie ma znaczników). */
+    fun replayGainDb(s: DspState): Float {
+        val tag = when (s.replayGain) {
+            ReplayGainMode.OFF -> return 0f
+            ReplayGainMode.TRACK -> rgTrack ?: rgAlbum
+            ReplayGainMode.ALBUM -> rgAlbum ?: rgTrack
+        } ?: return 0f
+        return (tag + s.rgPreamp).coerceIn(-24f, 12f)
+    }
 
     private fun g(vararg v: Float) = v.toList()
 
@@ -234,6 +284,7 @@ object Dsp {
         .put("preset", s.preset)
         .put("comp", s.compressor).put("compT", s.compThreshold.toDouble()).put("compR", s.compRatio.toDouble())
         .put("xfeed", s.crossfeed.toDouble()).put("autoProf", s.autoProfiles).put("profile", s.profile)
+        .put("rg", s.replayGain.name).put("rgPre", s.rgPreamp.toDouble())
         .put("user", JSONArray().apply { s.userPresets.forEach { put(JSONObject().put("name", it.name).put("bands", bandsJson(it.bands))) } })
 
     private fun fromJson(o: JSONObject): DspState {
@@ -260,12 +311,17 @@ object Dsp {
             crossfeed = o.optDouble("xfeed", 0.0).toFloat(),
             autoProfiles = o.optBoolean("autoProf", true),
             profile = o.optString("profile", "SPEAKER"),
+            replayGain = ReplayGainMode.entries.firstOrNull { it.name == o.optString("rg") } ?: ReplayGainMode.OFF,
+            rgPreamp = o.optDouble("rgPre", 0.0).toFloat(),
         )
     }
 }
 
-/** Filtr dwukwadratowy (Audio EQ Cookbook, R. Bristow-Johnson), znormalizowany a0 = 1. */
-class Biquad(val b0: Float, val b1: Float, val b2: Float, val a1: Float, val a2: Float) {
+/**
+ * Filtr dwukwadratowy (Audio EQ Cookbook, R. Bristow-Johnson), znormalizowany a0 = 1.
+ * Współczynniki w podwójnej precyzji – przy niskich pasmach (20–60 Hz) pojedyncza precyzja daje szum i odchyłki.
+ */
+class Biquad(val b0: Double, val b1: Double, val b2: Double, val a1: Double, val a2: Double) {
     fun magnitudeDb(f: Float, rate: Float): Float {
         val w = 2 * PI * f / rate
         val c1 = cos(w); val s1 = sin(w); val c2 = cos(2 * w); val s2 = sin(2 * w)
@@ -277,7 +333,7 @@ class Biquad(val b0: Float, val b1: Float, val b2: Float, val a1: Float, val a2:
 
     companion object {
         private fun norm(b0: Double, b1: Double, b2: Double, a0: Double, a1: Double, a2: Double) =
-            Biquad((b0 / a0).toFloat(), (b1 / a0).toFloat(), (b2 / a0).toFloat(), (a1 / a0).toFloat(), (a2 / a0).toFloat())
+            Biquad(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
 
         fun peaking(f: Float, gainDb: Float, q: Float, rate: Float): Biquad {
             val a = 10.0.pow(gainDb / 40.0)
@@ -326,148 +382,3 @@ class Biquad(val b0: Float, val b1: Float, val b2: Float, val a1: Float, val a2:
     }
 }
 
-class DspProcessor : BaseAudioProcessor() {
-    private var channels = 2
-    private var rate = 44100
-    private var float = false
-    private var seen = -1L
-    private var filters: Array<Biquad> = emptyArray()
-    // Stan filtrów: [kanał][filtr][z1, z2]
-    private var z: Array<Array<FloatArray>> = emptyArray()
-    private var snapshot = DspState()
-    private var preGain = 1f
-    private var gainL = 1f
-    private var gainR = 1f
-    private var limGain = 1f
-    private var compEnv = 0f
-    private var xfL = 0f
-    private var xfR = 0f
-
-    override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        val enc = inputAudioFormat.encoding
-        // Nieobsługiwany format (np. 24/32-bit PCM z FLAC hi-res) – przepuszczamy bez obróbki zamiast blokować odtwarzanie.
-        if (enc != C.ENCODING_PCM_16BIT && enc != C.ENCODING_PCM_FLOAT) return AudioProcessor.AudioFormat.NOT_SET
-        channels = inputAudioFormat.channelCount
-        rate = inputAudioFormat.sampleRate
-        float = enc == C.ENCODING_PCM_FLOAT
-        seen = -1
-        return inputAudioFormat
-    }
-
-    private fun refresh() {
-        if (seen == Dsp.version) return
-        seen = Dsp.version
-        val s = Dsp.value
-        snapshot = s
-        val r = rate.toFloat()
-        val list = ArrayList<Biquad>()
-        if (s.enabled) {
-            s.bands.filter { Dsp.isActive(it) }.forEach { list += Dsp.filterFor(it, r) }
-            if (abs(s.bass) > 0.05f) list += Biquad.lowShelf(Dsp.BASS_FREQ, s.bass, r)
-            if (abs(s.treble) > 0.05f) list += Biquad.highShelf(Dsp.TREBLE_FREQ, s.treble, r)
-        }
-        if (list.size != filters.size || z.size != channels) {
-            z = Array(channels) { Array(list.size) { FloatArray(2) } }
-        }
-        filters = list.toTypedArray()
-        preGain = if (s.enabled) 10f.pow(s.preamp / 20f) else 1f
-        val bal = if (s.enabled) s.balance else 0f
-        gainL = if (bal > 0) 1f - bal else 1f
-        gainR = if (bal < 0) 1f + bal else 1f
-    }
-
-    override fun queueInput(inputBuffer: ByteBuffer) {
-        val remaining = inputBuffer.remaining()
-        if (remaining == 0) return
-        refresh()
-        val s = snapshot
-        val src = inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        val out = replaceOutputBuffer(remaining).order(ByteOrder.LITTLE_ENDIAN)
-        val bytes = if (float) 4 else 2
-        val frames = remaining / (bytes * channels)
-        val frame = FloatArray(channels)
-        val active = s.enabled
-        val stereo = channels == 2
-        for (n in 0 until frames) {
-            for (c in 0 until channels) frame[c] = if (float) src.float else src.short / 32768f
-            if (active) {
-                for (c in 0 until channels) {
-                    var x = frame[c] * preGain
-                    val st = z[c]
-                    for (k in filters.indices) {
-                        val f = filters[k]
-                        val zz = st[k]
-                        val y = f.b0 * x + zz[0]
-                        zz[0] = f.b1 * x - f.a1 * y + zz[1]
-                        zz[1] = f.b2 * x - f.a2 * y
-                        x = y
-                    }
-                    frame[c] = x
-                }
-                if (stereo) {
-                    var l = frame[0]; var r = frame[1]
-                    if (s.swap) { val t = l; l = r; r = t }
-                    if (s.mono) { val m = (l + r) * 0.5f; l = m; r = m }
-                    else if (s.width != 1f) {
-                        val m = (l + r) * 0.5f
-                        val sd = (l - r) * 0.5f * s.width
-                        l = m + sd; r = m - sd
-                    }
-                    if (s.crossfeed > 0f) {
-                        // Filtr dolnoprzepustowy ~700 Hz na sygnale z przeciwnego kanału.
-                        val k = 1f - kotlin.math.exp(-2f * PI.toFloat() * 700f / rate)
-                        xfL += (l - xfL) * k; xfR += (r - xfR) * k
-                        val g = s.crossfeed * 0.45f
-                        val nl = (l + xfR * g) / (1f + g); val nr = (r + xfL * g) / (1f + g)
-                        l = nl; r = nr
-                    }
-                    frame[0] = l * gainL; frame[1] = r * gainR
-                }
-                if (s.compressor) {
-                    var peak = 0f
-                    for (c in 0 until channels) peak = maxOf(peak, abs(frame[c]))
-                    // Detektor obwiedni: atak ~5 ms, powrót ~120 ms.
-                    val att = 1f - kotlin.math.exp(-1f / (rate * 0.005f))
-                    val rel = 1f - kotlin.math.exp(-1f / (rate * 0.12f))
-                    compEnv += (peak - compEnv) * (if (peak > compEnv) att else rel)
-                    val envDb = 20f * log10(compEnv.coerceAtLeast(1e-6f))
-                    val over = envDb - s.compThreshold
-                    if (over > 0f) {
-                        val gainDb = -over * (1f - 1f / s.compRatio.coerceAtLeast(1f))
-                        val makeup = -s.compThreshold * (1f - 1f / s.compRatio.coerceAtLeast(1f)) * 0.5f
-                        val g = 10f.pow((gainDb + makeup) / 20f)
-                        for (c in 0 until channels) frame[c] *= g
-                    } else {
-                        val makeup = -s.compThreshold * (1f - 1f / s.compRatio.coerceAtLeast(1f)) * 0.5f
-                        val g = 10f.pow(makeup / 20f)
-                        for (c in 0 until channels) frame[c] *= g
-                    }
-                }
-                if (s.limiter) {
-                    var peak = 0f
-                    for (c in 0 until channels) peak = maxOf(peak, abs(frame[c]))
-                    val ceiling = 0.97f
-                    if (peak * limGain > ceiling) limGain = ceiling / peak
-                    for (c in 0 until channels) frame[c] *= limGain
-                    // Powrót wzmocnienia ~150 ms.
-                    limGain += (1f - limGain) * (1f / (rate * 0.15f))
-                }
-            }
-            for (c in 0 until channels) {
-                val v = frame[c]
-                if (float) out.putFloat(v)
-                else {
-                    val clipped = if (abs(v) > 0.99f) tanh(v.toDouble()).toFloat() else v
-                    out.putShort((clipped * 32767f).coerceIn(-32768f, 32767f).toInt().toShort())
-                }
-            }
-        }
-        inputBuffer.position(inputBuffer.limit())
-        out.flip()
-    }
-
-    override fun onFlush() {
-        z.forEach { ch -> ch.forEach { it.fill(0f) } }
-        limGain = 1f
-    }
-}
