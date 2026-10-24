@@ -316,7 +316,7 @@ private fun SoundSection(vm: MainViewModel) {
         CardTiles(
             listOf(
                 Tile(Icons.Rounded.Gradient, tr("Wyciszanie"), tr("Płynne wyciszanie przy pauzie i wznowieniu"), s.fade) { v -> vm.updateSettings { it.copy(fade = v) } },
-                Tile(Icons.Rounded.FastForward, tr("Bez ciszy"), tr("Pomijanie ciszy w utworach"), s.skipSilence) { v -> vm.updateSettings { it.copy(skipSilence = v) } },
+                Tile(Icons.Rounded.FastForward, tr("Bez ciszy"), tr("Skraca tylko prawdziwą ciszę (poniżej −60 dB, od 1,5 s) – ciche fragmenty muzyki zostają nietknięte"), s.skipSilence) { v -> vm.updateSettings { it.copy(skipSilence = v) } },
                 Tile(Icons.Rounded.Shuffle, tr("Sprytne mieszanie"), tr("Bez tego samego wykonawcy pod rząd"), s.smartShuffle) { v -> vm.updateSettings { it.copy(smartShuffle = v) } },
                 Tile(Icons.Rounded.Restore, tr("Pamiętaj kolejkę"), tr("Pamiętaj kolejkę i pozycję po zamknięciu"), s.rememberQueue) { v -> vm.updateSettings { it.copy(rememberQueue = v) } },
             ),

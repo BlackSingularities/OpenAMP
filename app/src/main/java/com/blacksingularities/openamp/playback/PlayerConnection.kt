@@ -50,7 +50,6 @@ class PlayerConnection(private val context: Context) {
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
     private val _position = MutableStateFlow(0L)
     val position: StateFlow<Long> = _position.asStateFlow()
-    private var fadeJob: Job? = null
 
     fun connect() {
         if (controller != null) return
@@ -121,14 +120,13 @@ class PlayerConnection(private val context: Context) {
         if (shuffle == true && Graph.settings.value.smartShuffle) {
             c.shuffleModeEnabled = false
             c.setMediaItems(items(Smart.shuffle(tracks, Graph.userData.value)), 0, 0)
-            c.prepare(); c.volume = 1f; c.play()
+            c.prepare(); c.play()
             return
         }
         if (shuffle != null) c.shuffleModeEnabled = shuffle
         val startIndex = if (shuffle == true) tracks.indices.random() else start.coerceIn(0, tracks.size - 1)
         c.setMediaItems(items(tracks), startIndex, 0)
         c.prepare()
-        c.volume = 1f
         c.play()
     }
 
@@ -153,30 +151,13 @@ class PlayerConnection(private val context: Context) {
         val c = controller ?: return
         if (c.playbackState == Player.STATE_IDLE) c.prepare()
         if (c.playbackState == Player.STATE_ENDED) c.seekTo(0)
-        fadeJob?.cancel()
-        if (Graph.settings.value.fade) {
-            c.volume = 0f
-            c.play()
-            fadeJob = scope.launch {
-                for (i in 1..10) { c.volume = i / 10f; delay(25) }
-            }
-        } else {
-            c.volume = 1f
-            c.play()
-        }
+        // Płynne pojawianie się dźwięku robi serwis (to samo dla powiadomienia, widżetów i przycisków).
+        c.play()
     }
 
     fun pause() {
         val c = controller ?: return
-        fadeJob?.cancel()
-        if (Graph.settings.value.fade && c.isPlaying) {
-            fadeJob = scope.launch {
-                val v = c.volume
-                for (i in 1..10) { c.volume = v * (1 - i / 10f); delay(25) }
-                c.pause()
-                c.volume = 1f
-            }
-        } else c.pause()
+        c.pause()
     }
 
     fun next() = controller?.seekToNext() ?: Unit

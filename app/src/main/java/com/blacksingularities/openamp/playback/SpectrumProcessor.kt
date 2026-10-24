@@ -44,12 +44,15 @@ class SpectrumProcessor : BaseAudioProcessor() {
     private val smooth = FloatArray(Spectrum.BANDS)
     private var channels = 2
     private var sampleRate = 44100
+    private var float = false
     private var serial = 0L
     private var edges = IntArray(Spectrum.BANDS + 1)
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        // Inny format niż 16-bit PCM – widmo nieaktywne, dźwięk przechodzi bez zmian.
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) return AudioProcessor.AudioFormat.NOT_SET
+        // Inny format niż 16-bit / float PCM – widmo nieaktywne, dźwięk przechodzi bez zmian.
+        val enc = inputAudioFormat.encoding
+        if (enc != C.ENCODING_PCM_16BIT && enc != C.ENCODING_PCM_FLOAT) return AudioProcessor.AudioFormat.NOT_SET
+        float = enc == C.ENCODING_PCM_FLOAT
         channels = inputAudioFormat.channelCount
         sampleRate = inputAudioFormat.sampleRate
         edges = bandEdges(sampleRate)
@@ -70,11 +73,11 @@ class SpectrumProcessor : BaseAudioProcessor() {
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
         val src = inputBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
-        val frameBytes = 2 * channels
+        val frameBytes = (if (float) 4 else 2) * channels
         while (src.remaining() >= frameBytes) {
-            var sum = 0
-            for (c in 0 until channels) sum += src.short.toInt()
-            ring[ringPos] = sum / (channels * 32768f)
+            var sum = 0f
+            for (c in 0 until channels) sum += if (float) src.float else src.short / 32768f
+            ring[ringPos] = sum / channels
             ringPos = (ringPos + 1) % n
             if (filled < n) filled++
             if (++hop >= n / 4 && filled == n) {
