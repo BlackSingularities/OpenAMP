@@ -1,5 +1,15 @@
 # Historia zmian
 
+## 2.3.0
+
+- **Silnik dźwięku**: korektor liczony w podwójnej precyzji; zmiany ustawień przechodzą płynnie (bez trzasków przy ruszaniu suwakami); limiter z wyprzedzeniem zamiast ucinania szczytów; kompresor z miękkim kolanem; dithering przy zapisie 16 bit. Naprawione zniekształcenie najgłośniejszych próbek (powyżej 99% skali spadały do ~76%).
+- **Hi-res**: pliki 24/32-bit (FLAC, WAV, ALAC) przetwarzane i odtwarzane bez obcinania do 16 bitów.
+- **ReplayGain** według utworu albo albumu, z własnym wzmocnieniem – działa od pierwszej próbki utworu, także przy odtwarzaniu bez przerw.
+- Naprawione **przyciszanie**: płynne wyciszanie przy graj/pauza w jednym miejscu, odtwarzacz nie zostaje już przyciszony.
+- Naprawione **pomijanie ciszy**: skraca tylko prawdziwą ciszę (poniżej −60 dB, od 1,5 s) i nie ścisza cichych fragmentów muzyki.
+- **Nowy ekran korektora**: zakładki Korektor / Efekty / Wyjście, porównanie A/B (przytrzymaj), fader przedwzmacniacza, zakres wykresu ±6/±12/±15 dB, ostrzeżenie o podbiciu ponad 0 dB z „Wyrównaj”, mierniki poziomu L/P i ściszenia przez dynamikę, format wejścia i wyjścia.
+- **Widżety**: nowy edytor (Elementy, Rozmiary, Wygląd) z zapisem na żywo i „Cofnij zmiany”; odstępy liczone od górnej krawędzi, także ujemne; podgląd każdego widżetu na liście; delikatne cienie elementów; wstecz przy dodawaniu nie usuwa już widżetu.
+
 ## 2.2.0
 
 - Widżet: **style przycisków** – koło, zaokrąglony kwadrat albo obwódka pod ▶, same ikony, lub wszystkie przyciski w delikatnych kołach.
