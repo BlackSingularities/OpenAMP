@@ -192,6 +192,9 @@ object WidgetHub {
         art to artColor
     }
 
+    /** Rozmiar widżetu na pulpicie w pionie (szerokość minimalna, wysokość maksymalna) – też dla podglądów. */
+    fun sizeOf(context: Context, id: Int, kind: WidgetKind): WidgetRenderer.Size = sizeOf(AppWidgetManager.getInstance(context), id, kind)
+
     private fun sizeOf(mgr: AppWidgetManager, id: Int, kind: WidgetKind): WidgetRenderer.Size {
         val o = runCatching { mgr.getAppWidgetOptions(id) }.getOrNull()
         val def = WidgetRenderer.defaultSize(kind)

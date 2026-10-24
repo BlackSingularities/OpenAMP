@@ -212,26 +212,26 @@ object WidgetRenderer {
             textStyle(rv, posId, 11f * c.textScale / 100f, pal.fg2)
             textStyle(rv, durId, 11f * c.textScale / 100f, pal.fg2)
         }
+        // Odstępy liczone od góry: [Gaps.top] – pod okładką i tytułem, [Gaps.mid] – między taśmą a przyciskami.
+        val gaps = gapsOf(c, showRow)
         if (Build.VERSION.SDK_INT >= 31) {
             val dip = TypedValue.COMPLEX_UNIT_DIP
-            // Odstęp taśma–przyciski: gdy taśma jest nad przyciskami – margines przycisków, gdy pod – margines taśmy.
-            val above = bar === barTop && !inColumn
-            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, (if (above) c.progressGap else 0) + c.controlsTop.toFloat(), dip)
-            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_BOTTOM, c.controlsBottom.toFloat(), dip)
-            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, if (above || inColumn) (if (c.compact) 0f else c.barTop.toFloat()) else c.progressGap.toFloat(), dip)
-            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_TOP, (if (c.compact) 0f else 6f) + c.controlsTop, dip)
-            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_BOTTOM, c.controlsBottom.toFloat(), dip)
-            rv.setViewLayoutMargin(R.id.w_cover_box, RemoteViews.MARGIN_END, if (c.compact) 8f else 12f, dip)
-            rv.setViewLayoutMargin(R.id.w_cover_end_box, RemoteViews.MARGIN_START, if (c.compact) 6f else 8f, dip)
-            rv.setViewLayoutMargin(R.id.w_cover_top, RemoteViews.MARGIN_BOTTOM, if (c.compact) 2f else 8f, dip)
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_TOP, gaps.controls.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls, RemoteViews.MARGIN_BOTTOM, 0f, dip)
+            rv.setViewLayoutMargin(bar.row, RemoteViews.MARGIN_TOP, gaps.bar.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_TOP, c.gapColumn.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_controls_col, RemoteViews.MARGIN_BOTTOM, 0f, dip)
+            rv.setViewLayoutMargin(R.id.w_cover_box, RemoteViews.MARGIN_END, c.gapCover.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_cover_end_box, RemoteViews.MARGIN_START, c.gapCover.toFloat(), dip)
+            rv.setViewLayoutMargin(R.id.w_cover_top, RemoteViews.MARGIN_BOTTOM, c.gapCover * 2 / 3f, dip)
         }
 
         // Okładka we własnym kontenerze: przy 100% ma wysokość całego wiersza – w kolumnowym układzie
         // przycisków to cały widżet poza taśmą postępu (Android 12+, na starszych stała).
-        val barDp = if (!showRow) 0 else (if (c.compact) 0 else c.barTop) + max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
+        val barDp = if (!showRow) 0 else max(if (c.showProgress) c.progressHeight else 0, if (c.showTime && sides) 16 else 0) +
             (if (c.showTime && !sides) 15 else 0) + edgeB
-        val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100 + c.progressGap + c.controlsTop + c.controlsBottom
-        val free = (h - c.padding * 2 - buttonsDp - barDp).coerceAtLeast(32)
+        val buttonsDp = if (inColumn) 0 else 48 * c.buttonScale / 100
+        val free = (h - c.padding * 2 - buttonsDp - barDp - gaps.bar - gaps.controls).coerceAtLeast(32)
         val coverDp = if (c.coverPos == WidgetCoverPos.TOP) {
             // Nad tytułem: zostaje miejsce na tytuł i wykonawcę.
             ((free - 52) * c.coverSize / 100).coerceIn(32, 400).coerceAtMost((i.size.wDp * 0.6f).toInt())
@@ -378,6 +378,16 @@ object WidgetRenderer {
 
     private val barTop = Bar(R.id.w_progress_row, R.id.w_progress, R.id.w_time_side_pos, R.id.w_time_side_dur, R.id.w_times, R.id.w_time_pos, R.id.w_time_dur)
     private val barBottom = Bar(R.id.w_progress_row_b, R.id.w_progress_b, R.id.w_time_side_pos_b, R.id.w_time_side_dur_b, R.id.w_times_b, R.id.w_time_pos_b, R.id.w_time_dur_b)
+
+    /** Górne marginesy wiersza taśmy i wiersza przycisków Odtwarzacza (dp). */
+    private class Gaps(val bar: Int, val controls: Int)
+
+    /** Odstępy z ustawień (liczone od góry) przełożone na marginesy tego, co akurat stoi w danym miejscu. */
+    private fun gapsOf(c: WidgetConfig, showRow: Boolean): Gaps = when (c.controlsPos) {
+        WidgetControlsPos.BELOW_BAR -> if (showRow) Gaps(c.gapTop, c.gapMid) else Gaps(0, c.gapTop)
+        WidgetControlsPos.ABOVE_BAR -> Gaps(if (showRow) c.gapMid else 0, c.gapTop)
+        WidgetControlsPos.IN_COLUMN -> Gaps(if (showRow) c.gapTop else 0, 0)
+    }
 
     /** Wiersz postępu użyty przez widżet; dla innych rodzajów – zwykły w_progress. */
     private fun barOf(i: Input) = if (i.kind == WidgetKind.PLAYER && i.cfg.controlsPos == WidgetControlsPos.ABOVE_BAR) barBottom else barTop
