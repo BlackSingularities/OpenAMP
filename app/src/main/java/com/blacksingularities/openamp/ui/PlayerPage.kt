@@ -356,19 +356,38 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
     val sleepEnd by Graph.sleepEndOfTrack.collectAsState()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         val pill = Modifier
-        WidePill(Icons.Rounded.GraphicEq, tr("Wizualizacja") + ": " + visLabel(vis), vis != VisualizerStyle.NONE, pill) {
+        WidePill(Icons.Rounded.GraphicEq, tr("Wizualizacja") + ": " + visLabel(vis), vis != VisualizerStyle.NONE, pill, menu = { close ->
+            VisualizerStyle.entries.forEach { v ->
+                CMenuItem(visLabel(v), checked = v == vis) { vm.updateSettings { it.copy(visualizer = v) }; close() }
+            }
+        }) {
             val next = VisualizerStyle.entries[(vis.ordinal + 1) % VisualizerStyle.entries.size]
             vm.updateSettings { it.copy(visualizer = next) }
             vm.message(tr("Wizualizacja") + ": " + visLabel(next))
         }
-        WidePill(Icons.Rounded.Bedtime, tr("Wyłącznik czasowy"), sleepAt != null || sleepEnd, pill, onLong = onSpeed) { vm.sleepDialog = true }
+        WidePill(Icons.Rounded.Bedtime, tr("Wyłącznik czasowy"), sleepAt != null || sleepEnd, pill, menu = { close ->
+            listOf(15, 30, 45, 60, 90).forEach { m -> CMenuItem(tr("{0} min", m)) { Graph.setSleep(m); close() } }
+            CMenuItem(tr("Do końca utworu"), checked = sleepEnd) { Graph.setSleepEndOfTrack(); close() }
+            CMenuItem(tr("Inny czas…")) { vm.sleepDialog = true; close() }
+            CMenuItem(tr("Szybkość i wysokość"), Icons.Rounded.Speed) { onSpeed(); close() }
+            if (sleepAt != null || sleepEnd) CMenuItem(tr("Wyłącz wyłącznik"), danger = true) { Graph.clearSleep(); close() }
+        }) { vm.sleepDialog = true }
         Text(
             if (ps.queue.isNotEmpty()) "${ps.index + 1} / ${ps.queue.size}" else "–",
             color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.reactive(tr("Kolejka")) { vm.queueOpen = true }.clip(RoundedCornerShape(50)).background(Glassy).padding(horizontal = 11.dp, vertical = 6.dp),
         )
-        WidePill(if (ps.repeat == RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, tr("Powtarzanie"), ps.repeat != RepeatMode.OFF, pill) { vm.player.cycleRepeat() }
-        WidePill(Icons.Rounded.Shuffle, tr("Losowa kolejność"), ps.shuffle, pill) { vm.player.toggleShuffle() }
+        WidePill(if (ps.repeat == RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, tr("Powtarzanie"), ps.repeat != RepeatMode.OFF, pill, menu = { close ->
+            CMenuItem(tr("Bez powtarzania"), checked = ps.repeat == RepeatMode.OFF) { vm.player.setRepeat(RepeatMode.OFF); close() }
+            CMenuItem(tr("Powtarzaj listę"), Icons.Rounded.Repeat, checked = ps.repeat == RepeatMode.ALL) { vm.player.setRepeat(RepeatMode.ALL); close() }
+            CMenuItem(tr("Powtarzaj utwór"), Icons.Rounded.RepeatOne, checked = ps.repeat == RepeatMode.ONE) { vm.player.setRepeat(RepeatMode.ONE); close() }
+        }) { vm.player.cycleRepeat() }
+        val smart = vm.settings.collectAsState().value.smartShuffle
+        WidePill(Icons.Rounded.Shuffle, tr("Losowa kolejność"), ps.shuffle, pill, menu = { close ->
+            CMenuItem(tr("Po kolei"), checked = !ps.shuffle) { vm.player.setShuffle(false); close() }
+            CMenuItem(tr("Losowa kolejność"), Icons.Rounded.Shuffle, checked = ps.shuffle) { vm.player.setShuffle(true); close() }
+            CMenuItem(tr("Sprytne mieszanie"), checked = smart) { vm.updateSettings { it.copy(smartShuffle = !smart) }; close() }
+        }) { vm.player.toggleShuffle() }
     }
     if (ps.speed != 1f || ps.pitch != 1f) {
         Row(Modifier.padding(top = 6.dp)) {
@@ -378,12 +397,25 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
 }
 
 @Composable
-private fun WidePill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean, modifier: Modifier, onLong: (() -> Unit)? = null, onClick: () -> Unit) {
+/** Okrągły przycisk pod okładką; przytrzymanie otwiera menu ze wszystkimi opcjami (zamiast podpowiedzi). */
+@Composable
+private fun WidePill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    modifier: Modifier,
+    menu: (@Composable androidx.compose.foundation.layout.ColumnScope.(close: () -> Unit) -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     val accent = MaterialTheme.colorScheme.primary
-    Box(
-        modifier.size(40.dp).reactive(label, onLongPress = onLong, onClick = onClick).clip(CircleShape).background(if (active) accent else Glassy),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            modifier.size(40.dp).reactive(label, onLongPress = menu?.let { { open = true } }, onClick = onClick).clip(CircleShape).background(if (active) accent else Glassy),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
+        if (menu != null) CompactMenu(open, { open = false }) { menu { open = false } }
+    }
 }
 
 /**

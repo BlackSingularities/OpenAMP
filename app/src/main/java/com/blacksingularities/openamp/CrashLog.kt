@@ -30,6 +30,16 @@ object CrashLog {
         }
     }
 
+    /** Błędy odtwarzania (bez zamykania aplikacji) – dopisywane do osobnego pliku, ostatnie ~50 wpisów. */
+    fun logPlayback(context: Context, what: String, e: Throwable) {
+        runCatching {
+            val f = File(context.filesDir, "playback_errors.txt")
+            val entry = "${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())}  $what\n${e.stackTraceToString().lineSequence().take(12).joinToString("\n")}\n\n"
+            val old = if (f.exists()) f.readText().split("\n\n").filter { it.isNotBlank() }.takeLast(49) else emptyList()
+            f.writeText(old.joinToString("\n\n", postfix = if (old.isEmpty()) "" else "\n\n") + entry)
+        }
+    }
+
     /** Pokazuje zapisany crash; [onDone] wywoływane po zamknięciu okna. Zwraca true, gdy okno się pojawiło. */
     fun showIfAny(activity: Activity, onDone: () -> Unit): Boolean {
         val f = file(activity)

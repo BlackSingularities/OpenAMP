@@ -50,7 +50,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -140,7 +145,14 @@ fun Modifier.reactive(label: String?, enabled: Boolean = true, onLongPress: (() 
     val scale by animateFloatAsState(if (pressed) 0.86f else 1f, spring(dampingRatio = 0.45f, stiffness = 700f), label = "press")
     this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .semantics { if (label != null) contentDescription = label }
+        // TalkBack: przycisk z akcją dotknięcia i przytrzymania (gesty niżej nie są widoczne dla czytnika).
+        .semantics {
+            if (label != null) contentDescription = label
+            role = Role.Button
+            if (!enabled) disabled()
+            onClick { click(); true }
+            long?.let { l -> onLongClick { l(); true } }
+        }
         .pointerInput(enabled) {
             if (!enabled) return@pointerInput
             detectTapGestures(

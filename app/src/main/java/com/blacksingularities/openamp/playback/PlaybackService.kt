@@ -33,7 +33,9 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.blacksingularities.openamp.CrashLog
 import com.blacksingularities.openamp.Graph
+import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.MainActivity
 import com.blacksingularities.openamp.R
 import com.blacksingularities.openamp.data.RepeatMode
@@ -64,6 +66,8 @@ class PlaybackService : MediaSessionService() {
     private var pendingId: Long? = null
     private var counted = false
     private var lastTick = 0L
+    /** Błędy odtwarzania z rzędu (zerowane, gdy utwór faktycznie gra). */
+    private var errorsInRow = 0
 
     private val audioManager by lazy { getSystemService(AudioManager::class.java) }
     private var headsetCallback: AudioDeviceCallback? = null
@@ -237,10 +241,35 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) errorsInRow = 0
             if (!isPlaying) { saveQueue(); flushListen() }
             // Zabezpieczenie: gra bez trwającego wyciszania – głośność zawsze pełna (nic nie zostaje przyciszone).
             if (isPlaying && fadeJob?.isActive != true && player.volume < 1f) player.volume = 1f
             lastTick = System.currentTimeMillis()
+        }
+
+        /**
+         * Plik, którego urządzenie nie odtworzy (format, uszkodzenie, brak dostępu): komunikat, wpis w dzienniku
+         * i przejście do następnego utworu. Po kilku błędach z rzędu odtwarzanie staje, żeby nie kręcić się w kółko.
+         */
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            val item = player.currentMediaItem
+            val track = item?.mediaId?.toLongOrNull()?.let { Graph.library.get(it) }
+            val name = track?.let { listOf(it.artist, it.title).filter { s -> s.isNotBlank() }.joinToString(" – ") } ?: item?.mediaMetadata?.title?.toString() ?: "?"
+            val unsupported = error.errorCode in setOf(
+                androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+                androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+                androidx.media3.common.PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+                androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            )
+            CrashLog.logPlayback(this@PlaybackService, "${error.errorCodeName}: $name (${track?.uri ?: item?.localConfiguration?.uri})", error)
+            val msg = if (unsupported) tr("Nieobsługiwany plik: {0}", name) else tr("Nie można odtworzyć: {0}", name)
+            android.widget.Toast.makeText(this@PlaybackService, msg, android.widget.Toast.LENGTH_LONG).show()
+            if (++errorsInRow >= 5 || !player.hasNextMediaItem()) { errorsInRow = 0; return }
+            player.seekToNextMediaItem()
+            player.prepare()
+            player.play()
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {

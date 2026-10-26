@@ -42,7 +42,7 @@ class OpenAmpRenderersFactory(context: Context, private val spectrum: SpectrumPr
             /* silenceThresholdLevel = */ 32,
         )
         val inner = DefaultAudioSink.Builder(context)
-            .setAudioProcessorChain(DefaultAudioSink.DefaultAudioProcessorChain(arrayOf<AudioProcessor>(DspProcessor(), spectrum), silence, SonicAudioProcessor()))
+            .setAudioProcessorChain(DefaultAudioSink.DefaultAudioProcessorChain(arrayOf<AudioProcessor>(RateLimiter(), DspProcessor(), spectrum), silence, SonicAudioProcessor()))
             // Float trafia do AudioTrack bez zamiany na 16 bitów (tor hi-res poniżej).
             .setEnableFloatOutput(true)
             .build()
@@ -67,6 +67,32 @@ class OpenAmpRenderersFactory(context: Context, private val spectrum: SpectrumPr
             }
         }
     }
+}
+
+/**
+ * Pliki powyżej 192 kHz (np. FLAC 384 kHz) – AudioTrack na większości urządzeń ich nie otwiera,
+ * więc są przepróbkowywane do 192 kHz. Dla niższych częstotliwości procesor jest nieaktywny.
+ */
+private class RateLimiter : AudioProcessor {
+    private val sonic = SonicAudioProcessor()
+    private var active = false
+
+    override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
+        active = inputAudioFormat.sampleRate > MAX_RATE
+        if (!active) return AudioProcessor.AudioFormat.NOT_SET
+        sonic.setOutputSampleRateHz(MAX_RATE)
+        return sonic.configure(inputAudioFormat)
+    }
+
+    override fun isActive() = active && sonic.isActive
+    override fun queueInput(inputBuffer: ByteBuffer) = sonic.queueInput(inputBuffer)
+    override fun queueEndOfStream() = sonic.queueEndOfStream()
+    override fun getOutput(): ByteBuffer = sonic.output
+    override fun isEnded() = sonic.isEnded
+    override fun flush() = sonic.flush()
+    override fun reset() { sonic.reset(); active = false }
+
+    companion object { const val MAX_RATE = 192_000 }
 }
 
 /** Dekoder prosi o próbki float tylko dla źródeł o rozdzielczości ponad 16 bitów – reszta zostaje w 16 bitach. */
@@ -119,7 +145,8 @@ class OpenAmpAudioSink(sink: AudioSink) : ForwardingAudioSink(sink) {
 
     private fun wanted(f: Format) = when {
         !isHiRes(f) -> Mode.PASS
-        params == PlaybackParameters.DEFAULT && !skipSilence -> Mode.HIRES
+        // Powyżej 192 kHz hi-res idzie torem 16-bit, gdzie przepróbkowuje go RateLimiter.
+        params == PlaybackParameters.DEFAULT && !skipSilence && f.sampleRate <= RateLimiter.MAX_RATE -> Mode.HIRES
         else -> Mode.TO16
     }
 

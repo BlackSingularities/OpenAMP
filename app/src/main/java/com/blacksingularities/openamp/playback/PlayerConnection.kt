@@ -193,6 +193,16 @@ class PlayerConnection(private val context: Context) {
         c.shuffleModeEnabled = !c.shuffleModeEnabled
     }
 
+    fun setShuffle(on: Boolean) = controller?.let { it.shuffleModeEnabled = on } ?: Unit
+
+    fun setRepeat(mode: com.blacksingularities.openamp.data.RepeatMode) = controller?.let {
+        it.repeatMode = when (mode) {
+            com.blacksingularities.openamp.data.RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+            com.blacksingularities.openamp.data.RepeatMode.ALL -> Player.REPEAT_MODE_ALL
+            com.blacksingularities.openamp.data.RepeatMode.ONE -> Player.REPEAT_MODE_ONE
+        }
+    } ?: Unit
+
     fun cycleRepeat() {
         val c = controller ?: return
         c.repeatMode = when (c.repeatMode) {

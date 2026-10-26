@@ -1,5 +1,12 @@
 # Historia zmian
 
+## 2.3.1
+
+- Naprawione odtwarzanie plików powyżej **192 kHz** (np. FLAC 384 kHz) – przepróbkowywane do 192 kHz, bo większość urządzeń nie otwiera wyjścia w wyższej częstotliwości.
+- Plik, którego urządzenie nie odtworzy, nie zatrzymuje już muzyki bez słowa: **komunikat**, przejście do następnego utworu i wpis w dzienniku błędów odtwarzania.
+- **Przytrzymanie przycisków pod okładką** (wizualizacja, wyłącznik czasowy, powtarzanie, losowanie) otwiera menu ze wszystkimi opcjami.
+- **TalkBack**: przyciski aplikacji dają się aktywować czytnikiem ekranu (dotknięcie i przytrzymanie).
+
 ## 2.3.0
 
 - **Silnik dźwięku**: korektor liczony w podwójnej precyzji; zmiany ustawień przechodzą płynnie (bez trzasków przy ruszaniu suwakami); limiter z wyprzedzeniem zamiast ucinania szczytów; kompresor z miękkim kolanem; dithering przy zapisie 16 bit. Naprawione zniekształcenie najgłośniejszych próbek (powyżej 99% skali spadały do ~76%).
