@@ -593,13 +593,8 @@ private fun About() {
         Text(tr("OpenAMP – odtwarzacz muzyki"), fontSize = 13.sp, color = Flat.Fg, modifier = Modifier.padding(top = 6.dp))
         Text(tr("Wersja {0}", BuildConfig.VERSION_NAME), fontSize = 11.sp, color = Compact.TextDim)
         Text(
-            "github.com/${BuildConfig.UPDATE_REPO}", fontSize = 12.sp, color = Flat.Fg, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 6.dp).clip(Shapes.Small).clickable { open("https://github.com/${BuildConfig.UPDATE_REPO}") }
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-        Text(
-            tr("Projekt i wykonanie: redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
-            modifier = Modifier.clip(Shapes.Small).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
+            tr("Pomysł i wykonanie: Adam Rędzikowski · redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
+            modifier = Modifier.padding(top = 6.dp).clip(Shapes.Small).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Row(
             Modifier.padding(top = 8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)

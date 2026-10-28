@@ -773,7 +773,7 @@ private val En: Map<String, String> = mapOf(
     "Włącz odtwarzacz na blokadzie, aby ustawić jego wygląd i tryb AOD." to "Turn on the lock screen player to set its look and AOD mode.",
     "Sprawdzaj automatycznie – raz dziennie w tle i przy starcie" to "Check automatically – once a day in the background and at startup",
     "OpenAMP – odtwarzacz muzyki" to "OpenAMP – music player",
-    "Projekt i wykonanie: redzikowski.com" to "Design and development: redzikowski.com",
+    "Pomysł i wykonanie: Adam Rędzikowski · redzikowski.com" to "Idea and development: Adam Rędzikowski · redzikowski.com",
     "Postaw kawę" to "Buy me a coffee",
     // AI, odtwarzacz, powiadomienie (1.6.7)
     "Zwarty układ" to "Compact layout",

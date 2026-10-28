@@ -26,7 +26,7 @@ Pobierz najnowszy plik `OpenAMP-x.y.z.apk` z [Releases](https://github.com/Black
 gradle :app:assembleDebug
 ```
 
-Wymaga JDK 17 i Android SDK 36. Każdy push na `main` buduje podpisany APK i publikuje wydanie (wersja z pliku `VERSION`).
+Wymaga JDK 17 i Android SDK 36. Każdy wypchnięty tag `vX.Y.Z` buduje podpisany APK i publikuje wydanie (wersja z tagu).
 
 ## Licencja
 
