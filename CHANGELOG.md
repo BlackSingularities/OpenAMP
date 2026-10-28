@@ -2,6 +2,10 @@
 
 ## 2.3.1
 
+- Nowa strona aplikacji z opisem funkcji.
+- Jednolita informacja o autorze (Adam Rędzikowski · redzikowski.com) i przycisk „Postaw kawę”.
+- Usunięte odnośniki do repozytorium z interfejsu.
+
 - Naprawione odtwarzanie plików powyżej **192 kHz** (np. FLAC 384 kHz) – przepróbkowywane do 192 kHz, bo większość urządzeń nie otwiera wyjścia w wyższej częstotliwości.
 - Plik, którego urządzenie nie odtworzy, nie zatrzymuje już muzyki bez słowa: **komunikat**, przejście do następnego utworu i wpis w dzienniku błędów odtwarzania.
 - **Przytrzymanie przycisków pod okładką** (wizualizacja, wyłącznik czasowy, powtarzanie, losowanie) otwiera menu ze wszystkimi opcjami.
