@@ -396,7 +396,6 @@ private fun ActionRow(vm: MainViewModel, ps: com.blacksingularities.openamp.play
     }
 }
 
-@Composable
 /** Okrągły przycisk pod okładką; przytrzymanie otwiera menu ze wszystkimi opcjami (zamiast podpowiedzi). */
 @Composable
 private fun WidePill(

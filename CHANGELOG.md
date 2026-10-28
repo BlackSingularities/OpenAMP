@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 2.3.2
+
+- Poprawka kompilacji (podwójna adnotacja @Composable), dzięki której wychodzą zmiany z 2.3.1.
+
 ## 2.3.1
 
 - Nowa strona aplikacji z opisem funkcji.
