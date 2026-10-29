@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 2.3.4
+
+- Dopasowane kolorystycznie tła ikon aplikacji i spójne zasoby graficzne.
+
 ## 2.3.2
 
 - Poprawka kompilacji (podwójna adnotacja @Composable), dzięki której wychodzą zmiany z 2.3.1.
