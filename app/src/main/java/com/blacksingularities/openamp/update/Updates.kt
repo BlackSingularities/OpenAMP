@@ -4,7 +4,7 @@ import com.blacksingularities.openamp.BuildConfig
 import com.blacksingularities.openamp.i18n.tr
 import org.json.JSONObject
 
-val UPDATE_API = "https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest"
+val UPDATE_API = "https://redzikowski.com/api/github/repos/${BuildConfig.UPDATE_REPO}/releases/latest"
 
 data class ReleaseInfo(
     val version: String,
