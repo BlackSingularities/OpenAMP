@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="complication_label">OpenAMP – track</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="no_phone">Open OpenAMP on your phone</string>
+    <string name="waiting">Connecting to phone…</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="favorite">Favourite</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="repeat">Repeat</string>
+    <string name="volume">Volume</string>
+    <string name="queue">Queue</string>
+    <string name="queue_empty">The queue is empty</string>
+    <string name="open_on_phone">Open on phone</string>
+    <string name="back">Back</string>
+</resources>

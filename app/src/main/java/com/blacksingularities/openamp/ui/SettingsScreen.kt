@@ -78,6 +78,7 @@ import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.AlertDialog
@@ -319,6 +320,7 @@ private fun SoundSection(vm: MainViewModel) {
                 Tile(Icons.Rounded.FastForward, tr("Bez ciszy"), tr("Skraca tylko prawdziwą ciszę (poniżej −60 dB, od 1,5 s) – ciche fragmenty muzyki zostają nietknięte"), s.skipSilence) { v -> vm.updateSettings { it.copy(skipSilence = v) } },
                 Tile(Icons.Rounded.Shuffle, tr("Sprytne mieszanie"), tr("Bez tego samego wykonawcy pod rząd"), s.smartShuffle) { v -> vm.updateSettings { it.copy(smartShuffle = v) } },
                 Tile(Icons.Rounded.Restore, tr("Pamiętaj kolejkę"), tr("Pamiętaj kolejkę i pozycję po zamknięciu"), s.rememberQueue) { v -> vm.updateSettings { it.copy(rememberQueue = v) } },
+                Tile(Icons.Rounded.Watch, tr("Pilot na zegarku"), tr("Sterowanie z zegarka Wear OS (OpenAMP na zegarku)"), s.wearRemote) { v -> vm.updateSettings { it.copy(wearRemote = v) } },
             ),
         )
     }

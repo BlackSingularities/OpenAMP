@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenAMP</string>
+    <string name="complication_label">OpenAMP – utwór</string>
+    <string name="nothing_playing">Nic nie gra</string>
+    <string name="no_phone">Otwórz OpenAMP na telefonie</string>
+    <string name="waiting">Łączenie z telefonem…</string>
+    <string name="play">Odtwórz</string>
+    <string name="pause">Pauza</string>
+    <string name="next">Następny</string>
+    <string name="previous">Poprzedni</string>
+    <string name="favorite">Ulubione</string>
+    <string name="shuffle">Losowo</string>
+    <string name="repeat">Powtarzanie</string>
+    <string name="volume">Głośność</string>
+    <string name="queue">Kolejka</string>
+    <string name="queue_empty">Kolejka jest pusta</string>
+    <string name="open_on_phone">Otwórz na telefonie</string>
+    <string name="back">Wróć</string>
+</resources>

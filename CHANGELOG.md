@@ -1,5 +1,12 @@
 # Historia zmian
 
+## 2.4.0
+
+- **Wear OS**: osobna aplikacja na zegarek (`OpenAMP-Watch-x.y.z.apk`) – pilot do odtwarzacza na telefonie. Okładka, tytuł, wykonawca, pasek postępu z przewijaniem dotknięciem, graj / pauza, następny i poprzedni, ulubione, losowanie, powtarzanie, głośność telefonu i kolejka (dotknięcie przeskakuje do utworu).
+- **Kafelek i komplikacja** na zegarku: bieżący utwór i przycisk graj / pauza, odświeżane także przy zgaszonym ekranie.
+- Telefon wysyła stan odtwarzania tylko wtedy, gdy zegarek jest w pobliżu; pozycję w utworze zegarek dolicza sam, więc połączenie nie jest obciążane co sekundę.
+- Nowe ustawienie **Odtwarzanie → Pilot na zegarku** (można wyłączyć całą wymianę danych z zegarkiem).
+
 ## 2.3.2
 
 - Poprawka kompilacji (podwójna adnotacja @Composable), dzięki której wychodzą zmiany z 2.3.1.
