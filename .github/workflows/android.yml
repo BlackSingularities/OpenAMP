@@ -54,15 +54,19 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-        run: gradle :app:assembleRelease -PversionCode=${{ steps.ver.outputs.code }} -PversionName=${{ steps.ver.outputs.name }} --stacktrace
+        run: gradle :app:assembleRelease :wear:assembleRelease -PversionCode=${{ steps.ver.outputs.code }} -PversionName=${{ steps.ver.outputs.name }} --stacktrace
 
-      - name: Przygotowanie pliku
-        run: cp app/build/outputs/apk/release/app-release.apk "OpenAMP-${{ steps.ver.outputs.name }}.apk"
+      - name: Przygotowanie plików
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "OpenAMP-${{ steps.ver.outputs.name }}.apk"
+          cp wear/build/outputs/apk/release/wear-release.apk "OpenAMP-Watch-${{ steps.ver.outputs.name }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
           name: OpenAMP-${{ steps.ver.outputs.name }}
-          path: OpenAMP-${{ steps.ver.outputs.name }}.apk
+          path: |
+            OpenAMP-${{ steps.ver.outputs.name }}.apk
+            OpenAMP-Watch-${{ steps.ver.outputs.name }}.apk
 
       - name: Publikacja wydania
         env:
@@ -76,8 +80,8 @@ jobs:
             LOG=$(git log -5 --pretty='- %s' "$GITHUB_SHA")
             NOTES=$(printf 'Poprawki i ulepszenia:\n\n%s' "$LOG")
           fi
-          FOOTER=$(printf -- '---\n**Android:** pobierz **OpenAMP-%s.apk** i zainstaluj go na telefonie (Android 10+). Kolejne wersje aplikacja pobierze sama.' "$NAME")
-          gh release create "$TAG" "OpenAMP-$NAME.apk" \
+          FOOTER=$(printf -- '---\n**Android:** pobierz **OpenAMP-%s.apk** i zainstaluj go na telefonie (Android 10+). Kolejne wersje aplikacja pobierze sama.\n**Wear OS:** **OpenAMP-Watch-%s.apk** to pilot na zegarek (Wear OS 3+), instalowany osobno na zegarku.' "$NAME" "$NAME")
+          gh release create "$TAG" "OpenAMP-$NAME.apk" "OpenAMP-Watch-$NAME.apk" \
             --target "$GITHUB_SHA" \
             --title "OpenAMP $NAME" \
             --notes "$(printf '%s\n\n%s' "$NOTES" "$FOOTER")" \

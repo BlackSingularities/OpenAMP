@@ -13,6 +13,7 @@ Odtwarzacz muzyki na Androida (10+) o otwartym kodzie źródłowym. Kotlin, Jetp
 - **Dźwięk** – korektor graficzny z edytowalną krzywą i presetami, wzmocnienie basów, przestrzenność, wzmocnienie głośności, szybkość i wysokość, pomijanie ciszy, płynne przejścia głośności.
 - **Wygoda** – kolejka z edycją, wyłącznik czasowy, statystyki odtworzeń, ulubione, playlisty, pamięć kolejki, powiadomienie i ekran blokady (MediaSession), wznawianie po podłączeniu słuchawek.
 - **Widżety na pulpicie** – cztery rodzaje (Okładka 2×2, Pasek 4×1, Odtwarzacz 4×2+, Skróty), każdy z własną konfiguracją i podglądem na żywo: tło (rozmyta okładka, kolor okładki, ciemne, czarne, jasne, przezroczyste, własny kolor), krycie, zaokrąglenie rogów, kolor akcentu, kształt okładki, pasek postępu w trzech stylach, czasy, losowanie i powtarzanie, serduszko, pozycja w kolejce, rozmiar tekstu, działanie dotknięcia; skróty do miksów, losowania, ulubionych, wyłącznika czasowego, wyszukiwania i korektora. Układ dopasowuje się do rozmiaru widżetu.
+- **Wear OS** – aplikacja na zegarek jako pilot do odtwarzacza na telefonie: okładka, tytuł, pasek postępu z przewijaniem, graj / pauza, następny i poprzedni, ulubione, losowanie, powtarzanie, głośność i kolejka; dodatkowo kafelek i komplikacja na tarczę. Wymaga OpenAMP na telefonie (plik `OpenAMP-Watch-x.y.z.apk` z Releases, instalowany na zegarku).
 - **Język** – polski i angielski (przełącznik w ustawieniach).
 - **Aktualizacje** – aplikacja sama sprawdza GitHub Releases, powiadamia o nowej wersji, pobiera i instaluje APK.
 
@@ -24,6 +25,7 @@ Pobierz najnowszy plik `OpenAMP-x.y.z.apk` z [Releases](https://github.com/Black
 
 ```
 gradle :app:assembleDebug
+gradle :wear:assembleDebug
 ```
 
 Wymaga JDK 17 i Android SDK 36. Każdy wypchnięty tag `vX.Y.Z` buduje podpisany APK i publikuje wydanie (wersja z tagu).

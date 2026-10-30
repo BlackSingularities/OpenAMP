@@ -110,6 +110,8 @@ data class AppSettings(
     /** Tytuł i wykonawca na ekranie odtwarzania: wyśrodkowane i rozmiar tytułu w sp. */
     val titleCenter: Boolean = false,
     val titleSize: Int = 20,
+    /** Pilot na zegarku Wear OS: wysyłanie stanu odtwarzania i przyjmowanie poleceń. */
+    val wearRemote: Boolean = true,
     // AI
     val aiPrompt: Boolean = true,
     val aiModel: String = "claude-opus-5-5",
@@ -208,6 +210,7 @@ class SettingsStore(context: Context) {
                 homeView = enum("homeView", d.homeView),
                 titleCenter = getBoolean("titleCenter", d.titleCenter),
                 titleSize = getInt("titleSize", d.titleSize),
+                wearRemote = getBoolean("wearRemote", d.wearRemote),
                 aiPrompt = getBoolean("aiPrompt", d.aiPrompt),
                 aiModel = getString("aiModel", d.aiModel) ?: d.aiModel,
             )
@@ -288,6 +291,7 @@ class SettingsStore(context: Context) {
             .putString("homeView", s.homeView.name)
             .putBoolean("titleCenter", s.titleCenter)
             .putInt("titleSize", s.titleSize)
+            .putBoolean("wearRemote", s.wearRemote)
             .putBoolean("aiPrompt", s.aiPrompt)
             .putString("aiModel", s.aiModel)
             .apply()

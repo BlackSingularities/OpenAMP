@@ -749,6 +749,8 @@ private val En: Map<String, String> = mapOf(
     "Płynne wyciszanie przy pauzie i wznowieniu" to "Smooth fade on pause and resume",
     "Bez ciszy" to "Skip silence",
     "Skraca tylko prawdziwą ciszę (poniżej −60 dB, od 1,5 s) – ciche fragmenty muzyki zostają nietknięte" to "Shortens only true silence (below −60 dB, 1.5 s or longer) – quiet music is left untouched",
+    "Pilot na zegarku" to "Watch remote",
+    "Sterowanie z zegarka Wear OS (OpenAMP na zegarku)" to "Control from a Wear OS watch (OpenAMP on the watch)",
     "Pamiętaj kolejkę" to "Remember queue",
     "Pamiętaj kolejkę i pozycję po zamknięciu" to "Remember queue and position after closing",
     "Pauza bez słuchawek" to "Pause on unplug",
