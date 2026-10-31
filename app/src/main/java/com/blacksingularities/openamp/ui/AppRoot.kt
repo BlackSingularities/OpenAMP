@@ -1,5 +1,10 @@
 package com.blacksingularities.openamp.ui
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.animation.animateColorAsState
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -192,21 +197,48 @@ private fun BottomBar(vm: MainViewModel) {
     val r = vm.route
     // Pasek na całą szerokość, wtopiony w dolną krawędź (tło sięga pod systemowy pasek nawigacji).
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding().height(54.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats || r == Route.Queue
-        RoundButton(Icons.Rounded.GridView, tr("Biblioteka"), {
+        TabItem(Icons.Rounded.GridView, tr("Biblioteka"), inLibrary) {
             if (r == Route.Library) vm.nowPlayingOpen = true else vm.goTab(Route.Library)
-        }, active = inLibrary, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
-        RoundButton(Icons.Rounded.Equalizer, tr("Korektor"), {
+        }
+        TabItem(Icons.Rounded.Equalizer, tr("Korektor"), r == Route.Equalizer) {
             if (r == Route.Equalizer) vm.nowPlayingOpen = true else vm.goTab(Route.Equalizer)
-        }, active = r == Route.Equalizer, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
-        RoundButton(Icons.Rounded.Search, tr("Szukaj"), {
+        }
+        TabItem(Icons.Rounded.Search, tr("Szukaj"), vm.searchOpen) {
             if (vm.searchOpen) vm.closeSearch() else vm.openSearch()
-        }, active = vm.searchOpen, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
-        RoundButton(Icons.Rounded.Menu, tr("Menu"), { vm.menuOpen = true }, active = vm.menuOpen, background = Color.Transparent, size = 44.dp, iconSize = 24.dp)
+        }
+        TabItem(Icons.Rounded.Menu, tr("Menu"), vm.menuOpen) { vm.menuOpen = true }
+    }
+}
+
+/** Styl wspólny dla aplikacji Open: wybrana zakładka to kafel w kolorze tekstu z odwróconą ikoną i podpisem. */
+@Composable
+private fun RowScope.TabItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (selected) Flat.Fg else Color.Transparent, label = "tabBg")
+    val tint by animateColorAsState(if (selected) Flat.Bg else Flat.Dim, label = "tabTint")
+    Column(
+        Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .reactive(label, onClick = onClick)
+            .padding(top = 7.dp, bottom = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp))
+        Spacer(Modifier.height(3.dp))
+        Text(
+            label,
+            color = tint,
+            fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
