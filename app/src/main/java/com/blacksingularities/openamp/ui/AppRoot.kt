@@ -215,11 +215,11 @@ private fun BottomBar(vm: MainViewModel) {
     }
 }
 
-/** Styl wspólny dla aplikacji Open: wybrana zakładka to kafel w kolorze tekstu z odwróconą ikoną i podpisem. */
+/** Styl wspólny dla aplikacji Open: wybrana zakładka to kafel w kolorze przewodnim (z okładki) z kontrastową ikoną i podpisem. */
 @Composable
 private fun RowScope.TabItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) Flat.Fg else Color.Transparent, label = "tabBg")
-    val tint by animateColorAsState(if (selected) Flat.Bg else Flat.Dim, label = "tabTint")
+    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "tabBg")
+    val tint by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else Flat.Dim, label = "tabTint")
     Column(
         Modifier
             .weight(1f)
