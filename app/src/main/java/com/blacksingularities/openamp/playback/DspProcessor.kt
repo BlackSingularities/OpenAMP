@@ -18,7 +18,7 @@ import kotlin.math.tanh
  * Tor dźwięku OpenAMP w ExoPlayerze. Całe przetwarzanie w podwójnej precyzji:
  * - korektor i półki jako łańcuch filtrów dwukwadratowych; zmiana ustawień przenika się ze starym
  *   łańcuchem (30 ms), a wzmocnienia są wygładzane – ruszanie suwakami nie trzeszczy,
- * - ReplayGain, przedwzmacniacz, balans, szerokość stereo / mono, zamiana kanałów, crossfeed,
+ * - ReplayGain, przedwzmacniacz z automatycznym zapasem ([Dsp.autoGainDb]), balans, szerokość stereo / mono, zamiana kanałów, crossfeed,
  * - kompresor z miękkim kolanem i limiter z wyprzedzeniem 1,5 ms (zamiast twardego ucinania szczytów),
  * - dithering TPDF przy powrocie do 16 bitów.
  * Przy neutralnych ustawieniach próbki przechodzą bez zmian (bit w bit).
@@ -162,9 +162,10 @@ class DspProcessor(private val floatOutput: Boolean = false) : BaseAudioProcesso
         val list = ArrayList<Biquad>()
         if (on) {
             s.bands.filter { Dsp.isActive(it) }.forEach { list += Dsp.filterFor(it, r) }
-            if (abs(s.bass) > 0.05f) list += Biquad.lowShelf(Dsp.BASS_FREQ, s.bass, r)
-            if (abs(s.treble) > 0.05f) list += Biquad.highShelf(Dsp.TREBLE_FREQ, s.treble, r)
+            if (abs(s.bass) > 0.05f) list += Biquad.lowShelf(Dsp.BASS_FREQ, s.bass, Dsp.SHELF_Q, r)
+            if (abs(s.treble) > 0.05f) list += Biquad.highShelf(Dsp.TREBLE_FREQ, s.treble, Dsp.SHELF_Q, r)
         }
+        DspMeter.filters = list.size
         val co = DoubleArray(list.size * 5)
         list.forEachIndexed { i, b -> co[i * 5] = b.b0; co[i * 5 + 1] = b.b1; co[i * 5 + 2] = b.b2; co[i * 5 + 3] = b.a1; co[i * 5 + 4] = b.a2 }
         if (!co.contentEquals(chain.co)) {
@@ -177,7 +178,8 @@ class DspProcessor(private val floatOutput: Boolean = false) : BaseAudioProcesso
         }
 
         val rg = Dsp.replayGainDb(s)
-        gainT = 10.0.pow(((if (on) s.preamp else 0f) + rg) / 20.0)
+        // Przedwzmacniacz i automatyczny zapas (ściszenie o największe podbicie krzywej).
+        gainT = 10.0.pow(((if (on) Dsp.outputGainDb(s) else 0f) + rg) / 20.0)
         val bal = if (on) s.balance.toDouble() else 0.0
         balLT = if (bal > 0) 1 - bal else 1.0
         balRT = if (bal < 0) 1 + bal else 1.0
@@ -211,6 +213,10 @@ class DspProcessor(private val floatOutput: Boolean = false) : BaseAudioProcesso
         if (delay.size != lookahead * channels) { delay = DoubleArray(lookahead * channels); delayPos = 0 }
         val frame = DoubleArray(channels)
         val stereo = channels == 2
+        // Tor neutralny teraz i po wygładzeniu – wtedy bez ditheringu i miękkiego obcinania (bit w bit).
+        neutral = chain.n == 0 && oldChain == null && gain == 1.0 && gainT == 1.0 && width == 1.0 && widthT == 1.0 &&
+            xfeed <= 1e-6 && xfeedT <= 1e-6 && !swap && balL == 1.0 && balLT == 1.0 && balR == 1.0 && balRT == 1.0 &&
+            !compOn && limGain == 1.0
         var peakL = 0.0
         var peakR = 0.0
         var minGain = 1.0
@@ -322,8 +328,7 @@ class DspProcessor(private val floatOutput: Boolean = false) : BaseAudioProcesso
             }
         }
 
-        neutral = chain.n == 0 && oldChain == null && gain == 1.0 && width == 1.0 && xfeed <= 1e-6 && !swap &&
-            balL == 1.0 && balR == 1.0 && !compOn && limGain == 1.0
+        DspMeter.lastBufferAt = System.nanoTime()
         DspMeter.peakL = peakL.toFloat()
         DspMeter.peakR = peakR.toFloat()
         DspMeter.reductionDb = (20 * log10(minGain.coerceAtLeast(1e-6)) - compGrDb).toFloat().coerceAtMost(0f)

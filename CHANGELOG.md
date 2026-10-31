@@ -1,5 +1,17 @@
 # Historia zmian
 
+## 2.5.0
+
+- **Przebudowany korektor**: zakładki Korektor / Presety / Efekty / Wyjście w spójnym, płaskim stylu aplikacji; wykres z przeciąganiem punktów (częstotliwość i wzmocnienie), edycja pasma przyciskami −/+ (przytrzymanie powtarza), typ filtra, dobroć.
+- **Automatyczny zapas**: tor ścisza się o największe podbicie krzywej, więc podbicie basów nie wpada już w limiter (wcześniej głośne nagrania pompowały i cichły zamiast zyskać bas).
+- Naprawione fadery, które po zmianie liczby pasm albo przesunięciu punktu na wykresie przywracały starą częstotliwość pasma.
+- **Cofanie zmian** w korektorze.
+- **Import i eksport** ustawień przez schowek w formacie Equalizer APO / AutoEQ (ParametricEQ i GraphicEQ) – gotowe korekcje tysięcy modeli słuchawek.
+- Biblioteka presetów: grupy (barwa, gatunki, urządzenia), własne presety z przedwzmacniaczem, zmiana nazwy, nadpisywanie.
+- Profile wyjścia widoczne w nagłówku; przełączanie tylko samoczynne, „użyj bieżących ustawień wszędzie”.
+- Stan silnika na żywo (częstotliwość, format, liczba filtrów) – widać, czy korektor faktycznie przetwarza dźwięk.
+- Dolny pasek zakładek w nowym stylu.
+
 ## 2.4.0
 
 - **Wear OS**: osobna aplikacja na zegarek (`OpenAMP-Watch-x.y.z.apk`) – pilot do odtwarzacza na telefonie. Okładka, tytuł, wykonawca, pasek postępu z przewijaniem dotknięciem, graj / pauza, następny i poprzedni, ulubione, losowanie, powtarzanie, głośność telefonu i kolejka (dotknięcie przeskakuje do utworu).

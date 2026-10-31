@@ -234,7 +234,7 @@ class PlaybackService : MediaSessionService() {
             if (Graph.settings.value.smartEq) {
                 val genre = mediaItem?.mediaId?.toLongOrNull()?.let { Graph.library.get(it)?.genre }
                     ?: mediaItem?.mediaMetadata?.genre?.toString()
-                Smart.presetForGenre(genre ?: "")?.let { Dsp.applyPreset(it) }
+                Smart.presetForGenre(genre ?: "")?.let { Dsp.applyPreset(it, undoable = false) }
             }
             if (Graph.sleepEndOfTrack.value && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                 Graph.clearSleep()
