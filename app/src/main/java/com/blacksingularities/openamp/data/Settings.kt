@@ -54,6 +54,10 @@ data class AppSettings(
     val lyricsSize: Int = 22,
     val lyricsOnline: Boolean = true,
     val lyricsByDefault: Boolean = false,
+    /** Scrobbling do ListenBrainz (token użytkownika). */
+    val scrobble: Boolean = false,
+    val listenBrainzToken: String = "",
+    val listenBrainzUser: String = "",
     val skipSilence: Boolean = false,
     val resumeOnHeadset: Boolean = false,
     val pauseOnDisconnect: Boolean = true,
@@ -164,6 +168,9 @@ class SettingsStore(context: Context) {
                 lyricsSize = getInt("lyricsSize", d.lyricsSize),
                 lyricsOnline = getBoolean("lyricsOnline", d.lyricsOnline),
                 lyricsByDefault = getBoolean("lyricsByDefault", d.lyricsByDefault),
+                scrobble = getBoolean("scrobble", d.scrobble),
+                listenBrainzToken = getString("listenBrainzToken", d.listenBrainzToken) ?: "",
+                listenBrainzUser = getString("listenBrainzUser", d.listenBrainzUser) ?: "",
                 skipSilence = getBoolean("skipSilence", d.skipSilence),
                 resumeOnHeadset = getBoolean("resumeOnHeadset", d.resumeOnHeadset),
                 pauseOnDisconnect = getBoolean("pauseOnDisconnect", d.pauseOnDisconnect),
@@ -245,6 +252,9 @@ class SettingsStore(context: Context) {
             .putInt("lyricsSize", s.lyricsSize)
             .putBoolean("lyricsOnline", s.lyricsOnline)
             .putBoolean("lyricsByDefault", s.lyricsByDefault)
+            .putBoolean("scrobble", s.scrobble)
+            .putString("listenBrainzToken", s.listenBrainzToken)
+            .putString("listenBrainzUser", s.listenBrainzUser)
             .putBoolean("skipSilence", s.skipSilence)
             .putBoolean("resumeOnHeadset", s.resumeOnHeadset)
             .putBoolean("pauseOnDisconnect", s.pauseOnDisconnect)

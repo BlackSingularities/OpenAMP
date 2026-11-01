@@ -38,6 +38,7 @@ import com.blacksingularities.openamp.Graph
 import com.blacksingularities.openamp.i18n.tr
 import com.blacksingularities.openamp.MainActivity
 import com.blacksingularities.openamp.R
+import com.blacksingularities.openamp.data.ListenBrainz
 import com.blacksingularities.openamp.data.RepeatMode
 import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
@@ -230,6 +231,9 @@ class PlaybackService : MediaSessionService() {
             pendingId = mediaItem?.mediaId?.toLongOrNull()
             listenedMs = 0
             counted = false
+            Graph.settings.value.takeIf { it.scrobble }?.let { s ->
+                pendingId?.let { Graph.library.get(it) }?.let { ListenBrainz.playingNow(s.listenBrainzToken, it) }
+            }
             // Inteligentny korektor: preset dobrany do gatunku utworu.
             if (Graph.settings.value.smartEq) {
                 val genre = mediaItem?.mediaId?.toLongOrNull()?.let { Graph.library.get(it)?.genre }
@@ -323,7 +327,11 @@ class PlaybackService : MediaSessionService() {
                     val need = minOf(dur * Graph.settings.value.countPlayPercent / 100, 4 * 60_000L)
                     if (!counted && listenedMs >= need) {
                         counted = true
-                        player.currentMediaItem?.mediaId?.toLongOrNull()?.let { Graph.userData.recordPlay(it) }
+                        player.currentMediaItem?.mediaId?.toLongOrNull()?.let { id ->
+                            Graph.userData.recordPlay(id)
+                            val s = Graph.settings.value
+                            if (s.scrobble) Graph.library.get(id)?.let { ListenBrainz.scrobble(s.listenBrainzToken, it, (now - listenedMs) / 1000) }
+                        }
                     }
                     if (++saveCounter >= 10) { saveCounter = 0; saveQueue() }
                 }

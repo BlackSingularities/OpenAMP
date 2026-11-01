@@ -124,6 +124,7 @@ import com.blacksingularities.openamp.ai.CurationSource
 import com.blacksingularities.openamp.ai.CuratorStatus
 import com.blacksingularities.openamp.data.AodMode
 import com.blacksingularities.openamp.data.CoverShape
+import com.blacksingularities.openamp.data.ListenBrainz
 import com.blacksingularities.openamp.data.LockBackground
 import com.blacksingularities.openamp.data.NotifButton
 import com.blacksingularities.openamp.data.NotifStyle
@@ -333,6 +334,44 @@ private fun SoundSection(vm: MainViewModel) {
             ),
         )
         SetAction(Icons.Rounded.Equalizer, tr("Otwórz korektor")) { vm.goTab(Route.Equalizer) }
+    }
+    ScrobbleCard(vm)
+}
+
+@Composable
+private fun ScrobbleCard(vm: MainViewModel) {
+    val s by vm.settings.collectAsState()
+    val scope = rememberCoroutineScope()
+    var editToken by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    if (editToken) TextDialog(tr("Token ListenBrainz"), s.listenBrainzToken, "listenbrainz.org/settings", secret = true, onDismiss = { editToken = false }) { v ->
+        editToken = false
+        if (v.isBlank()) {
+            vm.updateSettings { it.copy(listenBrainzToken = "", listenBrainzUser = "", scrobble = false) }
+        } else {
+            checking = true
+            scope.launch {
+                val user = ListenBrainz.validate(v)
+                checking = false
+                if (user == null) vm.message(tr("Nieprawidłowy token ListenBrainz"))
+                else vm.updateSettings { it.copy(listenBrainzToken = v, listenBrainzUser = user, scrobble = true) }
+            }
+        }
+    }
+    SetCard(tr("Scrobbling")) {
+        SetAction(
+            Icons.Rounded.Key, tr("Token ListenBrainz"),
+            when {
+                checking -> tr("Sprawdzanie…")
+                s.listenBrainzToken.isBlank() -> tr("Brak – wklej token z listenbrainz.org/settings")
+                else -> tr("Konto: {0}", s.listenBrainzUser.ifBlank { "••••" + s.listenBrainzToken.takeLast(4) })
+            },
+        ) { editToken = true }
+        if (s.listenBrainzToken.isNotBlank()) CardTiles(
+            listOf(
+                Tile(Icons.Rounded.Public, tr("Scrobbluj"), tr("Zapisuj odsłuchane utwory na ListenBrainz"), s.scrobble) { v -> vm.updateSettings { it.copy(scrobble = v) } },
+            ),
+        )
     }
 }
 
