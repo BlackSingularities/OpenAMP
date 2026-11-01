@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 2.6.0
+
+- **Scrobbling do ListenBrainz**: w Ustawieniach → Dźwięk → Scrobbling wklejasz token z listenbrainz.org/settings (aplikacja sprawdza go i pokazuje nazwę konta). Przy zmianie utworu wysyłane jest „teraz gra”, a odsłuch trafia do historii, gdy utwór zostanie zaliczony według progu „Licz odtworzenie po”.
+
 ## 2.5.0
 
 - **Przebudowany korektor**: zakładki Korektor / Presety / Efekty / Wyjście w spójnym, płaskim stylu aplikacji; wykres z przeciąganiem punktów (częstotliwość i wzmocnienie), edycja pasma przyciskami −/+ (przytrzymanie powtarza), typ filtra, dobroć.
