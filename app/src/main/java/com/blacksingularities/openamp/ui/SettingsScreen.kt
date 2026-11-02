@@ -636,6 +636,10 @@ private fun About() {
             tr("Pomysł i wykonanie: Adam Rędzikowski · redzikowski.com"), fontSize = 12.sp, color = Compact.TextDim,
             modifier = Modifier.padding(top = 6.dp).clip(Shapes.Small).clickable { open("https://redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        Text(
+            "kontakt@redzikowski.com", fontSize = 12.sp, color = Compact.TextDim,
+            modifier = Modifier.padding(top = 0.dp).clip(Shapes.Small).clickable { open("mailto:kontakt@redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
         Row(
             Modifier.padding(top = 8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
                 .clickable { open("https://buycoffee.to/adamredzikowski") }.padding(horizontal = 18.dp, vertical = 10.dp),
