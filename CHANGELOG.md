@@ -1,5 +1,10 @@
 # Historia zmian
 
+## 2.6.1
+
+- Niższy dolny pasek zakładek; jego wysokość jest mierzona na żywo (także przy powiększonej czcionce), więc linia „Następny: …” i parametry pliku nie wchodzą już pod pasek ani na interfejs.
+- Nowe ustawienie **Następny utwór** (obok „Parametry pliku”) – pozwala ukryć linię z następnym utworem na ekranie odtwarzania.
+
 ## 2.6.0
 
 - **Scrobbling do ListenBrainz**: w Ustawieniach → Dźwięk → Scrobbling wklejasz token z listenbrainz.org/settings (aplikacja sprawdza go i pokazuje nazwę konta). Przy zmianie utworu wysyłane jest „teraz gra”, a odsłuch trafia do historii, gdy utwór zostanie zaliczony według progu „Licz odtworzenie po”.

@@ -52,6 +52,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -138,7 +140,11 @@ private fun Main(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.menuOpen || vm.queueOpen || vm.stack.size > 1) { vm.back() }
     val onPlayer = vm.route == Route.Player
-    val bottom = 54.dp + if (track != null && !onPlayer) 66.dp else 0.dp
+    // Faktyczna wysokość dolnego paska (zależy od skali czcionki), żeby treść nigdy pod niego nie wchodziła.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val navInset = androidx.compose.foundation.layout.WindowInsets.navigationBars.getBottom(density)
+    var barH by remember { mutableStateOf(50.dp) }
+    val bottom = barH + if (track != null && !onPlayer) 66.dp else 0.dp
     val ps by vm.player.state.collectAsState()
     val autoHide = vm.settings.collectAsState().value.autoHideBar
     var lastTouch by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -179,7 +185,10 @@ private fun Main(vm: MainViewModel) {
                     MiniPlayer(vm)
                 }
                 AnimatedVisibility(!barHidden, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut(tween(400))) {
-                    BottomBar(vm)
+                    BottomBar(vm, Modifier.onSizeChanged { sz ->
+                        // Pomiar obejmuje wcięcie systemowe, a treść ma już własne navigationBarsPadding.
+                        barH = with(density) { (sz.height - navInset).coerceAtLeast(0).toDp() }
+                    })
                 }
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = bottom))
@@ -193,12 +202,12 @@ private fun Main(vm: MainViewModel) {
 
 /** Dolny pasek: biblioteka, korektor, szukaj, menu – płaskie ikony na czarnej pigułce. */
 @Composable
-private fun BottomBar(vm: MainViewModel) {
+private fun BottomBar(vm: MainViewModel, modifier: Modifier = Modifier) {
     val r = vm.route
     // Pasek na całą szerokość, wtopiony w dolną krawędź (tło sięga pod systemowy pasek nawigacji).
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+        modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         val inLibrary = r == Route.Library || r is Route.Detail || r == Route.Stats || r == Route.Queue
@@ -226,11 +235,11 @@ private fun RowScope.TabItem(icon: ImageVector, label: String, selected: Boolean
             .clip(RoundedCornerShape(6.dp))
             .background(bg)
             .reactive(label, onClick = onClick)
-            .padding(top = 7.dp, bottom = 6.dp),
+            .padding(top = 5.dp, bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp))
-        Spacer(Modifier.height(3.dp))
+        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             label,
             color = tint,

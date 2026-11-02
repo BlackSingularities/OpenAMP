@@ -289,6 +289,7 @@ private fun PlayerSection(vm: MainViewModel) {
             listOf(
                 Tile(Icons.Rounded.ThumbUp, tr("Lubię / nie lubię"), tr("Przyciski „lubię / nie lubię” na okładce"), s.showLikes) { v -> vm.updateSettings { it.copy(showLikes = v) } },
                 Tile(Icons.Rounded.Info, tr("Parametry pliku"), tr("Format, częstotliwość i bitrate na dole"), s.showTechInfo) { v -> vm.updateSettings { it.copy(showTechInfo = v) } },
+                Tile(Icons.AutoMirrored.Rounded.QueueMusic, tr("Następny utwór"), tr("Pokazuj na dole, co zagra następne"), s.showNextTrack) { v -> vm.updateSettings { it.copy(showNextTrack = v) } },
                 Tile(Icons.Rounded.Swipe, tr("Gest okładki"), tr("Przesunięcie okładki w bok – następny lub poprzedni utwór"), s.coverGestures) { v -> vm.updateSettings { it.copy(coverGestures = v) } },
                 Tile(Icons.Rounded.VerticalAlignBottom, tr("Chowaj pasek"), tr("Dolny pasek chowa się po kilku sekundach bez dotyku podczas grania"), s.autoHideBar) { v -> vm.updateSettings { it.copy(autoHideBar = v) } },
                 Tile(Icons.Rounded.Smartphone, tr("Ekran włączony"), tr("Nie wygaszaj ekranu na ekranie odtwarzania"), s.keepScreenOn) { v -> vm.updateSettings { it.copy(keepScreenOn = v) } },
