@@ -4,6 +4,7 @@
 
 - Niższy dolny pasek zakładek; jego wysokość jest mierzona na żywo (także przy powiększonej czcionce), więc linia „Następny: …” i parametry pliku nie wchodzą już pod pasek ani na interfejs.
 - Nowe ustawienie **Następny utwór** (obok „Parametry pliku”) – pozwala ukryć linię z następnym utworem na ekranie odtwarzania.
+- Powiadomienie odtwarzacza (własne i systemowe): przy zmianie utworu zostaje poprzednia okładka, aż wczyta się nowa, zamiast ikony zastępczej; tytuł i wykonawca z biblioteki, gdy metadane są chwilowo puste (koniec z nazwą aplikacji w miejscu utworu); powiadomienie znika pewnie po zamknięciu odtwarzacza i usunięciu aplikacji z ostatnich.
 
 ## 2.6.0
 
