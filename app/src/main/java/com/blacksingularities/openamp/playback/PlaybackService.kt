@@ -161,7 +161,14 @@ class PlaybackService : MediaSessionService() {
         LockscreenLauncher.cancel(this)
         WidgetHub.publish(player)
         WearSync.publish(player)
+        cancelNotification()
         stopSelf()
+    }
+
+    /** Usuwa powiadomienie także wtedy, gdy Media3 nie zdąży go zdjąć (np. po zatrzymaniu bez sesji). */
+    private fun cancelNotification() {
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+        getSystemService(android.app.NotificationManager::class.java)?.cancel(OpenAmpNotificationProvider.NOTIFICATION_ID)
     }
 
     private val callback = object : MediaSession.Callback {
@@ -470,7 +477,10 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         saveQueue()
-        if (!player.playWhenReady || player.mediaItemCount == 0) stopSelf()
+        if (!player.playWhenReady || player.mediaItemCount == 0) {
+            cancelNotification()
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {
@@ -488,6 +498,7 @@ class PlaybackService : MediaSessionService() {
             release()
         }
         session = null
+        cancelNotification()
         super.onDestroy()
     }
 }

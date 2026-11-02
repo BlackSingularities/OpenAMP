@@ -72,13 +72,17 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
         val track = id?.let { Graph.library.get(it) }
         if (id != artFor) {
             artFor = id
-            setArt(track?.let { ArtworkLoader.peek(it, 1024) })
-            artColor = art?.let { runCatching { vibrantColor(it) }.getOrNull() }
-            if (art == null && track != null) {
+            val cached = track?.let { ArtworkLoader.peek(it, 1024) }
+            // Gdy okładka jeszcze się wczytuje, zostaje poprzednia – bez mignięcia zastępczą ikoną.
+            if (cached != null || track == null) {
+                setArt(cached)
+                artColor = cached?.let { runCatching { vibrantColor(it) }.getOrNull() }
+            }
+            if (cached == null && track != null) {
                 // Okładka wczytuje się w tle – potem podmieniamy powiadomienie.
                 Graph.scope.launch {
-                    val bmp = ArtworkLoader.load(context, track, 1024) ?: return@launch
-                    val color = runCatching { vibrantColor(bmp) }.getOrNull()
+                    val bmp = ArtworkLoader.load(context, track, 1024)
+                    val color = bmp?.let { runCatching { vibrantColor(it) }.getOrNull() }
                     // Player i sesja wolno dotykać tylko z głównego wątku.
                     withContext(Dispatchers.Main) {
                         if (artFor != id) return@withContext
@@ -97,8 +101,10 @@ class OpenAmpNotificationProvider(private val context: Context) : MediaNotificat
         ensureChannel()
         val player = session.player
         val meta = player.mediaMetadata
-        val title = meta.title?.toString().orEmpty()
-        val artist = meta.artist?.toString().orEmpty()
+        // Metadane bywają chwilowo puste przy zmianie utworu – wtedy dane z biblioteki zamiast nazwy aplikacji.
+        val track = player.currentMediaItem?.mediaId?.toLongOrNull()?.let { Graph.library.get(it) }
+        val title = meta.title?.toString()?.takeIf { it.isNotBlank() } ?: track?.title.orEmpty()
+        val artist = meta.artist?.toString()?.takeIf { it.isNotBlank() } ?: track?.artist.orEmpty()
         val text = listOf(artist, title).filter { it.isNotBlank() }.joinToString(" – ").ifBlank { context.getString(R.string.app_name) }
 
         // Tło w kolorze okładki (przyciemnionym, żeby biały tekst był czytelny); bez okładki – kolory systemu.
