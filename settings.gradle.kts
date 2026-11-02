@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "OpenAMP"
 include(":app")
-include(":wear")

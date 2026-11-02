@@ -42,7 +42,6 @@ import com.blacksingularities.openamp.data.ListenBrainz
 import com.blacksingularities.openamp.data.RepeatMode
 import com.blacksingularities.openamp.data.Smart
 import com.blacksingularities.openamp.data.Track
-import com.blacksingularities.openamp.wear.WearSync
 import com.blacksingularities.openamp.widget.WidgetHub
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -160,7 +159,6 @@ class PlaybackService : MediaSessionService() {
         player.stop()
         LockscreenLauncher.cancel(this)
         WidgetHub.publish(player)
-        WearSync.publish(player)
         cancelNotification()
         stopSelf()
     }
@@ -221,9 +219,8 @@ class PlaybackService : MediaSessionService() {
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
-            // Widżety na pulpicie i pilot na zegarku: nowy utwór, pauza, losowanie, powtarzanie…
+            // Widżety na pulpicie: nowy utwór, pauza, losowanie, powtarzanie…
             WidgetHub.publish(player)
-            WearSync.publish(player)
             if (events.containsAny(
                     Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED,
                 )
@@ -344,7 +341,6 @@ class PlaybackService : MediaSessionService() {
                 }
                 lastTick = now
                 WidgetHub.tick(player)
-                WearSync.tick(player)
                 val at = Graph.sleepAt.value
                 if (at != null && now >= at) {
                     Graph.clearSleep()
@@ -485,7 +481,6 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         WidgetHub.serviceStopped()
-        WearSync.serviceStopped()
         idleJob?.cancel()
         runCatching { unregisterReceiver(screenReceiver) }
         saveQueue()
