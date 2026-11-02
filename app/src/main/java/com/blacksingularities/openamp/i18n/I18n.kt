@@ -775,6 +775,7 @@ private val En: Map<String, String> = mapOf(
     "Przewijanie" to "Seeking",
     "Pasek przewijania utworu" to "Track seek bar",
     "Następny utwór w kolejce" to "Next track in queue",
+    "Pokazuj na dole, co zagra następne" to "Show what plays next at the bottom",
     "Losuj i powtarzaj" to "Shuffle & repeat",
     "Przyciski losowania i powtarzania" to "Shuffle and repeat buttons",
     "Przyciemnij" to "Dim",

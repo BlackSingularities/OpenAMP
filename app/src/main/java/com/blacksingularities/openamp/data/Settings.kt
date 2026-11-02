@@ -47,6 +47,7 @@ data class AppSettings(
     val liveIntensity: Int = 70,
     val coverShape: CoverShape = CoverShape.ROUNDED,
     val showTechInfo: Boolean = true,
+    val showNextTrack: Boolean = true,
     val keepScreenOn: Boolean = false,
     val lyricsCenter: Boolean = false,
     val coverGestures: Boolean = true,
@@ -161,6 +162,7 @@ class SettingsStore(context: Context) {
                 liveIntensity = getInt("liveIntensity", d.liveIntensity),
                 coverShape = enum("coverShape", d.coverShape),
                 showTechInfo = getBoolean("showTechInfo", d.showTechInfo),
+                showNextTrack = getBoolean("showNextTrack", d.showNextTrack),
                 keepScreenOn = getBoolean("keepScreenOn", d.keepScreenOn),
                 lyricsCenter = getBoolean("lyricsCenter", d.lyricsCenter),
                 coverGestures = getBoolean("coverGestures", d.coverGestures),
@@ -245,6 +247,7 @@ class SettingsStore(context: Context) {
             .putInt("liveIntensity", s.liveIntensity)
             .putString("coverShape", s.coverShape.name)
             .putBoolean("showTechInfo", s.showTechInfo)
+            .putBoolean("showNextTrack", s.showNextTrack)
             .putBoolean("keepScreenOn", s.keepScreenOn)
             .putBoolean("lyricsCenter", s.lyricsCenter)
             .putBoolean("coverGestures", s.coverGestures)

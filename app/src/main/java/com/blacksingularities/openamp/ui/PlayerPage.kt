@@ -139,9 +139,11 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
                 SeekArea(vm, ps, pos, wave, live, s.seekStyle, accent)
             }
         }
-        val next = ps.nextId?.let { Graph.library.get(it) }
-        val techH = (if (s.showTechInfo && track != null) 26.dp else 0.dp) + (if (next != null) 20.dp else 0.dp)
-        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        val next = if (s.showNextTrack) ps.nextId?.let { Graph.library.get(it) } else null
+        // Wysokość linii pod sterowaniem mierzona na żywo (skala czcionki), żeby nic nie nachodziło na przyciski ani pasek.
+        val dens = androidx.compose.ui.platform.LocalDensity.current
+        var techH by remember { mutableStateOf(0.dp) }
+        Column(Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding + 2.dp).onSizeChanged { techH = with(dens) { it.height.toDp() } + 4.dp }, horizontalAlignment = Alignment.CenterHorizontally) {
             TechLine(track, info, s.showTechInfo) { details = true }
             NextLine(next) { vm.goTab(Route.Queue) }
         }
