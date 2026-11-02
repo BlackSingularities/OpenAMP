@@ -233,7 +233,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.eqTab(
         }
     }
     item(key = "graph") { GraphPanel(s, playing, selected, onSelect) }
-    item(key = "faders") { FadersPanel(s, selected, onSelect) }
+    item(key = "bands") { BandsPanel(s, onSelect) }
     item(key = "quick") { QuickPresets(s, openPresets) { onSelect(-1) } }
 }
 
@@ -348,31 +348,13 @@ private fun roundFreq(f: Float) = when {
     else -> (f * 10).roundToInt() / 10f
 }
 
+/** Pasma bez faderów – wzmocnienia ustawia się na wykresie powyżej. */
 @Composable
-private fun FadersPanel(s: DspState, selected: Int, onSelect: (Int) -> Unit) {
+private fun BandsPanel(s: DspState, onSelect: (Int) -> Unit) {
     Panel(padding = 12.dp) {
         Overline(tr("Pasma"), trailing = {
             PillButton(tr("Wyzeruj"), { onSelect(-1); Dsp.flatten() }, compact = true, icon = Icons.Rounded.VerticalAlignCenter)
         })
-        val many = s.bands.size > 10
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            EqFader(
-                tr("Pre"), s.preamp, -Dsp.MAX_PREAMP..Dsp.MAX_PREAMP, Modifier.width(FaderWidth + 4.dp), enabled = s.enabled,
-                onStart = { Dsp.checkpoint() },
-            ) { v -> Dsp.update { it.copy(preamp = r2(v)) } }
-            Box(Modifier.padding(horizontal = 4.dp, vertical = 22.dp).width(1.dp).height(148.dp).background(Flat.Hair))
-            Row(if (many) Modifier.weight(1f).horizontalScroll(rememberScrollState()) else Modifier.weight(1f)) {
-                s.bands.forEachIndexed { i, b ->
-                    EqFader(
-                        freqLabel(b.freq), b.gain, -Dsp.MAX_GAIN..Dsp.MAX_GAIN,
-                        if (many) Modifier.width(FaderWidth) else Modifier.weight(1f),
-                        selected = i == selected, enabled = s.enabled && Dsp.hasGain(b.type),
-                        onSelect = { onSelect(i) }, onStart = { Dsp.checkpoint() },
-                    ) { v -> bandStep(i) { it.copy(gain = r2(v)) } }
-                }
-            }
-        }
-        Gap(12.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(tr("Liczba pasm"), fontSize = 13.sp, color = Flat.Fg)
