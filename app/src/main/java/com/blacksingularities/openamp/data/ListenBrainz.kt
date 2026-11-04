@@ -61,7 +61,7 @@ object ListenBrainz {
             connectTimeout = 8000
             readTimeout = 10000
             setRequestProperty("Authorization", "Token $token")
-            setRequestProperty("User-Agent", "OpenAMP/${BuildConfig.VERSION_NAME} (https://github.com/${BuildConfig.UPDATE_REPO})")
+            setRequestProperty("User-Agent", "OpenAMP/${BuildConfig.VERSION_NAME} (https://redzikowski.com)")
             if (json != null) {
                 requestMethod = "POST"
                 doOutput = true

@@ -61,7 +61,7 @@ object AiClient {
                 c.setRequestProperty("Authorization", "Bearer $key")
             }
             if (provider == AiProvider.OPENROUTER) {
-                c.setRequestProperty("HTTP-Referer", "https://github.com/BlackSingularities/OpenAMP")
+                c.setRequestProperty("HTTP-Referer", "https://redzikowski.com/portfolio/openamp")
                 c.setRequestProperty("X-Title", "OpenAMP")
             }
             if (body != null) {

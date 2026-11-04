@@ -149,7 +149,7 @@ object LyricsRepository {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 8000
             readTimeout = 10000
-            setRequestProperty("User-Agent", "OpenAMP/${BuildConfig.VERSION_NAME} (https://github.com/${BuildConfig.UPDATE_REPO})")
+            setRequestProperty("User-Agent", "OpenAMP/${BuildConfig.VERSION_NAME} (https://redzikowski.com)")
         }
         return try {
             if (conn.responseCode != 200) null else conn.inputStream.bufferedReader().use { it.readText() }
