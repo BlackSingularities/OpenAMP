@@ -66,10 +66,6 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(tr("Nowa wersja OpenAMP"))
                 .setContentText(tr("Dostępna jest wersja {0}. Dotknij, aby zaktualizować.", info.version))
-                .setStyle(android.app.Notification.BigTextStyle().bigText(
-                    tr("Dostępna jest wersja {0}. Dotknij, aby zaktualizować.", info.version) +
-                        (if (info.notes.isNotBlank()) "\n\n" + info.notes.take(400) else ""),
-                ))
                 .setContentIntent(pending)
                 .setAutoCancel(true)
                 .build()

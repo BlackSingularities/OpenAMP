@@ -287,11 +287,6 @@ private fun UpdateDialog(vm: MainViewModel) {
         title = { Text(info?.let { tr("Dostępna wersja {0}", it.version) } ?: tr("Aktualizacje")) },
         text = {
             Column {
-                if (info != null && info.notes.isNotBlank()) {
-                    Text(tr("Co nowego"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                    Text(info.notes.take(1200), style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(10.dp))
-                }
                 UpdateStatus(vm, st)
             }
         },

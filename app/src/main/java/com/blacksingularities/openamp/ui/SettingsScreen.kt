@@ -707,7 +707,6 @@ fun UpdateStatus(vm: MainViewModel, st: UpdateState) {
         }
         is UpdateState.Available -> Column {
             Text(tr("Dostępna wersja {0}", st.info.version), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            if (st.info.notes.isNotBlank()) Text(st.info.notes.take(800), fontSize = 11.sp, color = Compact.TextDim, modifier = Modifier.padding(vertical = 6.dp))
             PillButton(tr("Pobierz i zainstaluj"), { vm.downloadAndInstall() }, active = true)
         }
         is UpdateState.Downloading -> Column {

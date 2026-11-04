@@ -1,5 +1,9 @@
 # Historia zmian
 
+## 2.6.3
+
+- Komunikat o nowej wersji bez listy zmian, linków i informacji, skąd pobierana jest aktualizacja.
+
 ## 2.6.2
 
 - Korektor: usunięty rząd faderów pod wykresem, który powtarzał to samo co wykres. Wzmocnienie i częstotliwość pasm ustawia się teraz tylko na wykresie (oraz przyciskami −/+ po zaznaczeniu punktu). Pod wykresem zostały „Wyzeruj” i liczba pasm, a przedwzmacniacz jest w zakładce Wyjście.

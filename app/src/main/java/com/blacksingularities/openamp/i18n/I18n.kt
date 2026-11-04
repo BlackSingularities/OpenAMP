@@ -279,7 +279,6 @@ private val En: Map<String, String> = mapOf(
     "O aplikacji" to "About",
     "Wersja {0}" to "Version {0}",
     "Odtwarzacz muzyki o otwartym kodzie źródłowym" to "Open-source music player",
-    "Kod źródłowy na GitHubie" to "Source code on GitHub",
 
     // Aktualizacje
     "Aktualizacje" to "Updates",
@@ -294,7 +293,6 @@ private val En: Map<String, String> = mapOf(
     "Pobieranie… {0}%" to "Downloading… {0}%",
     "Instalowanie…" to "Installing…",
     "Zainstaluj" to "Install",
-    "Co nowego" to "What's new",
     "Później" to "Later",
     "Nowa wersja OpenAMP" to "New OpenAMP version",
     "Dostępna jest wersja {0}. Dotknij, aby zaktualizować." to "Version {0} is available. Tap to update.",
