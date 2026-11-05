@@ -51,24 +51,58 @@ class PlayerConnection(private val context: Context) {
     private val _position = MutableStateFlow(0L)
     val position: StateFlow<Long> = _position.asStateFlow()
 
+    private var connectJob: Job? = null
+    private var released = false
+
     fun connect() {
-        if (controller != null) return
-        scope.launch {
+        if (controller != null || connectJob?.isActive == true) return
+        released = false
+        connectJob = scope.launch {
             val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-            val c = runCatching { MediaController.Builder(context, token).buildAsync().await() }.getOrNull() ?: return@launch
+            val c = runCatching {
+                MediaController.Builder(context, token)
+                    // Serwis zakończył pracę (zamknięcie, samoczynne zamknięcie po pauzie): martwy kontroler
+                    // ignorował każde polecenie, m.in. przewijanie – łączymy się od nowa.
+                    .setListener(object : MediaController.Listener {
+                        override fun onDisconnected(controller: MediaController) = onLost(controller)
+                    })
+                    .buildAsync().await()
+            }.getOrNull()
+            if (c == null) {
+                if (!released) { delay(1000); connectJob = null; connect() }
+                return@launch
+            }
+            if (released) { c.release(); return@launch }
             controller = c
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) = refresh()
             })
             refresh()
-            while (isActive) {
+            while (isActive && controller === c) {
                 _position.value = c.currentPosition
                 delay(if (c.isPlaying) 50 else 250)
             }
         }
     }
 
+    private fun onLost(c: MediaController) {
+        if (controller !== c) return
+        controller = null
+        c.release()
+        _state.value = _state.value.copy(connected = false, isPlaying = false, buffering = false)
+        if (released) return
+        connectJob?.cancel()
+        connectJob = scope.launch {
+            delay(500)
+            connectJob = null
+            if (!released) connect()
+        }
+    }
+
     fun release() {
+        released = true
+        connectJob?.cancel()
+        connectJob = null
         controller?.release()
         controller = null
     }

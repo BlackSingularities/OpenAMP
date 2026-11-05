@@ -30,6 +30,8 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -78,7 +80,13 @@ class PlaybackService : MediaSessionService() {
         // Korektor, widmo, rozsądne pomijanie ciszy i tor hi-res (float) – zob. AudioOutput.kt.
         val renderers = OpenAmpRenderersFactory(this, spectrum)
         val s = Graph.settings.value
-        player = ExoPlayer.Builder(this, renderers)
+        // Przewijanie także w plikach bez tablicy przewijania (MP3 z nagłówkiem Xing bez spisu, VBR bez nagłówka,
+        // AAC ADTS, AMR). Domyślnie ExoPlayer uznaje je za nieprzewijalne – pasek w aplikacji i w systemowym
+        // widżecie multimediów przestawał wtedy działać, choć utwór grał dalej.
+        val extractors = DefaultExtractorsFactory()
+            .setConstantBitrateSeekingEnabled(true)
+            .setConstantBitrateSeekingAlwaysEnabled(true)
+        player = ExoPlayer.Builder(this, renderers, DefaultMediaSourceFactory(this, extractors))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
                 true,
