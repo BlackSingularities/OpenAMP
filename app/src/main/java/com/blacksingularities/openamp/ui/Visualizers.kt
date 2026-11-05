@@ -54,6 +54,10 @@ class LiveSpectrum {
     var beat = 0f
     internal var gain = 0.3f
     internal var bassAvg = 0f
+    /** Ostatnie docelowe wartości z procesora – słupki dążą do nich płynnie w każdej klatce. */
+    internal val target = FloatArray(Spectrum.BANDS)
+    /** Prędkość opadania (fizyka „grawitacji”) – opadanie przyspiesza łagodnie, bez szarpnięć. */
+    internal val fall = FloatArray(Spectrum.BANDS)
     var tick by mutableLongStateOf(0L)
     /** Historia dla spektrogramu (najnowsza na końcu). */
     val history = ArrayDeque<FloatArray>()
@@ -74,6 +78,7 @@ fun rememberLiveSpectrum(playing: Boolean, keepHistory: Int = 0): LiveSpectrum {
     LaunchedEffect(playing, keepHistory) {
         val latency = 160_000_000L
         var lastHistory = 0L
+        var lastFrame = 0L
         while (true) {
             val now = withFrameNanos { it }
             val target = synchronized(queue) {
@@ -88,12 +93,33 @@ fun rememberLiveSpectrum(playing: Boolean, keepHistory: Int = 0): LiveSpectrum {
                 for (v in target.bands) if (v > peak) peak = v
                 live.gain = max(max(live.gain * 0.996f, peak), 0.25f)
             }
+            if (playing && target != null) {
+                for (i in live.target.indices) {
+                    val norm = (target.bands[i] / live.gain).coerceIn(0f, 1f)
+                    live.target[i] = norm * norm * (3f - 2f * norm) * 0.35f + norm * norm * 0.65f
+                }
+                // Lekkie wygładzenie sąsiednich pasm – kształt widma jest gładszy.
+                var prev = live.target[0]
+                for (i in 1 until live.target.size - 1) {
+                    val cur = live.target[i]
+                    live.target[i] = cur * 0.6f + (prev + live.target[i + 1]) * 0.2f
+                    prev = cur
+                }
+            } else if (!playing) live.target.fill(0f)
+            // Wygładzanie zależne od czasu klatki (płynnie przy 60/90/120 Hz).
+            val dt = if (lastFrame == 0L) 0.016f else ((now - lastFrame) / 1e9f).coerceIn(0.001f, 0.05f)
+            lastFrame = now
+            val rise = 1f - kotlin.math.exp(-dt * 22f)
             for (i in live.bands.indices) {
-                val raw = if (playing && target != null) target.bands[i] else if (playing) -1f else 0f
-                if (raw < 0f) continue
-                val norm = (raw / live.gain).coerceIn(0f, 1f)
-                val t = norm * norm * (3f - 2f * norm) * 0.35f + norm * norm * 0.65f
-                live.bands[i] = if (t > live.bands[i]) live.bands[i] + (t - live.bands[i]) * 0.85f else live.bands[i] + (t - live.bands[i]) * 0.28f
+                val t = live.target[i]
+                val cur = live.bands[i]
+                if (t >= cur) {
+                    live.bands[i] = cur + (t - cur) * rise
+                    live.fall[i] = 0f
+                } else {
+                    live.fall[i] = (live.fall[i] + dt * 3.2f).coerceAtMost(2.4f)
+                    live.bands[i] = max(t, cur - live.fall[i] * dt)
+                }
             }
             var bass = 0f
             for (i in 0 until 6) bass += live.bands[i]
@@ -120,16 +146,34 @@ fun rememberLiveSpectrum(playing: Boolean, keepHistory: Int = 0): LiveSpectrum {
     return live
 }
 
+/** Dostępne liczby słupków wizualizacji. */
+val VisBarCounts = listOf(16, 24, 32, 48, 64)
+
+/** Pasma przeskalowane do [count] słupków (interpolacja liniowa), do bufora [out]. */
+private fun resample(src: FloatArray, count: Int, out: FloatArray): FloatArray {
+    if (count == src.size) return src
+    for (i in 0 until count) {
+        val pos = if (count == 1) 0f else i * (src.size - 1f) / (count - 1f)
+        val a = pos.toInt().coerceAtMost(src.size - 1)
+        val b = (a + 1).coerceAtMost(src.size - 1)
+        val f = pos - a
+        out[i] = src[a] * (1f - f) + src[b] * f
+    }
+    return out
+}
+
 @Composable
-fun SpectrumBars(live: LiveSpectrum, color: Color, modifier: Modifier, mirror: Boolean = true) {
+fun SpectrumBars(live: LiveSpectrum, color: Color, modifier: Modifier, mirror: Boolean = true, count: Int = Spectrum.BANDS) {
+    val buf = remember(count) { FloatArray(count) }
     Canvas(modifier) {
         @Suppress("UNUSED_VARIABLE") val t = live.tick
-        val n = live.bands.size
+        val bands = resample(live.bands, count, buf)
+        val n = count
         val gap = size.width / n * 0.28f
         val w = size.width / n - gap
         val brush = Brush.verticalGradient(listOf(color, color.copy(alpha = 0.35f)))
         for (i in 0 until n) {
-            val v = live.bands[i]
+            val v = bands[i]
             val h = max(size.height * (if (mirror) 0.62f else 1f) * v, w * 0.6f)
             val x = i * (w + gap) + gap / 2
             val baseY = if (mirror) size.height * 0.62f else size.height
@@ -161,18 +205,20 @@ fun WaveScope(live: LiveSpectrum, color: Color, modifier: Modifier) {
 
 /** Promieniste słupki wokół okładki. */
 @Composable
-fun CircleSpectrum(live: LiveSpectrum, color: Color, modifier: Modifier, innerFraction: Float = 0.82f) {
+fun CircleSpectrum(live: LiveSpectrum, color: Color, modifier: Modifier, innerFraction: Float = 0.82f, count: Int = Spectrum.BANDS) {
+    val buf = remember(count) { FloatArray(count) }
     Canvas(modifier) {
         @Suppress("UNUSED_VARIABLE") val t = live.tick
+        val bands = resample(live.bands, count, buf)
         val c = center
         val r0 = size.minDimension / 2 * innerFraction
         val maxLen = size.minDimension / 2 - r0
-        val n = live.bands.size
+        val n = count
         val total = n * 2
         for (k in 0 until total) {
             // Symetrycznie: lewa połowa to lustro prawej.
             val i = if (k < n) k else total - 1 - k
-            val v = live.bands[i]
+            val v = bands[i]
             val a = (k.toFloat() / total) * 2 * PI - PI / 2
             val len = maxLen * (0.06f + v * 0.94f) * (0.85f + live.beat * 0.15f)
             val ca = cos(a).toFloat(); val sa = sin(a).toFloat()
@@ -180,7 +226,7 @@ fun CircleSpectrum(live: LiveSpectrum, color: Color, modifier: Modifier, innerFr
                 color.copy(alpha = 0.35f + v * 0.65f),
                 Offset(c.x + ca * r0, c.y + sa * r0),
                 Offset(c.x + ca * (r0 + len), c.y + sa * (r0 + len)),
-                strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round,
+                strokeWidth = (4f * (48f / count).coerceIn(0.6f, 2f)).dp.toPx(), cap = StrokeCap.Round,
             )
         }
     }
@@ -205,17 +251,19 @@ fun PulseGlow(live: LiveSpectrum, color: Color, modifier: Modifier) {
 
 /** Słupki rosnące symetrycznie od środka w obie strony (bas w środku). */
 @Composable
-fun MirrorBars(live: LiveSpectrum, color: Color, modifier: Modifier) {
+fun MirrorBars(live: LiveSpectrum, color: Color, modifier: Modifier, count: Int = Spectrum.BANDS) {
+    val buf = remember(count) { FloatArray(count / 2) }
     Canvas(modifier) {
         @Suppress("UNUSED_VARIABLE") val t = live.tick
-        val n = Spectrum.BANDS / 2
+        val n = count / 2
+        val bands = resample(live.bands, n, buf)
         val slots = n * 2
         val step = size.width / slots
         val w = step * 0.62f
         val mid = size.height / 2
         for (k in 0 until slots) {
             val i = if (k < n) n - 1 - k else k - n
-            val v = live.bands[i * 2]
+            val v = bands[i]
             val h = max(size.height * v, w)
             val x = k * step + (step - w) / 2
             drawRoundRect(color.copy(alpha = 0.45f + v * 0.55f), Offset(x, mid - h / 2), Size(w, h), CornerRadius(w / 2))

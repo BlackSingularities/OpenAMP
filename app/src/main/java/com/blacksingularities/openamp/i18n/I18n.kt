@@ -241,6 +241,7 @@ private val En: Map<String, String> = mapOf(
     "Kolor akcentu" to "Accent color",
     "Ekran odtwarzania" to "Now playing screen",
     "Wizualizacja" to "Visualizer",
+    "Liczba słupków" to "Bar count",
     "Puls" to "Pulse",
     "Lustrzane słupki" to "Mirrored bars",
     "Fala w okręgu" to "Ring wave",
