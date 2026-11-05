@@ -268,6 +268,9 @@ private fun PlayerSection(vm: MainViewModel) {
             Icons.Rounded.GraphicEq, tr("Wizualizacja"), VisualizerByType, s.visualizer, ::visLabel,
             preview = { v, m -> VisualizerPreview(v, demo, accent, m) }, group = ::visGroup,
         ) { v -> vm.updateSettings { it.copy(visualizer = v) } }
+        if (s.visualizer == VisualizerStyle.BARS || s.visualizer == VisualizerStyle.MIRROR || s.visualizer == VisualizerStyle.CIRCLE) SetSegment(
+            Icons.Rounded.GraphicEq, tr("Liczba słupków"), VisBarCounts, s.visBars, { it.toString() }, short = { it.toString() },
+        ) { v -> vm.updateSettings { it.copy(visBars = v) } }
         SetDropdown(
             Icons.Rounded.Waves, tr("Taśma utworu"), SeekStyle.entries, s.seekStyle, ::seekLabel, subtitle = tr("Przewijanie palcem w całym polu przycisków"),
             preview = { v, m -> SeekPreview(v, demo, accent, m) },

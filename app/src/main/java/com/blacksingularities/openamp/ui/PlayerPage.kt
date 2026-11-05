@@ -129,7 +129,7 @@ fun NowPlayingScreen(vm: MainViewModel, bottomPadding: Dp) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         NowPlayingBackground(track, s.npBackground, accent, live, s)
         val wide = maxWidth > maxHeight
-        val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, s.showLikes, data.favorites, data.disliked, m) }
+        val cover: @Composable (Modifier) -> Unit = { m -> CoverBlock(vm, track, ps.isPlaying, live, s.visualizer, s.coverShape, s.coverGestures, s.showLikes, data.favorites, data.disliked, m, s.visBars) }
         val controls: @Composable () -> Unit = {
             Column {
                 TitlePills(vm, track, s.titleCenter, s.titleSize) { menu = true }
@@ -188,6 +188,7 @@ private fun CoverBlock(
     favorites: Set<Long>,
     disliked: Set<Long>,
     modifier: Modifier,
+    bars: Int = 32,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val ps by vm.player.state.collectAsState()
@@ -272,7 +273,7 @@ private fun CoverBlock(
                         ,
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (vis == VisualizerStyle.CIRCLE) Shadowed(Modifier.fillMaxSize()) { c, m -> CircleSpectrum(live, c ?: accent, m, innerFraction = 0.80f) }
+                    if (vis == VisualizerStyle.CIRCLE) Shadowed(Modifier.fillMaxSize()) { c, m -> CircleSpectrum(live, c ?: accent, m, innerFraction = 0.80f, count = bars) }
                     if (vis == VisualizerStyle.RING_WAVE) Shadowed(Modifier.fillMaxSize()) { c, m -> RingWave(live, c ?: accent, m, innerFraction = 0.80f) }
                     if (vis == VisualizerStyle.PULSE) PulseGlow(live, accent, Modifier.fillMaxSize())
                     val frac = { (kotlin.math.abs(offset.value) / width).coerceIn(0f, 1f) }
@@ -304,8 +305,8 @@ private fun CoverBlock(
                         }
                         .shadow(24.dp, shape)
                     if (shapeMode == CoverShape.VINYL) Vinyl(shown, playing, accent, m) else Artwork(shown, m, size = 1000, shape = shape, crossfade = !gestures)
-                    if (vis == VisualizerStyle.BARS) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(56.dp)) { c, m -> SpectrumBars(live, c ?: Color.White.copy(alpha = 0.85f), m, mirror = false) }
-                    if (vis == VisualizerStyle.MIRROR) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(64.dp)) { c, m -> MirrorBars(live, c ?: Color.White.copy(alpha = 0.9f), m) }
+                    if (vis == VisualizerStyle.BARS) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(56.dp)) { c, m -> SpectrumBars(live, c ?: Color.White.copy(alpha = 0.85f), m, mirror = false, count = bars) }
+                    if (vis == VisualizerStyle.MIRROR) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.8f).height(64.dp)) { c, m -> MirrorBars(live, c ?: Color.White.copy(alpha = 0.9f), m, count = bars) }
                     if (vis == VisualizerStyle.LINE) Shadowed(Modifier.align(Alignment.BottomCenter).padding(bottom = VisAboveButtons).fillMaxWidth(0.86f).height(56.dp)) { c, m -> SpectrumLine(live, c ?: Color.White, m) }
                     if (vis == VisualizerStyle.WAVE) Shadowed(Modifier.align(Alignment.Center).fillMaxWidth(0.9f).height(90.dp)) { c, m -> WaveScope(live, c ?: Color.White, m) }
                 }

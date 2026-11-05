@@ -30,6 +30,8 @@ data class AppSettings(
     val artworkColors: Boolean = false,
     val accent: Int = 0xFFFFFFFF.toInt(),
     val visualizer: VisualizerStyle = VisualizerStyle.BARS,
+    /** Liczba słupków wizualizacji na okładce. */
+    val visBars: Int = 32,
     val seekStyle: SeekStyle = SeekStyle.WAVEFORM,
     val blurBackground: Boolean = true,
     val smartEq: Boolean = false,
@@ -146,6 +148,7 @@ class SettingsStore(context: Context) {
                 artworkColors = getBoolean("artworkColors", d.artworkColors),
                 accent = getInt("accent", d.accent),
                 visualizer = enum("visualizer", d.visualizer),
+                visBars = getInt("visBars", d.visBars),
                 seekStyle = enum("seekStyle", d.seekStyle),
                 blurBackground = getBoolean("blurBackground", d.blurBackground),
                 smartEq = getBoolean("smartEq", d.smartEq),
@@ -230,6 +233,7 @@ class SettingsStore(context: Context) {
             .putBoolean("artworkColors", s.artworkColors)
             .putInt("accent", s.accent)
             .putString("visualizer", s.visualizer.name)
+            .putInt("visBars", s.visBars)
             .putString("seekStyle", s.seekStyle.name)
             .putBoolean("blurBackground", s.blurBackground)
             .putBoolean("smartEq", s.smartEq)
