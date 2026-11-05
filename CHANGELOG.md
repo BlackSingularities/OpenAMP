@@ -1,5 +1,12 @@
 # Historia zmian
 
+## 2.6.5
+
+- Naprawione przewijanie, które po jakimś czasie przestawało działać w aplikacji i w systemowym widżecie multimediów (utwór grał dalej). Dotyczyło części plików MP3 (VBR bez tablicy przewijania) oraz AAC i AMR – teraz da się je przewijać.
+- Aplikacja sama łączy się ponownie z odtwarzaczem, gdy ten zakończy pracę w tle, więc przyciski i pasek nie przestają reagować.
+- Płynniejsza wizualizacja na okładce: wygładzanie niezależne od liczby klatek, naturalniejsze opadanie słupków.
+- Nowe ustawienie **Liczba słupków** (16–64) dla wizualizacji słupków, lustra i okręgu.
+
 ## 2.6.4
 
 - Bez żadnych wzmianek o GitHubie w aplikacji: nowy adres serwera aktualizacji, komunikaty błędów bez nazw zewnętrznych serwerów.
