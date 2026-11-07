@@ -97,6 +97,7 @@ fun AppRoot(vm: MainViewModel) {
     @Suppress("UNUSED_VARIABLE") val english = I18n.english
 
     OpenAmpTheme(accent, s.theme) {
+        com.blacksingularities.openamp.feedback.CrashReportPrompt()
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             val context = LocalContext.current
             var granted by remember {

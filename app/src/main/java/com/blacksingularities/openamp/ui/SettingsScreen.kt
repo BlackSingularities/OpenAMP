@@ -643,6 +643,12 @@ private fun About() {
             "kontakt@redzikowski.com", fontSize = 12.sp, color = Compact.TextDim,
             modifier = Modifier.padding(top = 0.dp).clip(Shapes.Small).clickable { open("mailto:kontakt@redzikowski.com") }.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        com.blacksingularities.openamp.feedback.FeedbackEntry { openFeedback ->
+            Text(
+                com.blacksingularities.openamp.feedback.FeedbackText.entryTitle, fontSize = 12.sp, color = Compact.TextDim,
+                modifier = Modifier.clip(Shapes.Small).clickable { openFeedback() }.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
         Row(
             Modifier.padding(top = 8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
                 .clickable { open("https://buycoffee.to/adamredzikowski") }.padding(horizontal = 18.dp, vertical = 10.dp),

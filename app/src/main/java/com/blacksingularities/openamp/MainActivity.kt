@@ -1,5 +1,6 @@
 package com.blacksingularities.openamp
 
+import com.blacksingularities.openamp.feedback.Feedback
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,7 +25,10 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        if (CrashLog.showIfAny(this) { start() }) return
+        Feedback.install(this, "openamp")
+        // Po awarii pyta CrashReportPrompt (wysyłka raportu); stary podgląd tylko, gdy go nie ma.
+        if (Feedback.pendingCrash(this) != null) CrashLog.clear(this)
+        else if (CrashLog.showIfAny(this) { start() }) return
         start()
     }
 

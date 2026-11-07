@@ -40,6 +40,10 @@ object CrashLog {
         }
     }
 
+    fun clear(context: Context) {
+        runCatching { file(context).delete() }
+    }
+
     /** Pokazuje zapisany crash; [onDone] wywoływane po zamknięciu okna. Zwraca true, gdy okno się pojawiło. */
     fun showIfAny(activity: Activity, onDone: () -> Unit): Boolean {
         val f = file(activity)
