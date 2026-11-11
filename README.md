@@ -1,5 +1,13 @@
 # OpenAMP
 
+<!-- posters:start -->
+<p align="center">
+  <img src="docs/posters/android.png" alt="OpenAMP – Android" width="460">
+</p>
+
+<p align="center"><a href="https://redzikowski.com/portfolio/openamp">redzikowski.com/portfolio/openamp</a></p>
+<!-- posters:end -->
+
 Odtwarzacz muzyki na Androida (10+) o otwartym kodzie źródłowym. Kotlin, Jetpack Compose, Media3/ExoPlayer.
 
 ## Funkcje

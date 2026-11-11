@@ -1,0 +1,23 @@
+{
+  "slug": "openamp",
+  "name": "OpenAMP",
+  "label": "odtwarzacz muzyki z korektorem",
+  "icon": "icon.png",
+  "url": "https://redzikowski.com/portfolio/openamp",
+  "posters": [
+    {
+      "platform": "android",
+      "file": "android.png",
+      "title": "Twoja muzyka, *Twoje brzmienie*",
+      "lead": "Biblioteka z okładkami, waveform utworu, teksty LRC, korektor do 31 pasm i wizualizacje widma w czasie odtwarzania.",
+      "shots": [
+        { "src": "../screenshots/android/01-odtwarzacz.png", "caption": "Odtwarzacz" },
+        { "src": "../screenshots/android/02-biblioteka.png", "caption": "Biblioteka" },
+        { "src": "../screenshots/android/03-korektor.png", "caption": "Korektor" },
+        { "src": "../screenshots/android/04-kolejka.png", "caption": "Kolejka" }
+      ],
+      "features": ["teksty LRC", "korektor do 31 pasm", "wizualizacje widma", "wyłącznik czasowy", "statystyki słuchania", "widżety"],
+      "meta": "Android 10 lub nowszy"
+    }
+  ]
+}
